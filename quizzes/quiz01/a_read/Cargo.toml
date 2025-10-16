@@ -1,0 +1,14 @@
+[package]
+name = "a_read"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+reqwest = "0.9.18"
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
+book = { path = "../../../../crypto-n-rust/src/libs/book" }
+
+# cwd /Users/geophf/projects/rust-projects/protocol/quizzes/quiz01/a_read
+
