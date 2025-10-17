@@ -10,5 +10,5 @@ reqwest = "0.9.18"
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 book = { path = "../../../../crypto-n-rust/src/libs/book" }
 
-# cwd /Users/geophf/projects/rust-projects/protocol/quizzes/quiz01/a_read
+# cwd protocol/quizzes/quiz01/a_read
 
