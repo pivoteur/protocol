@@ -14,3 +14,12 @@ the opened-date</a> into the Pivot-structures.
 ![Parsed dates in Pivot structures](imgs/01-parsed-dates.png)
 
 The result shows pivots with parsed-dates.
+
+* Next we 
+<a href="https://github.com/pivoteur/protocol/blob/pivot-header/quizzes/quiz01/b_table/src/main.rs">parse
+the entire header</a>.
+
+![Parsed header](imgs/02-parsed-header.png)
+
+By parsing the entire header, we now can partition pivots into active and closed
+groups, allowing us to focus on open pivots, only.

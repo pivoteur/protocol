@@ -14,7 +14,7 @@ use book::{
 
 use pivots::paths::open_pivot_path;
 
-fn parse_int(s: &str) -> ErrStr<i32> {
+fn parse_int(s: &str) -> ErrStr<usize> {
    err_or(s.parse(), &format!("{s} is not an integer"))
 }
 
@@ -72,11 +72,15 @@ fn active(p: &Pivot) -> bool {
    !closed(p)
 }
 
-fn sample_pivot_0(dt: &str) -> ErrStr<Pivot> {
-   let header = mk_hdr(dt, 1, 0)?;
+fn sample_pivot_1(header: Header) -> ErrStr<Pivot> {
    let from = mk_asset("BTC", mk_amt(0.004498, 0.0));
    let to = mk_asset("ETH", mk_amt(0.14203, 0.0));
    Ok(Pivot { header, from, to })
+}
+
+fn sample_pivot_0(dt: &str) -> ErrStr<Pivot> {
+   let header = mk_hdr(dt, 1, 0)?;
+   sample_pivot_1(header)
 }
 
 fn sample_pivot() -> ErrStr<Pivot> {
@@ -86,6 +90,29 @@ fn sample_pivot() -> ErrStr<Pivot> {
 fn mk_pivot_0(hdrs: &HashMap<String, usize>, row: &Vec<String>)
       -> ErrStr<Pivot> {
    sample_pivot_0(&row[hdrs["opened"]])
+}
+
+fn mk_lookup_f(hdrs: &HashMap<String, usize>, row: &Vec<String>)
+      -> impl Fn(String) -> String {
+   move |key: String| {
+      let col = hdrs[&key];
+      row[col].clone()
+   }
+}
+
+fn mk_pivot_1(hdrs: &HashMap<String, usize>, row: &Vec<String>)
+      -> ErrStr<Pivot> {
+   let lookf = mk_lookup_f(hdrs, row);
+   fn looker<'a>(f: impl Fn(String) -> String + 'a)
+         -> impl Fn(&'a str) -> String + 'a {
+      move |key| f(key.to_string())
+   }
+   let look = looker(lookf);
+   let dt = look("opened");
+   let id = parse_int(&look("open"))?;
+   let closed = parse_int(&look("close"))?;
+   let header = mk_hdr(&dt, id, closed)?;
+   sample_pivot_1(header)
 }
 
 fn enum_headers<HEADER: Eq + Hash>(headers: Vec<HEADER>)
@@ -115,18 +142,21 @@ async fn main() -> ErrStr<()> {
    let table = ingest(parse_int, parse_str, parse_str, &body, "\t")?;
 
 // We have our (unstructured) pivots tablized, now let's reify those pivots
-// (... starting with just the opened-date data)
+// (... starting with just the opened-date data ... and now adding the rest of
+// the header).
 
    let hdrs = enum_headers(cols(&table));
 
    let mut acts: Vec<Pivot> = Vec::new();
    let mut pass: Vec<Pivot> = Vec::new();
 
+   let mut x: i32 = 1;
    for row in table.data {
-      let piv = mk_pivot_0(&hdrs, &row)?;
+      let piv = mk_pivot_1(&hdrs, &row)?;
       if active(&piv) {
          acts.push(piv.clone());
-         println!("row: {piv:?}");
+         println!("row {x}: {piv:?}");
+         x = x + 1;
       } else {
          pass.push(piv);
       }
