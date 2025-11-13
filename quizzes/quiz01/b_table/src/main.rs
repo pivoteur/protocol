@@ -97,8 +97,8 @@ fn enum_headers<HEADER: Eq + Hash>(headers: Vec<HEADER>)
 async fn main() -> ErrStr<()> {
    // println!("Voilà: {:?}", sample_pivot());
 
-// now, let's read in real open pivot data and first, put those data into a 
-// (unstructured) table
+// let's read in real open pivot data and first, put those data into a 
+// (untyped) table
 
    let url = open_pivot_path("btc", "eth");
    let daters = read_rest(&url).await?;
@@ -113,10 +113,28 @@ async fn main() -> ErrStr<()> {
       t.iter().enumerate().map(|(a, b)| format!("{a}\t{b}")).collect();
    body.insert(0, header);
    let table = ingest(parse_int, parse_str, parse_str, &body, "\t")?;
+
+// We have our (unstructured) pivots tablized, now let's reify those pivots
+// (... starting with just the opened-date data)
+
    let hdrs = enum_headers(cols(&table));
+
+   let mut acts: Vec<Pivot> = Vec::new();
+   let mut pass: Vec<Pivot> = Vec::new();
+
    for row in table.data {
       let piv = mk_pivot_0(&hdrs, &row)?;
-      println!("row: {piv:?}");
+      if active(&piv) {
+         acts.push(piv.clone());
+         println!("row: {piv:?}");
+      } else {
+         pass.push(piv);
+      }
    }
+
+   let a = acts.len();
+   let p = pass.len();
+   println!("\nThere are {a} active pivots and {p} closed pivots.");
+
    Ok(())
 }

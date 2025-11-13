@@ -1,0 +1,1 @@
+searchState.loadedDescShard("pivots", 0, "Resolves the pivot-assets to the open pivot pool URL")
