@@ -1,12 +1,12 @@
 name: Deploy Rust Docs to GitHub Pages
 
-    on:
+on:
       push:
         branches:
           - main # Or your default branch like 'master'
           - integrate-opened-dt
 
-    jobs:
+jobs:
       deploy:
         runs-on: ubuntu-latest
         permissions:
