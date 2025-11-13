@@ -33,7 +33,7 @@ jobs:
           - name: Prepare documentation for GitHub Pages
             run: |
               mkdir -p docs
-              cp -r target/doc/* docs/
+              cp -r ./quizzes/quiz01/pivots/target/doc/* docs/
               echo "<meta http-equiv=\"refresh\" content=\"0; url=./quizzes/quiz01/pivots/index.html\">" > docs/index.html # Redirect to the actual docs
               touch docs/.nojekyll
 
