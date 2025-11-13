@@ -40,7 +40,6 @@ jobs:
             uses: actions/configure-pages@v5
 
           - name: Deploy to GitHub Pages
-            uses: peaceiris/actions-gh-pages@v4
-            with:
-              github_token: ${{ secrets.GITHUB_TOKEN }}
-              publish_dir: ./docs # This is the directory where the prepared docs are located
+            id: deployment
+            uses: actions/deploy-pages@v4
+

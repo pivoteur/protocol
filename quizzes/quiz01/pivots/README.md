@@ -2,4 +2,4 @@
 
 Collection of utilities for pivot-management.
 
-[Crate docs](doc/pivots)
+[Crate docs](/docs/index.html)
