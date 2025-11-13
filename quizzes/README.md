@@ -5,5 +5,5 @@
 
 # Resources
 
-The quizzes and infrastructure uses libraries from @logicalgraphs
+The quizzes and infrastructure uses [libraries from @logicalgraphs
 crypto-n-rust project](https://github.com/logicalgraphs/crypto-n-rust/tree/main/src/libs) on github.
