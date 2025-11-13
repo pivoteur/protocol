@@ -8,7 +8,7 @@ Parses raw data from REST endpoint, reifying them to pivots.
 Step 1: Create Pivot-structures, reify data
 
 * we start by 
-<a href="/blob/integrate-opened-dt/quizzes/quiz01/b_table/src/main.rs">parsing 
+<a href="https://github.com/pivoteur/protocol/blob/integrate-opened-dt/quizzes/quiz01/b_table/src/main.rs">parsing
 the opened-date</a> into the Pivot-structures.
 
 ![Parsed dates in Pivot structures](imgs/01-parsed-dates.png)
