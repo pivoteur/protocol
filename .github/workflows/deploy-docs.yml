@@ -1,0 +1,47 @@
+name: Deploy Rust Docs to GitHub Pages
+
+    on:
+      push:
+        branches:
+          - main # Or your default branch like 'master'
+          - integrate-opened-dt
+
+    jobs:
+      deploy:
+        runs-on: ubuntu-latest
+        permissions:
+          contents: write # Required to push to gh-pages branch
+          pages: write    # Required for GitHub Pages deployment
+          id-token: write # Required for OIDC token for GitHub Pages
+
+        steps:
+          - name: Checkout repository
+            uses: actions/checkout@v4
+
+          - name: Install Rust toolchain
+            uses: actions-rs/toolchain@v1
+            with:
+              toolchain: stable
+              profile: minimal
+              override: true
+
+          - name: Generate Rust documentation
+            run: cargo doc --no-deps
+            working-directory: ./quizzes/quiz01/pivots
+
+
+          - name: Prepare documentation for GitHub Pages
+            run: |
+              mkdir -p docs
+              cp -r target/doc/* docs/
+              echo "<meta http-equiv=\"refresh\" content=\"0; url=./quizzes/quiz01/pivots/index.html\">" > docs/index.html # Redirect to the actual docs
+              touch docs/.nojekyll
+
+          - name: Configure GitHub Pages
+            uses: actions/configure-pages@v5
+
+          - name: Deploy to GitHub Pages
+            uses: peaceiris/actions-gh-pages@v4
+            with:
+              github_token: ${{ secrets.GITHUB_TOKEN }}
+              publish_dir: ./docs # This is the directory where the prepared docs are located
