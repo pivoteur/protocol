@@ -3,8 +3,7 @@ name: Deploy Rust Docs to GitHub Pages
 on:
       push:
         branches:
-          - main # Or your default branch like 'master'
-          - integrate-opened-dt
+          - main
 
 jobs:
       deploy:
