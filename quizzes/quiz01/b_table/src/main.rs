@@ -99,9 +99,8 @@ fn mk_lookup_f(hdrs: &HashMap<String, usize>, row: &Vec<String>)
       row[col].clone()
    }
 }
-
-fn mk_pivot_1(hdrs: &HashMap<String, usize>, row: &Vec<String>)
-      -> ErrStr<Pivot> {
+fn parse_header(hdrs: &HashMap<String, usize>, row: &Vec<String>)
+      -> ErrStr<Header> {
    let lookf = mk_lookup_f(hdrs, row);
    fn looker<'a>(f: impl Fn(String) -> String + 'a)
          -> impl Fn(&'a str) -> String + 'a {
@@ -111,7 +110,12 @@ fn mk_pivot_1(hdrs: &HashMap<String, usize>, row: &Vec<String>)
    let dt = look("opened");
    let id = parse_int(&look("open"))?;
    let closed = parse_int(&look("close"))?;
-   let header = mk_hdr(&dt, id, closed)?;
+   mk_hdr(&dt, id, closed)
+}
+
+fn mk_pivot_1(hdrs: &HashMap<String, usize>, row: &Vec<String>)
+      -> ErrStr<Pivot> {
+   let header = parse_header(hdrs, row)?;
    sample_pivot_1(header)
 }
 
