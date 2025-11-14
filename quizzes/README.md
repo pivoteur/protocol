@@ -2,6 +2,7 @@
 
 * [00](quiz00): Hi, Mom!
 * [01](quiz01): read and parse a set of open pivots reposed on github
+* [02](quiz02): With today's (fetched) prices, identify pivots to close
 
 # Resources
 
