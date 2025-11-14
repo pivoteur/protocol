@@ -31,3 +31,12 @@ assets</a>, which completes the reification of pivots.
 ![Data-driven pivots](imgs/03-parse-pivot.png)
 
 Real pivots from real data.
+
+* Finally, a touch of clean-up: the machine-representation is hard for me
+to digest, so I 
+<a href="https://github.com/pivoteur/protocol/blob/pivot-as-csv/quizzes/quiz01/b_table/src/main.rs">output 
+the results as CSV</a> and total pivots and their amounts.
+
+![Pivots as CSV](imgs/04-csv-and-amounts.png)
+
+Pivots as CSV.
