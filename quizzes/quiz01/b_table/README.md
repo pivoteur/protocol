@@ -23,3 +23,11 @@ the entire header</a>.
 
 By parsing the entire header, we now can partition pivots into active and closed
 groups, allowing us to focus on open pivots, only.
+
+* Now, let's parse everything. I
+<a href="https://github.com/pivoteur/protocol/blob/pivot-asset/quizzes/quiz01/b_table/src/main.rs">parse
+assets</a>, which completes the reification of pivots.
+
+![Data-driven pivots](imgs/03-parse-pivot.png)
+
+Real pivots from real data.
