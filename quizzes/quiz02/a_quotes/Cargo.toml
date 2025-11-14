@@ -1,0 +1,10 @@
+[package]
+name = "a_quotes"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
+
+book = { path = "../../../../crypto-n-rust/src/libs/book" }
+
