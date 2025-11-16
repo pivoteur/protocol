@@ -1,4 +1,4 @@
-#![crate_name = "pivots"]
+#![crate_name = "libs"]
 
 /// Distillation of pivot pool-management
 

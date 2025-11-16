@@ -1,4 +1,4 @@
-# pivots
+# libs
 
 Collection of utilities for pivot-management.
 

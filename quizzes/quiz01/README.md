@@ -11,5 +11,5 @@ problem down into a set of stepping-stones to the solution.
 
 <ol type="A">
  <li><a href="a_read">Read</a> the open pivots from a REST endpoint</li>
- <li><a href="b_table">Parse</a> the pivots into a table (WIP)</li>
+ <li><a href="b_table">Parse</a> the pivots into a table</li>
 </ol>

@@ -5,7 +5,7 @@ edition = "2024"
 
 [lib]
 name = "libs"
-path = "lib.rs"
+path = "src/lib.rs"
 
 [dependencies]
 

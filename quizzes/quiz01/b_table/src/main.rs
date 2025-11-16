@@ -15,7 +15,7 @@ use book::{
    utils::pred
 };
 
-use pivots::paths::open_pivot_path;
+use libs::paths::open_pivot_path;
 
 trait CsvHeader {
    fn header(&self) -> String;
@@ -63,8 +63,9 @@ impl CsvWriter for Amount {
    fn ncols(&self) -> usize { 2 }
    fn as_csv(&self) -> String { format!("{},{}", self.actual, self.ersatz) }
 }
-impl CsvHeader for Amount {
-   fn header(&self) -> String { "actual,virtual".to_string() }
+
+fn kinderize(k: &AssetType, s: &[&str]) -> Vec<String> {
+   s.iter().map(|elt| format!("{}_{}", k.kind(), elt)).collect()
 }
 
 fn amount(a: &Amount) -> f32 { a.actual + a.ersatz }
@@ -76,7 +77,8 @@ fn mk_amt(actual: f32, ersatz: f32) -> Amount {
 struct Asset {
    token: String,
    amount: Amount,
-   quote: USD
+   quote: USD,
+   kind: AssetType
 }
 
 impl CsvWriter for Asset {
@@ -88,12 +90,13 @@ impl CsvWriter for Asset {
 }
 impl CsvHeader for Asset {
    fn header(&self) -> String {
-      format!("token,{},quote,total", self.amount.header()) 
+      let hdrs = kinderize(&self.kind, &["token", "quote", "total"]);
+      format!("{},{},{},{}", hdrs[0],self.kind.headers(),hdrs[1],hdrs[2]) 
    }
 }
 
-fn mk_asset(tkn: &str, amount: Amount, quote: USD) -> Asset {
-   Asset { token: tkn.to_string(), amount, quote }
+fn mk_asset(tkn: &str, amount: Amount, quote: USD, kind: AssetType) -> Asset {
+   Asset { token: tkn.to_string(), amount, quote, kind }
 }
 
 fn slice2vec(ss: &[&str]) -> Vec<String> {
@@ -104,6 +107,7 @@ fn slice2vec(ss: &[&str]) -> Vec<String> {
    vec
 }
 
+#[derive(Debug, Clone)]
 enum AssetType { FROM, TO }
 
 impl AssetType {
@@ -112,6 +116,16 @@ impl AssetType {
          AssetType::FROM => slice2vec(&["from","amount1","virtual","quote1"]),
          AssetType::TO => slice2vec(&["to","net","blah!","quote2"])
       }
+   }
+   fn kind(&self) -> String {
+      match self {
+         AssetType::FROM => "from".to_string(),
+         AssetType::TO => "to".to_string()
+      }
+   }
+   fn headers(&self) -> String {
+      let hdrs = kinderize(&self, &["actual","virtual"]);
+      format!("{},{}", hdrs[0], hdrs[1])
    }
 }
 
@@ -126,7 +140,7 @@ fn parse_asset(a: AssetType, hdrs: &HashMap<String, usize>, row: &Vec<String>)
       } else { Ok( 0.0 ) }?;
       let quot: USD = row[hdrs[qut]].parse()?;
       let amount = mk_amt(amnt, vrt);
-      Ok(mk_asset(token, amount, quot))
+      Ok(mk_asset(token, amount, quot, a))
    } else {
       Err("bad pattern match in AssetType enum for keys()".to_string())
    }
