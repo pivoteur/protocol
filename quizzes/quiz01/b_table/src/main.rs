@@ -180,28 +180,6 @@ fn active(p: &Pivot) -> bool {
    !closed(p)
 }
 
-/*
-fn sample_pivot_1(header: Header) -> ErrStr<Pivot> {
-   let from = mk_asset("BTC", mk_amt(0.004498, 0.0), mk_usd(99616.88));
-   let to = mk_asset("ETH", mk_amt(0.14203, 0.0), mk_usd(3237.42));
-   Ok(Pivot { header, from, to })
-}
-
-fn sample_pivot_0(dt: &str) -> ErrStr<Pivot> {
-   let header = mk_hdr(dt, 1, 0)?;
-   sample_pivot_1(header)
-}
-
-fn sample_pivot() -> ErrStr<Pivot> {
-   sample_pivot_0("2025-11-10")
-}
-
-fn mk_pivot_0(hdrs: &HashMap<String, usize>, row: &Vec<String>)
-      -> ErrStr<Pivot> {
-   sample_pivot_0(&row[hdrs["opened"]])
-}
-*/
-
 fn mk_lookup_f(hdrs: &HashMap<String, usize>, row: &Vec<String>)
       -> impl Fn(String) -> String {
    move |key: String| {
@@ -223,14 +201,6 @@ fn parse_header(hdrs: &HashMap<String, usize>, row: &Vec<String>)
    let closed = parse_int(&look("close"))?;
    mk_hdr(&dt, id, closed)
 }
-
-/*
-fn mk_pivot_1(hdrs: &HashMap<String, usize>, row: &Vec<String>)
-      -> ErrStr<Pivot> {
-   let header = parse_header(hdrs, row)?;
-   sample_pivot_1(header)
-}
-*/
 
 fn mk_pivot_2(hdrs: &HashMap<String, usize>, row: &Vec<String>)
       -> ErrStr<Pivot> {
@@ -259,22 +229,6 @@ impl<T: Eq + std::hash::Hash> Bag<T> {
     fn add(&mut self, item: T) {
         *self.counts.entry(item).or_insert(0) += 1;
     }
-
-/*
-    fn count(&self, item: &T) -> usize {
-        *self.counts.get(item).unwrap_or(&0)
-    }
-
-    fn remove(&mut self, item: &T) {
-        if let Some(count) = self.counts.get_mut(item) {
-            if *count > 1 {
-                *count -= 1;
-            } else {
-                self.counts.remove(item);
-            }
-        }
-    }
- */
 }
 
 #[tokio::main]

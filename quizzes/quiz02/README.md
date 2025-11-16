@@ -8,5 +8,8 @@ With today's quotes (that we need to fetch), identify the pivots to close.
   <li><a href="a_quotes">Fetch</a> today's quotes
    <ul><li>(luckily, I have these reposed in git)</li></ul>
   </li>
+  <li>
+   <a href="b_compute_closes">Simulate</a> a close pivot at today's prices.
+  </li>
 </ol>
 `
