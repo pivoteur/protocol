@@ -8,6 +8,11 @@ We'll take some steps to get there.
 
 First, let's create a library-call to fetch the open pivots:
 
-* library fetchers
+* library [fetchers](../../../libs/src/fetchers.rs#L16)
 
 ![Fetch open pivots](imgs/01-capture-pivots.png)
+
+Next, let's fetch today's quotes
+
+* [WIP]
+
