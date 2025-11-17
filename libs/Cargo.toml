@@ -8,4 +8,7 @@ name = "libs"
 path = "src/lib.rs"
 
 [dependencies]
+chrono = "0.4.38"
+
+book = { path = "../../crypto-n-rust/src/libs/book" }
 
