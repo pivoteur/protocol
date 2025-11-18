@@ -14,5 +14,7 @@ First, let's create a library-call to fetch the open pivots:
 
 Next, let's fetch today's quotes
 
-* [WIP]
+* library [fetchers](), again.
+
+![... adding today's quotes](imgs/02-add-quotes.png)
 
