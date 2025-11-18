@@ -12,7 +12,10 @@ use book::{
 
 use crate::{
    parsers::parse_id,
-   types::util::{Id, CsvHeader}
+   types::{
+      quotes::Quotes,
+      util::{Id, CsvHeader}
+   }
 };
 
 // ----- PIVOT types -------------------------------------------------------
@@ -92,6 +95,10 @@ fn parse_header(hdrs: &HashMap<String, usize>, row: &Vec<String>)
    let id = parse_id(&row[*opn])?;
    let closed = parse_id(&row[hdrs["close"]])?;
    mk_hdr(dt, id, closed)
+}
+
+pub fn next_close_id(pivs: &Vec<Pivot>) -> Id {
+   pivs.iter().map(|p| p.header.close).max().unwrap_or(0) + 1
 }
 
 // ----- ASSETS
@@ -191,5 +198,21 @@ impl CsvWriter for Amount {
 fn amount(a: &Amount) -> f32 { a.actual + a.ersatz }
 fn mk_amt(actual: f32, ersatz: f32) -> Amount {
    Amount { actual, ersatz }
+}
+
+// ----- CLOSE PIVOTS -------------------------------------------------------
+
+#[derive(Debug, Clone)]
+pub struct Propose {
+
+}
+
+#[derive(Debug, Clone)]
+pub struct Close {
+
+}
+
+pub fn close_pivot(_q: &Quotes) -> impl Fn(&Pivot) -> Option<Close> {
+   move |_p: &Pivot| None
 }
 
