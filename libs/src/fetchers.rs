@@ -19,7 +19,7 @@ use crate::{
    tables::index_table,
    types::{
       pivots::{Pivot,parse_pivot,active},
-      quotes::Quotes
+      quotes::{Quotes,mk_quotes}
    }
 };
 
@@ -70,13 +70,13 @@ pub async fn fetch_quotes(date: &NaiveDate) -> ErrStr<Quotes> {
    let body: Vec<String> = tail(&lines);
    let table = ingest(parse_date, parse_str, parse_str, &body, ",")?;
    if let Some(quotes_row) = row(&table, date) {
-      let mut quotes: Quotes = HashMap::new();
+      let mut quotes = HashMap::new();
       let hdrs = cols(&table);
       for (n, h) in hdrs.iter().enumerate() {
          let qt: f32 = parse_num(&quotes_row[n])?;
          quotes.insert(h.clone(), qt);
       }
-      Ok(quotes)
+      Ok(mk_quotes(date.clone(), quotes))
    } else {
       Err(format!("Unable to find quotes for date {date}"))
    }

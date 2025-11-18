@@ -13,7 +13,7 @@ use book::{
 use crate::{
    parsers::parse_id,
    types::{
-      quotes::Quotes,
+      quotes::{Quotes,Token},
       util::{Id, CsvHeader}
    }
 };
@@ -105,7 +105,7 @@ pub fn next_close_id(pivs: &Vec<Pivot>) -> Id {
 
 #[derive(Debug, Clone)]
 struct Asset {
-   token: String,
+   token: Token,
    amount: Amount,
    quote: USD,
    kind: AssetType
@@ -204,7 +204,15 @@ fn mk_amt(actual: f32, ersatz: f32) -> Amount {
 
 #[derive(Debug, Clone)]
 pub struct Propose {
+   open_pivot: Pivot,
+   close_date: NaiveDate,
+   close: PropAsset
+}
 
+#[derive(Debug, Clone)]
+struct PropAsset {
+   close_price: USD,
+   computed_amount: f32
 }
 
 #[derive(Debug, Clone)]
@@ -212,7 +220,7 @@ pub struct Close {
 
 }
 
-pub fn close_pivot(_q: &Quotes) -> impl Fn(&Pivot) -> Option<Close> {
+pub fn propose(_q: &Quotes) -> impl Fn(&Pivot) -> Option<Propose> {
    move |_p: &Pivot| None
 }
 

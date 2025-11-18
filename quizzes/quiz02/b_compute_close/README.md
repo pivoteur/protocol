@@ -17,4 +17,7 @@ Next, let's fetch today's quotes
 * library [fetchers](../../../libs/src/fetchers.rs#L68), again.
 
 ![... adding today's quotes](imgs/02-add-quotes.png)
+![embed date with quotes](imgs/03-embed-date.png)
 
+... We also embed the date-information with the quotes, as they are dependent
+types.
