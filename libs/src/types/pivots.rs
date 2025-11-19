@@ -220,7 +220,13 @@ pub struct Close {
 
 }
 
-pub fn propose(_q: &Quotes) -> impl Fn(&Pivot) -> Option<Propose> {
-   move |_p: &Pivot| None
+pub fn propose(q: &Quotes) -> impl Fn(&Pivot) -> ErrStr<Option<Propose>> {
+   move |p: &Pivot| {
+      // with the quotes for the assets, ...
+      let prim = &p.from.token;
+      let piv = &p.to.token;
+      let prim_qt = lookup(q, prim);
+      Ok(None)
+   }
 }
 
