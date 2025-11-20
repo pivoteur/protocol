@@ -21,3 +21,30 @@ Next, let's fetch today's quotes
 
 ... We also embed the date-information with the quotes, as they are dependent
 types.
+
+* Now, we make recommendations for close-pivots. This is embedded into the
+[Pivot type](../../../libs/src/types/pivots.rs), highlighted by the [`propose`
+function](../../../libs/src/types/pivots.rs).
+
+![Propose close pivot for HBAR+USDC](imgs/04a-hbar-usdc.png)
+
+A 32% ROI? Not bad! Not bad! ... but that's only one recommendation. If we look
+at the recommendations for BTC+USDC pivot pool, we see the real benefit of
+automation:
+
+![Recommendations for BTC+USDC](imgs/04b-btc-usdc.png)
+
+Here we see 8 close pivot recommendations, provided in an instant.
+
+## Future work
+
+1. This is a pivot-by-pivot recommendation-system.<br/>*TODO:* Consolidate 
+pivots to one recommendation.
+2. We specify each pool, reloading quotes at each pool.<br/>*TODO:* 
+automatically iterate through all pools.
+3. *TODO:* Present an unified amount of each asset on which to close pivots.
+
+![Consolidated recommendation](imgs/04c-consolidated.png)
+
+The green line consolidates all recommendations for a pool to one close pivot.
+

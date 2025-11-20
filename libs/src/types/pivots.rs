@@ -7,13 +7,15 @@ use book::{
    currency::usd::{USD,mk_usd},
    date_utils::parse_date,
    err_utils::ErrStr,
-   num_utils::parse_commaless
+   num::percentage::{Percentage,mk_percentage},
+   num_utils::parse_commaless,
+   utils::pred
 };
 
 use crate::{
    parsers::parse_id,
    types::{
-      quotes::{Quotes,Token},
+      quotes::{Quotes,Token,lookup},
       util::{Id, CsvHeader}
    }
 };
@@ -33,7 +35,7 @@ impl CsvWriter for Pivot {
       self.header.ncols() + self.from.ncols() + self.to.ncols() + 1
    }
    fn as_csv(&self) -> String {
-      let gain: f32 = amount(&self.from.amount) * 1.1;
+      let gain = gain_10_percent(&self.from.amount);
       format!("{},{},{},{}", 
               self.header.as_csv(),
               self.from.as_csv(), gain,
@@ -53,6 +55,10 @@ pub fn parse_pivot(hdrs: &HashMap<String, usize>, row: &Vec<String>)
    let from = parse_asset(AssetType::FROM, hdrs, row)?;
    let to = parse_asset(AssetType::TO, hdrs, row)?;
    Ok( Pivot { header, from, to } )
+}
+
+fn gain_10_percent(a: &Amount) -> f32 {
+   amount(a) * 1.1
 }
 
 pub fn closed(p: &Pivot) -> bool {
@@ -84,6 +90,10 @@ impl CsvHeader for Header {
 fn mk_hdr(opend: &str, id: Id, close: Id) -> ErrStr<Header> {
    let opened = parse_date(opend)?;
    Ok(Header { opened, id, close })
+}
+
+fn update_header(h: Header, close: Id) -> Header {
+   Header { opened: h.opened, id: h.id, close }
 }
 
 fn parse_header(hdrs: &HashMap<String, usize>, row: &Vec<String>)
@@ -200,19 +210,98 @@ fn mk_amt(actual: f32, ersatz: f32) -> Amount {
    Amount { actual, ersatz }
 }
 
+// ----- GAINS -------------------------------------------------------
+
+trait Gains {
+   fn roi(&self) -> Percentage;
+   fn apr(&self) -> Percentage;
+}
+
 // ----- CLOSE PIVOTS -------------------------------------------------------
 
 #[derive(Debug, Clone)]
 pub struct Propose {
-   open_pivot: Pivot,
+   header: Header,
    close_date: NaiveDate,
-   close: PropAsset
+   principal: Asset,
+   pivot: PropAsset,
+   propose: PropAsset
+}
+
+impl Gains for Propose {
+   fn roi(&self) -> Percentage {
+      let base = amount(&self.principal.amount);
+      mk_percentage((self.propose.amount - base) / base)
+   }
+   fn apr(&self) -> Percentage {
+      let period = (self.close_date - self.header.opened).num_days() as f32;
+      mk_percentage(self.roi().percent * 365.0 / period)
+   }
+}
+
+impl CsvHeader for Propose {
+   fn header(&self) -> String {
+      format!("{},close_date,{},{},{},roi,apr",
+              self.header.header(),
+              self.principal.header(),
+              self.pivot.header(),
+              self.propose.header())
+   }
+}
+impl CsvWriter for Propose {
+   fn ncols(&self) -> usize {
+      self.header.ncols() + 1 + self.principal.ncols()
+        + self.pivot.ncols() + self.propose.ncols() + 2
+   }
+   fn as_csv(&self) -> String {
+      format!("{},{},{},{},{},{},{}", 
+              self.header.as_csv(),
+              self.close_date,
+              self.principal.as_csv(),
+              self.pivot.as_csv(),
+              self.propose.as_csv(),
+              self.roi(), self.apr())
+   }
+}
+
+fn mk_prop(open_pivot: Pivot, c: Id, d: &NaiveDate,
+           pivot: PropAsset, propose: PropAsset) -> (Propose, Id) {
+   let header = update_header(open_pivot.header, c);
+   let principal = open_pivot.from.clone();
+   (Propose { header, close_date: d.clone(), principal, pivot, propose }, c+1)
 }
 
 #[derive(Debug, Clone)]
 struct PropAsset {
+   token: Token,
    close_price: USD,
-   computed_amount: f32
+   amount: f32,
+   kind: AssetType
+}
+
+impl CsvHeader for PropAsset {
+   fn header(&self) -> String {
+      let preface = match self.kind {
+         AssetType::FROM => "pivot",
+         AssetType::TO   => "proposed"
+      };
+      ["token","close_price","amount"]
+         .iter()
+         .map(|elt| format!("{}_{}", preface, elt))
+         .collect::<Vec<_>>()
+         .join(",")
+   }
+}
+impl CsvWriter for PropAsset {
+   fn ncols(&self) -> usize { 2 }
+   fn as_csv(&self) -> String {
+      format!("{},{},{}", self.token, self.close_price, self.amount)
+   }
+}
+
+fn mk_prop_asset(tkn: &str, c: f32, amount: f32, kind: AssetType)
+      -> PropAsset {
+   PropAsset { token: tkn.to_string(), close_price: mk_usd(c), amount, kind }
 }
 
 #[derive(Debug, Clone)]
@@ -220,13 +309,26 @@ pub struct Close {
 
 }
 
-pub fn propose(q: &Quotes) -> impl Fn(&Pivot) -> ErrStr<Option<Propose>> {
-   move |p: &Pivot| {
-      // with the quotes for the assets, ...
-      let prim = &p.from.token;
-      let piv = &p.to.token;
-      let prim_qt = lookup(q, prim);
-      Ok(None)
+pub fn propose(q: &Quotes)
+      -> impl Fn((Pivot, Id)) -> ErrStr<Option<(Propose, Id)>> {
+   move |(p, c): (Pivot, Id)| {
+      
+      let props = trade(q, &p)?;
+      Ok(props.and_then(|(x,y)| Some(mk_prop(p, c, &q.date, x, y))))
    }
+}
+
+fn trade(q: &Quotes, p: &Pivot) -> ErrStr<Option<(PropAsset, PropAsset)>> {
+   // with the quotes for the assets, ...
+   let prim = &p.from.token;
+   let piv = &p.to.token; 
+   let prim_qt = lookup(q, prim)?;
+   let piv_qt = lookup(q, piv)?;
+   let to_trade = amount(&p.to.amount);
+   let target = gain_10_percent(&p.from.amount);
+   let computed_amount = to_trade * piv_qt / prim_qt;
+   Ok(pred(computed_amount > target,
+           (mk_prop_asset(piv, piv_qt, to_trade, AssetType::FROM),
+            mk_prop_asset(prim, prim_qt, computed_amount, AssetType::TO))))
 }
 
