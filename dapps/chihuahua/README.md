@@ -23,3 +23,13 @@ shines when it makes multiple recommendations on a pivot pool.
 In this case `chihuahua` makes 8 recommendations for the BTC+USDC pivot pool – 
 all at once! – saving me a hours of work.
 
+## Future Work
+
+The reason why this dapp is called `chihuahua` and not `wulf` (for the backend system: `baewulf`, ...GEDDIT?) is because it's very limited (a pre-pre-wulf, if you will).
+
+![Consolidated recommendation](../../quizzes/quiz02/b_compute_close/imgs/04c-consolidated.png)
+
+FUTURE WORK: 
+
+* automation across all pivot pools
+* consolidation of all recommendations into 1 close pivot
