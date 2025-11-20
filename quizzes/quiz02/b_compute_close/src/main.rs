@@ -26,12 +26,18 @@ async fn main() -> ErrStr<()> {
 }
 
 async fn do_it(prim: &str, piv: &str, date: NaiveDate) -> ErrStr<()> {
-   let (hbars, etc) = fetch_pivots(prim, piv).await?;
+   let (opens, closes, max_date) = fetch_pivots(prim, piv).await?;
    let quotes = fetch_quotes(&date).await?;
-   let mut next_close = next_close_id(&etc);
+   let mut next_close = next_close_id(&closes);
    let mut print_header: bool = true;
    let proposer = propose(&quotes);
-   for h in hbars {
+   let pool = format!("{prim}+{piv} pivot pool");
+   let len = &opens.len();
+
+   println!("There are {len} open pivots for the {pool}.");
+   println!("The last entry is on {max_date}.\n");
+
+   for h in opens {
       if let Some((prop, next_next)) = proposer((h, next_close))? {
          if print_header {
             println!("{}",prop.header());
@@ -41,10 +47,10 @@ async fn do_it(prim: &str, piv: &str, date: NaiveDate) -> ErrStr<()> {
          next_close = next_next;
       }
    }
-   
+
    let no_close_pivots = print_header;
    if no_close_pivots {
-      println!("No close pivot recommendations for {prim}+{piv} pivot pool.");
+      println!("No close pivot recommendations for {pool}.");
    }
    Ok(())
 }

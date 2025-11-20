@@ -5,7 +5,7 @@ use std::collections::HashMap;
 use chrono::NaiveDate;
 
 use book::{
-   date_utils::parse_date,
+   date_utils::{parse_date,datef},
    err_utils::ErrStr,
    list_utils::tail,
    num_utils::parse_num,
@@ -25,15 +25,22 @@ use crate::{
 
 /// Fetch the pivots for pivot pool A+B; open pivots are reposed in git
 pub async fn fetch_pivots(primary: &str, pivot: &str)
-      -> ErrStr<(Vec<Pivot>, Vec<Pivot>)> {
+      -> ErrStr<(Vec<Pivot>, Vec<Pivot>, NaiveDate)> {
    let pri = primary.to_lowercase();
    let seggs = pivot.to_lowercase();
+   let pool = format!("{pri}+{seggs}");
    let url = open_pivot_path(&pri, &seggs);
    let lines = fetch_lines(&url).await?;
    let table = index_table(lines)?;
 
    let hdrs = enum_headers(cols(&table));
 
+   let max_date =
+      &table.data
+            .iter()
+            .map(|row| datef(&row[hdrs["opened"]]))
+            .max()
+            .ok_or(format!("No max date for {pool} pivot pool"))?;
    let mut acts: Vec<Pivot> = Vec::new();
    let mut pass: Vec<Pivot> = Vec::new();
 
@@ -45,14 +52,14 @@ pub async fn fetch_pivots(primary: &str, pivot: &str)
          pass.push(piv);
       }
    }
-   Ok((acts, pass))
+   Ok((acts, pass, *max_date))
 }
 
 /// Filter to only the open pivots for pivot pool A+B
 pub async fn fetch_open_pivots(primary: &str, pivot: &str)
-      -> ErrStr<Vec<Pivot>> {
-   let (ans, _) = fetch_pivots(primary, pivot).await?;
-   Ok(ans)
+      -> ErrStr<(Vec<Pivot>, NaiveDate)> {
+   let (ans, _, max_date) = fetch_pivots(primary, pivot).await?;
+   Ok((ans, max_date))
 }
 
 async fn fetch_lines(url: &str) -> ErrStr<Vec<String>> {

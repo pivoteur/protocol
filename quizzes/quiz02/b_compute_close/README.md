@@ -36,6 +36,16 @@ automation:
 
 Here we see 8 close pivot recommendations, provided in an instant.
 
+## Revision: checksum
+
+How do I check that the pivots on git reflect the current state of the pivot
+pool? 
+
+![Checksum values](imgs/05-checksum.png)
+
+To this end I have added checksums that allow me quickly to check the 
+spreadsheet against the interal working model.
+
 ## Future work
 
 1. This is a pivot-by-pivot recommendation-system.<br/>*TODO:* Consolidate 
