@@ -13,4 +13,13 @@ a computed ROI of 32%
 
 Not bad! Not bad! 
 
+## Multiple recommendations
+
+Making 1 recommendation is all well-and-good, but where the automation really 
+shines when it makes multiple recommendations on a pivot pool.
+
+![8 BTC+USDC close pivot recommendations](../../quizzes/quiz02/b_compute_close/imgs/04b-btc-usdc.png)
+
+In this case `chihuahua` makes 8 recommendations for the BTC+USDC pivot pool – 
+all at once! – saving me a hours of work.
 
