@@ -42,6 +42,10 @@ async fn do_it(prim: &str, piv: &str, date: NaiveDate) -> ErrStr<()> {
       }
    }
    
+   let no_close_pivots = print_header;
+   if no_close_pivots {
+      println!("No close pivot recommendations for {prim}+{piv} pivot pool.");
+   }
    Ok(())
 }
 
