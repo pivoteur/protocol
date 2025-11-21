@@ -36,7 +36,9 @@ automation:
 
 Here we see 8 close pivot recommendations, provided in an instant.
 
-## Revision: checksum
+## Revisions
+
+### checksum
 
 How do I check that the pivots on git reflect the current state of the pivot
 pool? 
@@ -45,6 +47,13 @@ pool?
 
 To this end I have added checksums that allow me quickly to check the 
 spreadsheet against the interal working model.
+
+### Percentage gain
+
+Added in the 10% gain amount to delimit a hard go/no-go to a proposed close
+pivot.
+
+![10% gain](imgs/06-percento.png)
 
 ## Future work
 

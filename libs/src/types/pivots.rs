@@ -241,7 +241,7 @@ impl Gains for Propose {
 
 impl CsvHeader for Propose {
    fn header(&self) -> String {
-      format!("{},close_date,{},{},{},roi,apr",
+      format!("{},close_date,{},gain_10_percent,{},{},roi,apr",
               self.header.header(),
               self.principal.header(),
               self.pivot.header(),
@@ -250,14 +250,15 @@ impl CsvHeader for Propose {
 }
 impl CsvWriter for Propose {
    fn ncols(&self) -> usize {
-      self.header.ncols() + 1 + self.principal.ncols()
+      self.header.ncols() + 1 + self.principal.ncols() + 1
         + self.pivot.ncols() + self.propose.ncols() + 2
    }
    fn as_csv(&self) -> String {
-      format!("{},{},{},{},{},{},{}", 
+      format!("{},{},{},{},{},{},{},{}", 
               self.header.as_csv(),
               self.close_date,
               self.principal.as_csv(),
+              gain_10_percent(&self.principal.amount),
               self.pivot.as_csv(),
               self.propose.as_csv(),
               self.roi(), self.apr())
