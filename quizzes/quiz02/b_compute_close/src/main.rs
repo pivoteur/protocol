@@ -31,9 +31,13 @@ async fn do_it(prim: &str, piv: &str, date: NaiveDate) -> ErrStr<()> {
    let mut next_close = next_close_id(&closes);
    let mut print_header: bool = true;
    let proposer = propose(&quotes);
-   let pool = format!("{prim}+{piv} pivot pool");
+   let cap_prim = prim.to_uppercase();
+   let cap_piv = piv.to_uppercase();
+   let header = format!("{cap_prim}+{cap_piv}");
+   let pool = format!("{header} pivot pool");
    let len = &opens.len();
 
+   println!("{header}\n");
    println!("There are {len} open pivots for the {pool}.");
    println!("The last entry is on {max_date}.\n");
 
