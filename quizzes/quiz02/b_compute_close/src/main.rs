@@ -17,16 +17,17 @@ use libs::{
 
 #[tokio::main]
 async fn main() -> ErrStr<()> {
-   if let [prim, piv, date] = get_args().as_slice() {
+   if let [root_url, prim, piv, date] = get_args().as_slice() {
       let dt = parse_date(&date)?;
-      do_it(prim, piv, dt).await
+      do_it(root_url, prim, piv, dt).await
    } else {
       usage()
    }
 }
 
-async fn do_it(prim: &str, piv: &str, date: NaiveDate) -> ErrStr<()> {
-   let (opens, closes, max_date) = fetch_pivots(prim, piv).await?;
+async fn do_it(root_url: &str, prim: &str, piv: &str, date: NaiveDate)
+      -> ErrStr<()> {
+   let (opens, closes, max_date) = fetch_pivots(root_url, prim, piv).await?;
    let quotes = fetch_quotes(&date).await?;
    let mut next_close = next_close_id(&closes);
    let mut print_header: bool = true;
@@ -39,7 +40,8 @@ async fn do_it(prim: &str, piv: &str, date: NaiveDate) -> ErrStr<()> {
 
    println!("{header}\n");
    println!("There are {len} open pivots for the {pool}.");
-   println!("The last entry is on {max_date}.\n");
+   println!("The last entry is on {max_date}.");
+   println!("Recommendations are made for token quotes on {date}.\n");
 
    for h in opens {
       if let Some((prop, next_next)) = proposer((h, next_close))? {
@@ -62,9 +64,11 @@ async fn do_it(prim: &str, piv: &str, date: NaiveDate) -> ErrStr<()> {
 fn usage() -> ErrStr<()> {
    println!("Usage:
 
-	$ cargo run <primary asset> <pivot asset> <date>
+	$ cargo run <root URL> <primary asset> <pivot asset> <date>
 
 Proposes close pivots for the <prim>+<piv> pivot pool for <date>.
+
+Open pivots are stored as raw-CSV files in git at protocol <root URL>.
 ");
    Err("Needs <primary> <pivot> <date> arguments".to_string())
 }

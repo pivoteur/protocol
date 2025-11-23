@@ -24,12 +24,12 @@ use crate::{
 };
 
 /// Fetch the pivots for pivot pool A+B; open pivots are reposed in git
-pub async fn fetch_pivots(primary: &str, pivot: &str)
+pub async fn fetch_pivots(root_url: &str, primary: &str, pivot: &str)
       -> ErrStr<(Vec<Pivot>, Vec<Pivot>, NaiveDate)> {
    let pri = primary.to_lowercase();
    let seggs = pivot.to_lowercase();
    let pool = format!("{pri}+{seggs}");
-   let url = open_pivot_path(&pri, &seggs);
+   let url = open_pivot_path(root_url, &pri, &seggs);
    let lines = fetch_lines(&url).await?;
    let table = index_table(lines)?;
 
@@ -56,9 +56,9 @@ pub async fn fetch_pivots(primary: &str, pivot: &str)
 }
 
 /// Filter to only the open pivots for pivot pool A+B
-pub async fn fetch_open_pivots(primary: &str, pivot: &str)
+pub async fn fetch_open_pivots(root_url: &str, primary: &str, pivot: &str)
       -> ErrStr<(Vec<Pivot>, NaiveDate)> {
-   let (ans, _, max_date) = fetch_pivots(primary, pivot).await?;
+   let (ans, _, max_date) = fetch_pivots(root_url, primary, pivot).await?;
    Ok((ans, max_date))
 }
 
