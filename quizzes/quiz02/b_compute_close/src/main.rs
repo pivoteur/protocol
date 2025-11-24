@@ -67,8 +67,9 @@ fn usage() -> ErrStr<()> {
 	$ cargo run <root URL> <primary asset> <pivot asset> <date>
 
 Proposes close pivots for the <prim>+<piv> pivot pool for <date>.
+The pivot pools are reposed (in git, currently) at <root URL>.
 
 Open pivots are stored as raw-CSV files in git at protocol <root URL>.
 ");
-   Err("Needs <primary> <pivot> <date> arguments".to_string())
+   Err("Needs <root URL> <primary> <pivot> <date> arguments".to_string())
 }
