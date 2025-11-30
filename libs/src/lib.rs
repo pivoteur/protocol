@@ -17,6 +17,9 @@ pub mod paths;
 /// Fetch data from REST endpoints
 pub mod fetchers;
 
+/// reports, ... for when you want to report stuff
+pub mod reports;
+
 pub fn add(left: u64, right: u64) -> u64 {
     left + right
 }

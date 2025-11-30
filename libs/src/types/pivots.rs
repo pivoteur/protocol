@@ -16,7 +16,7 @@ use crate::{
    parsers::parse_id,
    types::{
       quotes::{Quotes,Token,lookup},
-      util::{Id, CsvHeader}
+      util::{Id, CsvHeader, Partition}
    }
 };
 
@@ -333,3 +333,8 @@ fn trade(q: &Quotes, p: &Pivot) -> ErrStr<Option<(PropAsset, PropAsset)>> {
             mk_prop_asset(prim, prim_qt, computed_amount, AssetType::TO))))
 }
 
+// ----- PARTITIONS -------------------------------------------------------
+
+pub fn partition_on(tok: &str, opens: Vec<Pivot>) -> Partition<Pivot> {
+   opens.into_iter().partition(|p: &Pivot| p.from.token == tok)
+}
