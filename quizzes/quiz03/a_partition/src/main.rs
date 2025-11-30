@@ -9,7 +9,10 @@ use book::{
 
 use libs::{
    fetchers::fetch_pivots,
-   types::pivots::{partition_on,Pivot}
+   types::{
+      pivots::{partition_on,Pivot},
+      util::CsvHeader
+   }
 };
 
 #[tokio::main]
@@ -32,11 +35,20 @@ async fn do_it(root_url: &str, prim: &str, piv: &str, _date: NaiveDate)
 }
 
 fn pivs(piv: &str, opens: Vec<Pivot>) {
-   println!("{piv} open pivots:\n");
-   for o in opens {
-      print_csv(&o);
+   if opens.is_empty() {
+      println!("No open {piv} pivots\n");
+   } else {
+      println!("{piv} open pivots:\n");
+      let mut print_header = true;
+      for o in opens {
+         if print_header {
+            println!("{}",o.header());
+            print_header = false;
+         }
+         print_csv(&o);
+      }
+      println!("");
    }
-   println!("");
 }
 
 fn usage() -> ErrStr<()> {
