@@ -1,0 +1,17 @@
+[package]
+name = "basset"
+version = "0.1.0"
+edition = "2024"
+
+[[bin]]
+name = "basset"
+path = "../../quizzes/quiz03/b_aggregate/src/main.rs"
+
+[dependencies]
+chrono = "0.4.38"
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
+
+libs = { path = "../../libs" }
+
+book = { path = "../../../crypto-n-rust/src/libs/book" }
+
