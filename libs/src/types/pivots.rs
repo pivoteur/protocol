@@ -1,6 +1,9 @@
-use std::collections::HashMap;
+use std::{
+   collections::HashMap,
+   fmt::Display
+};
 
-use chrono::NaiveDate;
+use chrono::{Days,NaiveDate};
 
 use book::{
    csv_utils::CsvWriter,
@@ -16,7 +19,7 @@ use crate::{
    parsers::parse_id,
    types::{
       quotes::{Quotes,Token,lookup},
-      util::{Id, CsvHeader, Partition}
+      util::{Id, CsvHeader, Partition, Measurable, weight,size}
    }
 };
 
@@ -77,6 +80,22 @@ struct Header {
    close: Id
 }
 
+#[derive(Debug, Clone)]
+struct AggregateHeader {
+   opened: Vec<NaiveDate>,
+   ids: Vec<Id>,
+}
+
+fn add_header_info(v: &Vec<Pivot>) -> AggregateHeader {
+   let mut opened = Vec::new();
+   let mut ids = Vec::new();
+   for p in v {
+      opened.push(p.header.opened.clone());
+      ids.push(p.header.id);
+   }
+   AggregateHeader { opened, ids }
+}
+
 impl CsvWriter for Header {
    fn ncols(&self) -> usize { 3 }
    fn as_csv(&self) -> String {
@@ -87,13 +106,22 @@ impl CsvHeader for Header {
    fn header(&self) -> String { "opened,id,close_id".to_string() }
 }
 
+impl CsvHeader for AggregateHeader {
+   fn header(&self) -> String { "opened,ids".to_string() }
+}
+impl CsvWriter for AggregateHeader {
+   fn ncols(&self) -> usize { 2 }
+   fn as_csv(&self) -> String {
+      fn list2str<T:Display>(v: &Vec<T>) -> String {
+         v.iter().map(|s| format!("{s}")).collect::<Vec<_>>().join(",")
+      }
+      format!("{}", list2str(&self.ids))
+   }
+}
+
 fn mk_hdr(opend: &str, id: Id, close: Id) -> ErrStr<Header> {
    let opened = parse_date(opend)?;
    Ok(Header { opened, id, close })
-}
-
-fn update_header(h: Header, close: Id) -> Header {
-   Header { opened: h.opened, id: h.id, close }
 }
 
 fn parse_header(hdrs: &HashMap<String, usize>, row: &Vec<String>)
@@ -121,6 +149,11 @@ struct Asset {
    kind: AssetType
 }
 
+impl Measurable for Asset {
+   fn sz(&self) -> f32 { amount(&self.amount) }
+   fn aug(&self) -> f32 { self.sz() * self.quote.amount }
+}
+
 impl CsvWriter for Asset {
    fn ncols(&self) -> usize { 1 + self.amount.ncols() + 1 + 1}
    fn as_csv(&self) -> String {
@@ -135,8 +168,8 @@ impl CsvHeader for Asset {
    }
 }
 
-fn mk_asset(tkn: &str, amount: Amount, quote: USD, kind: AssetType) -> Asset {
-   Asset { token: tkn.to_string(), amount, quote, kind }
+fn mk_asset(tkn: &str, amount: Amount, quote: USD, knd: &AssetType) -> Asset {
+   Asset { token: tkn.to_string(), amount, quote, kind: knd.clone() }
 }
 
 fn parse_asset(a: AssetType, hdrs: &HashMap<String, usize>, row: &Vec<String>)
@@ -150,7 +183,7 @@ fn parse_asset(a: AssetType, hdrs: &HashMap<String, usize>, row: &Vec<String>)
       } else { Ok( 0.0 ) }?;
       let quot: USD = row[hdrs[qut]].parse()?;
       let amount = mk_amt(amnt, vrt);
-      Ok(mk_asset(token, amount, quot, a))
+      Ok(mk_asset(token, amount, quot, &a))
    } else {
       Err("bad pattern match in AssetType enum for keys()".to_string())
    }
@@ -221,55 +254,125 @@ trait Gains {
 
 #[derive(Debug, Clone)]
 pub struct Propose {
-   header: Header,
+   header: AggregateHeader,
+   close: Id,
    close_date: NaiveDate,
-   principal: Asset,
-   pivot: PropAsset,
+   principal: Vec<Asset>,
+   pivot: Vec<PropAsset>,
    propose: PropAsset
+}
+
+fn weighted_days(p: &Propose) -> ErrStr<(f32, NaiveDate)> {
+   if let Some(start_date) = p.header.opened.first().cloned() {
+      let days: Vec<f32> =
+         p.header.opened.iter()
+                        .map(|&d| ((d-start_date).num_days() + 1) as f32)
+                        .collect();
+      let weights: Vec<f32> =
+         days.iter()
+             .zip(p.principal.iter().map(Measurable::sz))
+             .map(|(&a, b)| a * b)
+             .collect();
+      let wt: f32 = weights.iter().sum();
+      let wt_days = wt / size(&p.principal);
+      Ok((wt_days, start_date + Days::new(wt_days as u64)))
+   } else {
+      Err("No start date for proposal".to_string())
+   }
 }
 
 impl Gains for Propose {
    fn roi(&self) -> Percentage {
-      let base = amount(&self.principal.amount);
+      let base = size(&self.principal);
       mk_percentage((self.propose.amount - base) / base)
    }
    fn apr(&self) -> Percentage {
-      let period = (self.close_date - self.header.opened).num_days() as f32;
-      mk_percentage(self.roi().percent * 365.0 / period)
+      if let Ok((wt, _)) = weighted_days(&self) {
+         mk_percentage(self.roi().of(365.0 / wt))
+      } else {
+         panic!("Can't get an APR for proposal")
+      }
    }
 }
 
 impl CsvHeader for Propose {
    fn header(&self) -> String {
-      format!("{},close_date,{},gain_10_percent,{},{},roi,apr",
-              self.header.header(),
-              self.principal.header(),
-              self.pivot.header(),
-              self.propose.header())
+      if let Some(prince) = self.principal.first() {
+         if let Some(piv) = self.pivot.first() {
+            format!("{},close_id,close_date,{},gain_10_percent,{},{},roi,apr",
+                    self.header.header(),
+                    prince.header(),
+                    piv.header(),
+                    self.propose.header())
+         } else {
+            panic!("No pivots for proposal")
+         }
+      } else {
+         panic!("No principal assets for proposal")
+      }
    }
 }
 impl CsvWriter for Propose {
    fn ncols(&self) -> usize {
-      self.header.ncols() + 1 + self.principal.ncols() + 1
-        + self.pivot.ncols() + self.propose.ncols() + 2
+      if let Some(prince) = self.principal.first() {
+         if let Some(piv) = self.pivot.first() {
+            self.header.ncols() + 2 + prince.ncols() + 1
+            + piv.ncols() + self.propose.ncols() + 2
+         } else {
+            panic!("No pivots for proposal")
+         }
+      } else {
+         panic!("No principal for proposal")
+      }
    }
    fn as_csv(&self) -> String {
-      format!("{},{},{},{},{},{},{},{}", 
-              self.header.as_csv(),
-              self.close_date,
-              self.principal.as_csv(),
-              gain_10_percent(&self.principal.amount),
-              self.pivot.as_csv(),
-              self.propose.as_csv(),
-              self.roi(), self.apr())
+      if let Ok((_, opnd)) = weighted_days(&self) {
+         if let Some(prince) = self.principal.first() {
+            let (amount, ersatz) =
+               self.principal
+                   .iter()
+                   .fold((0.0, 0.0), |(a,e), x| {
+                      let Amount { actual, ersatz } = &x.amount;
+                      (a + actual, e + ersatz) });
+            let pri1 = mk_asset(&prince.token, mk_amt(amount, ersatz),
+                                mk_usd(weight(&self.principal)), &prince.kind);
+            if let Some(piv) = self.pivot.first() {
+               let piv1 = mk_prop_asset(&piv.token, weight(&self.pivot),
+                                        size(&self.pivot), &piv.kind);
+               format!("{},{},{},{},{},{},{},{},{},{}", 
+                       opnd,
+                       self.header.as_csv(),
+                       self.close,
+                       self.close_date,
+                       pri1.as_csv(),
+                       gain_10_percent(&pri1.amount),
+                       piv1.as_csv(),
+                       self.propose.as_csv(),
+                       self.roi(), self.apr())
+            } else {
+              panic!("No pivot for proposal")
+            }
+         } else {
+            panic!("No principal for proposal")
+         }
+      } else {
+         panic!("No open date for proposal")
+      }
    }
 }
 
-fn mk_prop(open_pivot: Pivot, c: Id, d: &NaiveDate,
-           pivot: PropAsset, propose: PropAsset) -> (Propose, Id) {
-   let header = update_header(open_pivot.header, c);
-   let principal = open_pivot.from.clone();
-   (Propose { header, close_date: d.clone(), principal, pivot, propose }, c+1)
+fn mk_prop(open_pivots: Vec<Pivot>, c: Id, d: &NaiveDate,
+           pivot: Vec<PropAsset>, propose: PropAsset) -> (Propose, Id) {
+   let header = add_header_info(&open_pivots);
+   let principal: Vec<Asset> =
+      open_pivots.iter().map(|h| h.from.clone()).collect();
+   (Propose {
+      header,
+      close: c,
+      close_date: d.clone(),
+      principal,
+      pivot,
+      propose }, c+1)
 }
 
 #[derive(Debug, Clone)]
@@ -300,9 +403,15 @@ impl CsvWriter for PropAsset {
    }
 }
 
-fn mk_prop_asset(tkn: &str, c: f32, amount: f32, kind: AssetType)
+impl Measurable for PropAsset {
+   fn sz(&self) -> f32 { self.amount }
+   fn aug(&self) -> f32 { self.sz() * self.close_price.amount }
+}
+
+fn mk_prop_asset(tkn: &str, c: f32, amount: f32, knd: &AssetType)
       -> PropAsset {
-   PropAsset { token: tkn.to_string(), close_price: mk_usd(c), amount, kind }
+   PropAsset { token: tkn.to_string(), 
+               close_price: mk_usd(c), amount, kind: knd.clone() }
 }
 
 #[derive(Debug, Clone)]
@@ -311,11 +420,32 @@ pub struct Close {
 }
 
 pub fn propose(q: &Quotes)
-      -> impl Fn((Pivot, Id)) -> ErrStr<Option<(Propose, Id)>> {
-   move |(p, c): (Pivot, Id)| {
-      
-      let props = trade(q, &p)?;
-      Ok(props.and_then(|(x,y)| Some(mk_prop(p, c, &q.date, x, y))))
+      -> impl Fn((Vec<Pivot>, Id)) -> ErrStr<Option<(Propose, Id)>> {
+   move |(pivots, c): (Vec<Pivot>, Id)| {
+      let mut princes = Vec::new();
+      let mut pivs = Vec::new();
+      let mut res = Vec::new();
+      for p in pivots {
+         let props = trade(q, &p)?;
+         let _ = props.and_then(|(frm, to)| {
+            princes.push(p);
+            pivs.push(frm);
+            res.push(to);
+            Some(1)
+         });
+      }
+      if princes.is_empty() {
+         Ok(None)
+      } else {
+         if let Some(result) = res.first() {
+            let proposed = mk_prop_asset(&result.token, 
+                                         result.close_price.amount,
+                                         size(&res), &AssetType::TO);
+            Ok(Some(mk_prop(princes, c, &q.date, pivs, proposed)))
+         } else {
+            Err("No proposal to accumulate on flagged principal".to_string())
+         }
+      }
    }
 }
 
@@ -329,8 +459,8 @@ fn trade(q: &Quotes, p: &Pivot) -> ErrStr<Option<(PropAsset, PropAsset)>> {
    let target = gain_10_percent(&p.from.amount);
    let computed_amount = to_trade * piv_qt / prim_qt;
    Ok(pred(computed_amount > target,
-           (mk_prop_asset(piv, piv_qt, to_trade, AssetType::FROM),
-            mk_prop_asset(prim, prim_qt, computed_amount, AssetType::TO))))
+           (mk_prop_asset(piv, piv_qt, to_trade, &AssetType::FROM),
+            mk_prop_asset(prim, prim_qt, computed_amount, &AssetType::TO))))
 }
 
 // ----- PARTITIONS -------------------------------------------------------
