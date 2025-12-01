@@ -7,3 +7,7 @@ asset, the makes and aggregates close-pivot recommendations.
 
 [Source code](../../quizzes/quiz03/b_aggregate/src/main.rs)
 
+## Future work:
+
+* Automate system across all pivot pools
+* aggregate amounts for all recommended close-pivots
