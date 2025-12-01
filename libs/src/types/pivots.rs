@@ -113,7 +113,7 @@ impl CsvWriter for AggregateHeader {
    fn ncols(&self) -> usize { 2 }
    fn as_csv(&self) -> String {
       fn list2str<T:Display>(v: &Vec<T>) -> String {
-         v.iter().map(|s| format!("{s}")).collect::<Vec<_>>().join(",")
+         v.iter().map(|s| format!("{s}")).collect::<Vec<_>>().join(";")
       }
       format!("{}", list2str(&self.ids))
    }
@@ -275,7 +275,9 @@ fn weighted_days(p: &Propose) -> ErrStr<(f32, NaiveDate)> {
              .collect();
       let wt: f32 = weights.iter().sum();
       let wt_days = wt / size(&p.principal);
-      Ok((wt_days, start_date + Days::new(wt_days as u64)))
+      let ave_dt = start_date + Days::new((wt_days - 1.0) as u64);
+      let duration = (p.close_date - ave_dt).num_days() as f32;
+      Ok((duration, ave_dt))
    } else {
       Err("No start date for proposal".to_string())
    }
