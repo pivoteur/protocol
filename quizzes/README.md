@@ -4,6 +4,7 @@
 * [01](quiz01): read and parse a set of open pivots reposed on github
 * [02](quiz02): With today's (fetched) prices, identify pivots to close
 * [03](quiz03): Partition and aggregate the close-pivots
+* [04](quiz04): Find the pivot pools; iterate over the pivot pools
 
 # Resources
 
