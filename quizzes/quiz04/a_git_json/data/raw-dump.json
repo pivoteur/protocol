@@ -1,0 +1,147 @@
+{
+  "name": "raw",
+  "path": "data/pivots/open/raw",
+  "sha": "0cdaed90b0f4df91f7f06bf0a35ce68e022339bc",
+  "size": 0,
+  "url": "https://api.github.com/repos/pivoteur/pivoteur.github.io/contents/data/pivots/open/raw?ref=main",
+  "html_url": "https://github.com/pivoteur/pivoteur.github.io/tree/main/data/pivots/open/raw",
+  "git_url": "https://api.github.com/repos/pivoteur/pivoteur.github.io/git/trees/0cdaed90b0f4df91f7f06bf0a35ce68e022339bc",
+  "download_url": null,
+  "type": "dir",
+  "_links": {
+    "self": "https://api.github.com/repos/pivoteur/pivoteur.github.io/contents/data/pivots/open/raw?ref=main",
+    "git": "https://api.github.com/repos/pivoteur/pivoteur.github.io/git/trees/0cdaed90b0f4df91f7f06bf0a35ce68e022339bc",
+    "html": "https://github.com/pivoteur/pivoteur.github.io/tree/main/data/pivots/open/raw"
+  },
+  "entries": [
+    {
+      "name": "avax-undead.tsv",
+      "path": "data/pivots/open/raw/avax-undead.tsv",
+      "sha": "ade2c141f8d4d4eb8ea6dd096a9e1c40a8a3c77d",
+      "size": 8800,
+      "url": "https://api.github.com/repos/pivoteur/pivoteur.github.io/contents/data/pivots/open/raw/avax-undead.tsv?ref=main",
+      "html_url": "https://github.com/pivoteur/pivoteur.github.io/blob/main/data/pivots/open/raw/avax-undead.tsv",
+      "git_url": "https://api.github.com/repos/pivoteur/pivoteur.github.io/git/blobs/ade2c141f8d4d4eb8ea6dd096a9e1c40a8a3c77d",
+      "download_url": "https://raw.githubusercontent.com/pivoteur/pivoteur.github.io/main/data/pivots/open/raw/avax-undead.tsv",
+      "type": "file",
+      "_links": {
+        "self": "https://api.github.com/repos/pivoteur/pivoteur.github.io/contents/data/pivots/open/raw/avax-undead.tsv?ref=main",
+        "git": "https://api.github.com/repos/pivoteur/pivoteur.github.io/git/blobs/ade2c141f8d4d4eb8ea6dd096a9e1c40a8a3c77d",
+        "html": "https://github.com/pivoteur/pivoteur.github.io/blob/main/data/pivots/open/raw/avax-undead.tsv"
+      }
+    },
+    {
+      "name": "btc-avax.tsv",
+      "path": "data/pivots/open/raw/btc-avax.tsv",
+      "sha": "e8abe4aefd9e7697b9004e11e2016b001e424143",
+      "size": 6248,
+      "url": "https://api.github.com/repos/pivoteur/pivoteur.github.io/contents/data/pivots/open/raw/btc-avax.tsv?ref=main",
+      "html_url": "https://github.com/pivoteur/pivoteur.github.io/blob/main/data/pivots/open/raw/btc-avax.tsv",
+      "git_url": "https://api.github.com/repos/pivoteur/pivoteur.github.io/git/blobs/e8abe4aefd9e7697b9004e11e2016b001e424143",
+      "download_url": "https://raw.githubusercontent.com/pivoteur/pivoteur.github.io/main/data/pivots/open/raw/btc-avax.tsv",
+      "type": "file",
+      "_links": {
+        "self": "https://api.github.com/repos/pivoteur/pivoteur.github.io/contents/data/pivots/open/raw/btc-avax.tsv?ref=main",
+        "git": "https://api.github.com/repos/pivoteur/pivoteur.github.io/git/blobs/e8abe4aefd9e7697b9004e11e2016b001e424143",
+        "html": "https://github.com/pivoteur/pivoteur.github.io/blob/main/data/pivots/open/raw/btc-avax.tsv"
+      }
+    },
+    {
+      "name": "btc-eth.tsv",
+      "path": "data/pivots/open/raw/btc-eth.tsv",
+      "sha": "a643ca3f837ddc891b1086d7fb77169cc764e6fd",
+      "size": 11923,
+      "url": "https://api.github.com/repos/pivoteur/pivoteur.github.io/contents/data/pivots/open/raw/btc-eth.tsv?ref=main",
+      "html_url": "https://github.com/pivoteur/pivoteur.github.io/blob/main/data/pivots/open/raw/btc-eth.tsv",
+      "git_url": "https://api.github.com/repos/pivoteur/pivoteur.github.io/git/blobs/a643ca3f837ddc891b1086d7fb77169cc764e6fd",
+      "download_url": "https://raw.githubusercontent.com/pivoteur/pivoteur.github.io/main/data/pivots/open/raw/btc-eth.tsv",
+      "type": "file",
+      "_links": {
+        "self": "https://api.github.com/repos/pivoteur/pivoteur.github.io/contents/data/pivots/open/raw/btc-eth.tsv?ref=main",
+        "git": "https://api.github.com/repos/pivoteur/pivoteur.github.io/git/blobs/a643ca3f837ddc891b1086d7fb77169cc764e6fd",
+        "html": "https://github.com/pivoteur/pivoteur.github.io/blob/main/data/pivots/open/raw/btc-eth.tsv"
+      }
+    },
+    {
+      "name": "btc-undead.tsv",
+      "path": "data/pivots/open/raw/btc-undead.tsv",
+      "sha": "ad4dfce1405cf8a6d3a1f41d1d37b0799ac079d0",
+      "size": 6790,
+      "url": "https://api.github.com/repos/pivoteur/pivoteur.github.io/contents/data/pivots/open/raw/btc-undead.tsv?ref=main",
+      "html_url": "https://github.com/pivoteur/pivoteur.github.io/blob/main/data/pivots/open/raw/btc-undead.tsv",
+      "git_url": "https://api.github.com/repos/pivoteur/pivoteur.github.io/git/blobs/ad4dfce1405cf8a6d3a1f41d1d37b0799ac079d0",
+      "download_url": "https://raw.githubusercontent.com/pivoteur/pivoteur.github.io/main/data/pivots/open/raw/btc-undead.tsv",
+      "type": "file",
+      "_links": {
+        "self": "https://api.github.com/repos/pivoteur/pivoteur.github.io/contents/data/pivots/open/raw/btc-undead.tsv?ref=main",
+        "git": "https://api.github.com/repos/pivoteur/pivoteur.github.io/git/blobs/ad4dfce1405cf8a6d3a1f41d1d37b0799ac079d0",
+        "html": "https://github.com/pivoteur/pivoteur.github.io/blob/main/data/pivots/open/raw/btc-undead.tsv"
+      }
+    },
+    {
+      "name": "btc-usdc.tsv",
+      "path": "data/pivots/open/raw/btc-usdc.tsv",
+      "sha": "5c09661fcdd2fea913e3fe7a4a152ba4d6c4a156",
+      "size": 5432,
+      "url": "https://api.github.com/repos/pivoteur/pivoteur.github.io/contents/data/pivots/open/raw/btc-usdc.tsv?ref=main",
+      "html_url": "https://github.com/pivoteur/pivoteur.github.io/blob/main/data/pivots/open/raw/btc-usdc.tsv",
+      "git_url": "https://api.github.com/repos/pivoteur/pivoteur.github.io/git/blobs/5c09661fcdd2fea913e3fe7a4a152ba4d6c4a156",
+      "download_url": "https://raw.githubusercontent.com/pivoteur/pivoteur.github.io/main/data/pivots/open/raw/btc-usdc.tsv",
+      "type": "file",
+      "_links": {
+        "self": "https://api.github.com/repos/pivoteur/pivoteur.github.io/contents/data/pivots/open/raw/btc-usdc.tsv?ref=main",
+        "git": "https://api.github.com/repos/pivoteur/pivoteur.github.io/git/blobs/5c09661fcdd2fea913e3fe7a4a152ba4d6c4a156",
+        "html": "https://github.com/pivoteur/pivoteur.github.io/blob/main/data/pivots/open/raw/btc-usdc.tsv"
+      }
+    },
+    {
+      "name": "eth-undead.tsv",
+      "path": "data/pivots/open/raw/eth-undead.tsv",
+      "sha": "c8a0ee86636378ac8d68eaaca9b930e20e7d3ce9",
+      "size": 8072,
+      "url": "https://api.github.com/repos/pivoteur/pivoteur.github.io/contents/data/pivots/open/raw/eth-undead.tsv?ref=main",
+      "html_url": "https://github.com/pivoteur/pivoteur.github.io/blob/main/data/pivots/open/raw/eth-undead.tsv",
+      "git_url": "https://api.github.com/repos/pivoteur/pivoteur.github.io/git/blobs/c8a0ee86636378ac8d68eaaca9b930e20e7d3ce9",
+      "download_url": "https://raw.githubusercontent.com/pivoteur/pivoteur.github.io/main/data/pivots/open/raw/eth-undead.tsv",
+      "type": "file",
+      "_links": {
+        "self": "https://api.github.com/repos/pivoteur/pivoteur.github.io/contents/data/pivots/open/raw/eth-undead.tsv?ref=main",
+        "git": "https://api.github.com/repos/pivoteur/pivoteur.github.io/git/blobs/c8a0ee86636378ac8d68eaaca9b930e20e7d3ce9",
+        "html": "https://github.com/pivoteur/pivoteur.github.io/blob/main/data/pivots/open/raw/eth-undead.tsv"
+      }
+    },
+    {
+      "name": "hbar-usdc.tsv",
+      "path": "data/pivots/open/raw/hbar-usdc.tsv",
+      "sha": "19112c215a40c3d894fbaf2d1818f5b4c9d3ea85",
+      "size": 917,
+      "url": "https://api.github.com/repos/pivoteur/pivoteur.github.io/contents/data/pivots/open/raw/hbar-usdc.tsv?ref=main",
+      "html_url": "https://github.com/pivoteur/pivoteur.github.io/blob/main/data/pivots/open/raw/hbar-usdc.tsv",
+      "git_url": "https://api.github.com/repos/pivoteur/pivoteur.github.io/git/blobs/19112c215a40c3d894fbaf2d1818f5b4c9d3ea85",
+      "download_url": "https://raw.githubusercontent.com/pivoteur/pivoteur.github.io/main/data/pivots/open/raw/hbar-usdc.tsv",
+      "type": "file",
+      "_links": {
+        "self": "https://api.github.com/repos/pivoteur/pivoteur.github.io/contents/data/pivots/open/raw/hbar-usdc.tsv?ref=main",
+        "git": "https://api.github.com/repos/pivoteur/pivoteur.github.io/git/blobs/19112c215a40c3d894fbaf2d1818f5b4c9d3ea85",
+        "html": "https://github.com/pivoteur/pivoteur.github.io/blob/main/data/pivots/open/raw/hbar-usdc.tsv"
+      }
+    },
+    {
+      "name": "undead-usdc.tsv",
+      "path": "data/pivots/open/raw/undead-usdc.tsv",
+      "sha": "6fedc7ffc93f59a48261a82a0e9a80412598d867",
+      "size": 8169,
+      "url": "https://api.github.com/repos/pivoteur/pivoteur.github.io/contents/data/pivots/open/raw/undead-usdc.tsv?ref=main",
+      "html_url": "https://github.com/pivoteur/pivoteur.github.io/blob/main/data/pivots/open/raw/undead-usdc.tsv",
+      "git_url": "https://api.github.com/repos/pivoteur/pivoteur.github.io/git/blobs/6fedc7ffc93f59a48261a82a0e9a80412598d867",
+      "download_url": "https://raw.githubusercontent.com/pivoteur/pivoteur.github.io/main/data/pivots/open/raw/undead-usdc.tsv",
+      "type": "file",
+      "_links": {
+        "self": "https://api.github.com/repos/pivoteur/pivoteur.github.io/contents/data/pivots/open/raw/undead-usdc.tsv?ref=main",
+        "git": "https://api.github.com/repos/pivoteur/pivoteur.github.io/git/blobs/6fedc7ffc93f59a48261a82a0e9a80412598d867",
+        "html": "https://github.com/pivoteur/pivoteur.github.io/blob/main/data/pivots/open/raw/undead-usdc.tsv"
+      }
+    }
+  ]
+}
+
