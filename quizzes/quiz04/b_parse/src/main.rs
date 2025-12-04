@@ -18,12 +18,10 @@ async fn main() -> ErrStr<()> {
       let json_str = read_rest_with(hdr, &url).await?;
       let json: Root = err_or(serde_json::from_str(&json_str),
             &format!("Could not parse JSON {json_str}"))?;
-      println!("Pivot pool files:\n");
+      println!("Pivot pools:\n");
       for (ix, entry) in json.entries.iter().enumerate() {
          let (princ, piv) = assets(&entry.name)?;
-         princ.to_uppercase();
-         piv.to_uppercase();
-         println!("{ix}. {princ}+{piv}");
+         println!("{}. {princ}+{piv}", ix+1);
       }
       Ok(())
    } else {
@@ -42,14 +40,15 @@ struct Entry {
 }
 
 fn assets(file: &str) -> ErrStr<(Token, Token)> {
-   if let Some(name) = file.split('.').collect().first() {
-      if let [princ, piv] = name.split('-').collect().as_slice() {
-         Ok((princ, piv))
+   let file_parts: Vec<&str> = file.split('.').collect();
+   if let Some(name) = file_parts.first() {
+      let name_parts: Vec<&str> = name.split('-').collect();
+      if let [princ, piv] = name_parts.as_slice() {
+         Ok((princ.to_uppercase(), piv.to_uppercase()))
       } else {
          Err(format!("Could not split assets from {name}"))
       }
    } else {
-
-// TODO: xxx
+      Err(format!("File {file} is not a file."))
    }
 }

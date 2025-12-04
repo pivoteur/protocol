@@ -25,3 +25,13 @@ Using the `serde`-libraries makes parsing JSON simple.
 
 Next, we need to parse the pivot-assets from the filenames.
 
+### Part 2: converting filenames to pivot pool names
+
+![Pivot pools on git](imgs/02-pools.png)
+
+As the filenames follow the format:
+
+> `<primary asset>-<pivot asset>.tsv`
+
+Parsing this becomes an exercise in `split()`-ing our way to the solution.
+
