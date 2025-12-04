@@ -18,8 +18,8 @@ use book::{
 use crate::{
    parsers::parse_id,
    types::{
-      quotes::{Quotes,Token,lookup},
-      util::{Id, CsvHeader, Partition, Measurable, weight,size}
+      quotes::{Quotes,lookup},
+      util::{Token, Id, CsvHeader, Partition, Measurable, weight,size}
    }
 };
 

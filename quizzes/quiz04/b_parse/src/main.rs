@@ -6,7 +6,10 @@ use book::{
    rest_utils::read_rest_with
 };
 
-use libs::git::marshall_git_call;
+use libs::{
+   types::util::Token,
+   git::marshall_git_call
+};
 
 #[tokio::main]
 async fn main() -> ErrStr<()> {
@@ -35,3 +38,7 @@ struct Entry {
     name: String,
 }
 
+fn assets(file: &str) -> (Token, Token) {
+   let (name, _ext) = file.split(".");
+   name.split("-");
+}

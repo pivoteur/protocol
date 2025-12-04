@@ -4,7 +4,7 @@ use chrono::NaiveDate;
 
 use book::err_utils::ErrStr;
 
-pub type Token = String;
+use crate::types::util::Token;
 
 #[derive(Clone, Debug)]
 pub struct Quotes {

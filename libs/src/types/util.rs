@@ -1,16 +1,19 @@
-pub type Id = usize;
+// ----- Your basic types used across all domains -------------------------
 
-// ----- CSV types -------------------------------------------------------
+pub type Id = usize;
+pub type Token = String;
+
+// ----- CSV types --------------------------------------------------------
 
 pub trait CsvHeader {
    fn header(&self) -> String;
 }
 
-// ----- PARTITION type -------------------------------------------------------
+// ----- PARTITION type ---------------------------------------------------
 
 pub type Partition<T> = (Vec<T>, Vec<T>);
 
-// ----- Measurable types -----------------------------------------------------
+// ----- Measurable types -------------------------------------------------
 
 pub trait Measurable {
    fn sz(&self) -> f32;
