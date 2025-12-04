@@ -31,3 +31,13 @@ We'll parse the JSON in the next exercise.
 > Hint: this isn't a simple fetch, as we need to convey header information,
 including your git token.
 
+## Solution
+
+As we didn't have a GET-method that sent header-information, we used duct tape
+and good ol' Yankee Elbow-Grease to GIT'r DONE!
+
+![JSON response](imgs/01-json-response.png)
+
+You see in the JSON response the names of the pivot pools (highlighted) in the 
+open pivots directory.
+
