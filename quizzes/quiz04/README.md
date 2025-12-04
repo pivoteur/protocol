@@ -17,4 +17,5 @@ solve on their own.
 So it goes.
 
 * [git sum!](a_git_json): First, let's just get the json from git, shall we?
+* [parse JSON](b_parse): Next, let's parse the JSON names to Rust String-pairs.
 
