@@ -4,7 +4,9 @@ A step toward automating for all pivot pools is knowing  all the pivot pool name
 
 1. I COULD have a list of all pivot pools, but that's data telling me what data is: a redundancy.
 
-2. Let's use the git API instead: https://docs.github.com/en/rest/repos/contents?apiVersion=2022-11-28 
+2. Let's use the [git 
+API](https://docs.github.com/en/rest/repos/contents?apiVersion=2022-11-28) 
+instead. 
 
 Find all pivot pool names with this.
 
