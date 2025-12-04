@@ -20,7 +20,10 @@ async fn main() -> ErrStr<()> {
             &format!("Could not parse JSON {json_str}"))?;
       println!("Pivot pool files:\n");
       for (ix, entry) in json.entries.iter().enumerate() {
-         println!("{ix}. {}", entry.name);
+         let (princ, piv) = assets(&entry.name)?;
+         princ.to_uppercase();
+         piv.to_uppercase();
+         println!("{ix}. {princ}+{piv}");
       }
       Ok(())
    } else {
@@ -38,7 +41,15 @@ struct Entry {
     name: String,
 }
 
-fn assets(file: &str) -> (Token, Token) {
-   let (name, _ext) = file.split(".");
-   name.split("-");
+fn assets(file: &str) -> ErrStr<(Token, Token)> {
+   if let Some(name) = file.split('.').collect().first() {
+      if let [princ, piv] = name.split('-').collect().as_slice() {
+         Ok((princ, piv))
+      } else {
+         Err(format!("Could not split assets from {name}"))
+      }
+   } else {
+
+// TODO: xxx
+   }
 }
