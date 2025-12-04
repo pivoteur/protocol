@@ -21,5 +21,7 @@ for later processing.
 
 ![Filenames of pivot pools](imgs/01-filenames.png)
 
+Using the `serde`-libraries makes parsing JSON simple.
+
 Next, we need to parse the pivot-assets from the filenames.
 
