@@ -22,3 +22,6 @@ pub mod reports;
 
 /// marshalling requests to the git API
 pub mod git;
+
+/// the whole kit-and-kaboodle
+pub mod processors;

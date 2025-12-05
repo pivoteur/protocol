@@ -13,5 +13,20 @@ git](src/main.rs) after moving that functionality to the
 
 ![Fetching pivot pool names from git](imgs/01-git-pools.png)
 
-* Next, well: let's iterate and recommend close pivots from each pool!
+* Next, well: let's iterate and recommend close pivots from each pool! The
+functionality to do this is in the [processors library 
+module](../../../libs/processors.rs)
+
+![Process open pivots, part I](imgs/02a-process-pools.png)
+![Process open pivots, part II](imgs/02b-process-pools.png)
+
+## Future Work
+
+* Group pools without closes
+
+![List pools with no closes](imgs/03-condensed.png)
+
+... DONE! ✅
+
+* Bag/accumulate pivot-assets 
 

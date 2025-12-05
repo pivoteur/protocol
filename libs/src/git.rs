@@ -7,14 +7,19 @@ use book::{
    utils::get_env
 };
 
-use crate::types::util::Token;
+use crate::types::util::Pool;
 
-pub async fn fetch_pool_names(auth: &str) -> ErrStr<Vec<(Token, Token)>> {
+pub async fn fetch_pool_names(auth: &str) -> ErrStr<Vec<Pool>> {
    let (hdr, url) = marshall_git_call(auth)?;
    let json_str = read_rest_with(hdr, &url).await?;
    let json: Root = err_or(serde_json::from_str(&json_str),
        &format!("Could not parse JSON {json_str}"))?;
-   Ok(json.entries.iter().filter_map(|entry| assets(&entry.name).ok()).collect())
+   let pools: Vec<Pool> = 
+      json.entries
+          .iter()
+          .filter_map(|entry| assets(&entry.name).ok())
+          .collect();
+   Ok(pools)
 }
 
 // ----- private functions -----------------------------------------------
@@ -31,7 +36,7 @@ struct Entry {
     name: String,
 }
 
-fn assets(file: &str) -> ErrStr<(Token, Token)> {
+fn assets(file: &str) -> ErrStr<Pool> {
    let file_parts: Vec<&str> = file.split('.').collect();
    if let Some(name) = file_parts.first() {
       let name_parts: Vec<&str> = name.split('-').collect();

@@ -1,20 +1,36 @@
 use book::{
-   utils::get_args,
+   date_utils::parse_date,
+   utils::{get_args,get_env},
    err_utils::ErrStr
 };
 
-use libs::git::fetch_pool_names;
+use libs::{
+   git::fetch_pool_names,
+   processors::process_pools
+};
 
 #[tokio::main]
 async fn main() -> ErrStr<()> {
-   if let Some(auth) = get_args().first() {
+   if let [auth, dt] = get_args().as_slice() {
+      let date = parse_date(dt)?;
+      let root = get_env(&format!("{auth}_URL"))?;
       let pools = fetch_pool_names(&auth).await?;
-      println!("Pivot pools:\n");
-      for (ix, pool) in pools.iter().enumerate() {
-         println!("{}. {pool:?}", ix+1);
-      }
+      process_pools(&root, &pools, date).await?;
       Ok(())
    } else {
-      Err("No auth token".to_string())
+      usage()
    }
+}
+
+fn usage() -> ErrStr<()> {
+   println!("Usage:
+
+$ cargo run <auth> <date>
+
+where:
+
+ * <auth> authorization token name to git repository
+ * <date> Today's date
+");
+   Err("Requires <auth> <date> arguments".to_string())
 }

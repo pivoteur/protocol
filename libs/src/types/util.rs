@@ -2,6 +2,7 @@
 
 pub type Id = usize;
 pub type Token = String;
+pub type Pool = (Token, Token);
 
 // ----- CSV types --------------------------------------------------------
 
