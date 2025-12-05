@@ -20,4 +20,6 @@ So it goes.
 
 * [git sum!](a_git_json): First, let's just get the json from git, shall we?
 * [parse JSON](b_parse): Next, let's parse the JSON names to Rust String-pairs.
+* [iterate over all pools](c_interate): Now that we have the pivot pool assets, 
+let's iterate over each pool and run a report of all pivot pools in one go!
 

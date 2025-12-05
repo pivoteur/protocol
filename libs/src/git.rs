@@ -1,11 +1,53 @@
 use reqwest::header::{HeaderMap, HeaderValue,AUTHORIZATION,ACCEPT,USER_AGENT};
+use serde::{Deserialize, Serialize};
 
 use book::{
-   err_utils::ErrStr,
+   err_utils::{ErrStr,err_or},
+   rest_utils::{read_rest_with},
    utils::get_env
 };
 
-pub fn marshall_git_call(token: &str) -> ErrStr<(HeaderMap, String)> {
+use crate::types::util::Token;
+
+pub async fn fetch_pool_names(auth: &str) -> ErrStr<Vec<(Token, Token)>> {
+   let (hdr, url) = marshall_git_call(auth)?;
+   let json_str = read_rest_with(hdr, &url).await?;
+   let json: Root = err_or(serde_json::from_str(&json_str),
+       &format!("Could not parse JSON {json_str}"))?;
+   Ok(json.entries.iter().filter_map(|entry| assets(&entry.name).ok()).collect())
+}
+
+// ----- private functions -----------------------------------------------
+
+// ----- JSON parsing ----------------------------------------------------
+
+#[derive(Debug, Deserialize, Serialize)]
+struct Root {
+    entries: Vec<Entry>,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+struct Entry {
+    name: String,
+}
+
+fn assets(file: &str) -> ErrStr<(Token, Token)> {
+   let file_parts: Vec<&str> = file.split('.').collect();
+   if let Some(name) = file_parts.first() {
+      let name_parts: Vec<&str> = name.split('-').collect();
+      if let [princ, piv] = name_parts.as_slice() {
+         Ok((princ.to_uppercase(), piv.to_uppercase()))
+      } else {
+         Err(format!("Could not split assets from {name}"))
+      }
+   } else {
+      Err(format!("File {file} is not a file."))
+   }
+}
+
+// ----- marshalling the call to git to get pool directory contents ------
+
+fn marshall_git_call(token: &str) -> ErrStr<(HeaderMap, String)> {
    let header = build_header_with(token)?;
    let ownr = owner(token)?;
    let rep = repo(&ownr);
@@ -14,10 +56,6 @@ pub fn marshall_git_call(token: &str) -> ErrStr<(HeaderMap, String)> {
 
    Ok((header, url))
 }
-
-// You can use booK::rest_utils::read_rest_with to make the call.
-
-// ----- private functions -----------------------------------------------
 
 fn mk_url(owner: &str, repo: &str, path: &str) -> String {
    format!("https://api.github.com/repos/{owner}/{repo}/contents/{path}")
