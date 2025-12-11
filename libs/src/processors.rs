@@ -40,8 +40,7 @@ pub async fn process_pools(root_url: &str, pools: &Vec<Pool>, date: NaiveDate)
          no_closes.push(pool);
       } else {
          preamble(first_time, prim, piv, *len, &max_date, &date);
-         print_table(printer, first_time, "No close pivots", &props);
-         first_time = false;
+         print_table(printer, &mut first_time, "No close pivots", &props);
       }
    }
    if !no_closes.is_empty() {

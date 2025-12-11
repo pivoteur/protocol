@@ -23,15 +23,16 @@ pub fn header(prim: &str, piv: &str) -> String {
 }
 
 pub fn print_table<T:CsvWriter + CsvHeader>(printer: impl Fn(&String) -> (),
-                                            first_time: bool, empty: &str,
+                                            first_time: &mut bool, empty: &str,
                                             rows: &Vec<T>) {
    println!("");
    if rows.is_empty() {
       println!("{empty}\n");
    } else {
       for o in rows {
-         if first_time {
+         if *first_time {
             printer(&o.header());
+            *first_time = false;
          }
          printer(&o.as_csv());
       }

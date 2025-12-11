@@ -11,7 +11,8 @@ use libs::{
 
 #[tokio::main]
 async fn main() -> ErrStr<()> {
-   if let [auth, dt] = get_args().as_slice() {
+   if let [ath, dt] = get_args().as_slice() {
+      let auth = ath.to_uppercase();
       let date = parse_date(dt)?;
       let root = get_env(&format!("{auth}_URL"))?;
       let pools = fetch_pool_names(&auth).await?;
