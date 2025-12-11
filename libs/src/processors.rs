@@ -8,7 +8,7 @@ use crate::{
       pivots::{propose,next_close_id,partition_on}
    },
    fetchers::{fetch_pivots,fetch_quotes},
-   reports::{preamble,print_table,header}
+   reports::{print_table,header}
 };
 
 pub async fn process_pools(root_url: &str, pools: &Vec<Pool>, date: NaiveDate)
@@ -39,8 +39,9 @@ pub async fn process_pools(root_url: &str, pools: &Vec<Pool>, date: NaiveDate)
       if props.is_empty() {
          no_closes.push(pool);
       } else {
-         preamble(first_time, prim, piv, *len, &max_date, &date);
-         print_table(printer, &mut first_time, "No close pivots", &props);
+         print_table(printer, &mut first_time, 
+                     prim, piv, *len, &max_date,
+                     "No close pivots", &props);
       }
    }
    if !no_closes.is_empty() {

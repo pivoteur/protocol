@@ -16,6 +16,7 @@ async fn main() -> ErrStr<()> {
       let date = parse_date(dt)?;
       let root = get_env(&format!("{auth}_URL"))?;
       let pools = fetch_pool_names(&auth).await?;
+      println!("hound, version 1.03\n");
       process_pools(&root, &pools, date).await?;
       Ok(())
    } else {
