@@ -2,6 +2,7 @@
 
 pub type Id = usize;
 pub type Token = String;
+pub type Blockchain = String; // enum? maybe, but String for now.
 pub type Pool = (Token, Token);
 
 // ----- CSV types --------------------------------------------------------

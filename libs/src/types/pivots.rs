@@ -144,6 +144,7 @@ pub fn next_close_id(pivs: &Vec<Pivot>) -> Id {
 #[derive(Debug, Clone)]
 struct Asset {
    token: Token,
+   blockchain: Blockchain,
    amount: Amount,
    quote: USD,
    kind: AssetType
@@ -155,35 +156,42 @@ impl Measurable for Asset {
 }
 
 impl CsvWriter for Asset {
-   fn ncols(&self) -> usize { 1 + self.amount.ncols() + 1 + 1}
+   fn ncols(&self) -> usize { 1 + 1 + self.amount.ncols() + 1 + 1}
    fn as_csv(&self) -> String {
       let total = mk_usd(self.quote.amount * amount(&self.amount));
-      format!("{},{},{},{}", self.token,self.amount.as_csv(),self.quote,total)
+      format!("{},{},{},{},{}",
+              self.token,self.blockchain,self.amount.as_csv(),self.quote,total)
    }
 }
 impl CsvHeader for Asset {
    fn header(&self) -> String {
-      let hdrs = kinderize(&self.kind, &["token", "quote", "total"]);
-      format!("{},{},{},{}", hdrs[0],self.kind.headers(),hdrs[1],hdrs[2]) 
+      let hdrs = kinderize(&self.kind,
+                           &["token", "blockchain", "quote", "total"]);
+      format!("{},{},{},{},{}",
+              hdrs[0],hdrs[1],self.kind.headers(),hdrs[2],hdrs[3]) 
    }
 }
 
-fn mk_asset(tkn: &str, amount: Amount, quote: USD, knd: &AssetType) -> Asset {
-   Asset { token: tkn.to_string(), amount, quote, kind: knd.clone() }
+fn mk_asset(tkn: &str, blk: &str, amount: Amount, quote: USD, knd: &AssetType)
+      -> Asset {
+   Asset { token: tkn.to_string(), 
+           blockchain: blk.to_string(),
+           amount, quote, kind: knd.clone() }
 }
 
 fn parse_asset(a: AssetType, hdrs: &HashMap<String, usize>, row: &Vec<String>)
       -> ErrStr<Asset> {
    let keys = a.keys();
-   if let [tok, amt, virt, qut] = keys.as_slice() {
+   if let [tok, blk, amt, virt, qut] = keys.as_slice() {
       let token = &row[hdrs[tok]];
+      let block = &row[hdrs[blk]];
       let amnt = parse_commaless(&row[hdrs[amt]])?;
       let vrt = if let Some(virt_key) = hdrs.get(virt) {
          parse_commaless(&row[*virt_key])
       } else { Ok( 0.0 ) }?;
       let quot: USD = row[hdrs[qut]].parse()?;
       let amount = mk_amt(amnt, vrt);
-      Ok(mk_asset(token, amount, quot, &a))
+      Ok(mk_asset(token, block, amount, quot, &a))
    } else {
       Err("bad pattern match in AssetType enum for keys()".to_string())
    }
@@ -197,8 +205,10 @@ enum AssetType { FROM, TO }
 impl AssetType {
    fn keys(&self) -> Vec<String> {
       match self {
-         AssetType::FROM => slice2vec(&["from","amount1","virtual","quote1"]),
-         AssetType::TO => slice2vec(&["to","net","blah!","quote2"])
+         AssetType::FROM =>
+            slice2vec(&["from","from_blockchain","amount1","virtual","quote1"]),
+         AssetType::TO =>
+            slice2vec(&["to","to_blockchain","net","blah!","quote2"])
       }
    }
    fn kind(&self) -> String {
@@ -380,6 +390,7 @@ fn mk_prop(open_pivots: Vec<Pivot>, c: Id, d: &NaiveDate,
 #[derive(Debug, Clone)]
 struct PropAsset {
    token: Token,
+   blockchain: Blockchain,
    close_price: USD,
    amount: f32,
    kind: AssetType
@@ -391,7 +402,7 @@ impl CsvHeader for PropAsset {
          AssetType::FROM => "pivot",
          AssetType::TO   => "proposed"
       };
-      ["token","close_price","amount"]
+      ["token","blockchain","close_price","amount"]
          .iter()
          .map(|elt| format!("{}_{}", preface, elt))
          .collect::<Vec<_>>()
@@ -401,7 +412,8 @@ impl CsvHeader for PropAsset {
 impl CsvWriter for PropAsset {
    fn ncols(&self) -> usize { 2 }
    fn as_csv(&self) -> String {
-      format!("{},{},{}", self.token, self.close_price, self.amount)
+      format!("{},{},{},{}",
+              self.token, self.blockchain, self.close_price, self.amount)
    }
 }
 
@@ -410,15 +422,10 @@ impl Measurable for PropAsset {
    fn aug(&self) -> f32 { self.sz() * self.close_price.amount }
 }
 
-fn mk_prop_asset(tkn: &str, c: f32, amount: f32, knd: &AssetType)
+fn mk_prop_asset(tkn: &str, blk: &str, c: f32, amount: f32, knd: &AssetType)
       -> PropAsset {
-   PropAsset { token: tkn.to_string(), 
+   PropAsset { token: tkn.to_string(), blockchain: blk.to_string(),
                close_price: mk_usd(c), amount, kind: knd.clone() }
-}
-
-#[derive(Debug, Clone)]
-pub struct Close {
-
 }
 
 pub fn propose(q: &Quotes)
@@ -465,8 +472,10 @@ fn trade(q: &Quotes, p: &Pivot) -> ErrStr<Option<(PropAsset, PropAsset)>> {
             mk_prop_asset(prim, prim_qt, computed_amount, &AssetType::TO))))
 }
 
-// ----- PARTITIONS -------------------------------------------------------
+// ----- GROUPING  -------------------------------------------------------
 
+/// Partitions open-pivots by principal asset
 pub fn partition_on(tok: &str, opens: Vec<Pivot>) -> Partition<Pivot> {
    opens.into_iter().partition(|p: &Pivot| p.from.token == tok)
 }
+
