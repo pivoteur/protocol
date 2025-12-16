@@ -5,6 +5,7 @@
 * [02](quiz02): With today's (fetched) prices, identify pivots to close
 * [03](quiz03): Partition and aggregate the close-pivots
 * [04](quiz04): Find the pivot pools; iterate over the pivot pools
+* [05](quiz05): Aggregate pivot-assets by blockchain
 
 # Resources
 
