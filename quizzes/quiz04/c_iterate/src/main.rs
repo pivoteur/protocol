@@ -9,6 +9,8 @@ use libs::{
    processors::process_pools
 };
 
+fn version() -> String { "1.04".to_string() }
+
 #[tokio::main]
 async fn main() -> ErrStr<()> {
    if let [ath, dt] = get_args().as_slice() {
@@ -16,7 +18,7 @@ async fn main() -> ErrStr<()> {
       let date = parse_date(dt)?;
       let root = get_env(&format!("{auth}_URL"))?;
       let pools = fetch_pool_names(&auth).await?;
-      println!("hound, version 1.03\n");
+      println!("hound, version {}\n", version());
       process_pools(&root, &pools, date).await?;
       Ok(())
    } else {
