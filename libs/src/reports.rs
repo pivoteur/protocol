@@ -2,30 +2,66 @@ use chrono::NaiveDate;
 
 use book::csv_utils::CsvWriter;
 
-use crate::types::util::CsvHeader;
+use crate::types::{
+   pivots::Propose,
+   util::{CsvHeader,Pool}
+};
 
 pub fn header(prim: &str, piv: &str) -> String {
    format!("{}+{}", prim.to_uppercase(), piv.to_uppercase())
 }
 
-pub fn print_table<T:CsvWriter + CsvHeader>(printer: impl Fn(&String) -> (),
-                                            first_time: &mut bool, 
-                                            prim: &str, piv: &str, len: usize, 
-                                            max_date: &NaiveDate,
-                                            empty: &str, rows: &Vec<T>) {
-                                           
-   let hdr = header(prim, piv);
-   if rows.is_empty() {
-      println!("{},{empty}",hdr);
-   } else {
-      for o in rows {
-         if *first_time {
-            let header = 
-               format!("pool,#open_pivot,last_pivot_on_dt,{}",o.header());
-            printer(&header);
-            *first_time = false;
-         }
-         printer(&format!("{hdr},{len},{max_date},{}",o.as_csv()));
+fn print_row<T:CsvWriter + CsvHeader>(printer: impl Fn(&String) -> (),
+                                      first_time: &mut bool, row: &T) {
+   if *first_time {
+      printer(&row.header());
+      *first_time = false;
+   }
+   printer(&row.as_csv());
+}
+
+pub struct Proposal {
+   pool: String,
+   opens: usize,
+   max_date: NaiveDate,
+   proposal: Propose
+}
+
+pub fn mk_proposal(pool: &Pool, max_date: NaiveDate, opens: usize, p: Propose)
+   -> Proposal {
+   let (prim, piv) = pool;
+   Proposal { pool: header(prim, piv), opens, max_date, proposal: p }
+}
+
+pub fn proposal(p: &Proposal) -> Propose {
+   p.proposal.clone()
+}
+
+impl CsvHeader for Proposal {
+   fn header(&self) -> String {
+      format!("pool,open_pivots,last_pivot_on_dt,{}", self.proposal.header())
+   }
+}
+
+impl CsvWriter for Proposal {
+   fn ncols(&self) -> usize { 3 + self.proposal.ncols() }
+   fn as_csv(&self) -> String {
+      format!("{},{},{},{}", self.pool, self.opens, self.max_date,
+              self.proposal.as_csv())
+   }
+}
+
+pub fn report_proposes(proposes: &Vec<Proposal>, no_closers: &Vec<Pool>) {
+   fn printer(s: &String) { println!("{s}"); }
+   let mut first_time = true;
+   
+   for proposal in proposes {
+      print_row(printer, &mut first_time, proposal);
+   }
+   if !no_closers.is_empty() { 
+      println!("\nPivot pools with no closes:\n");
+      for (prim, piv) in no_closers {
+         printer(&format!("* {}", header(prim, piv)));
       }
    }
 }

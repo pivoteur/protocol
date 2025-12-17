@@ -1,25 +1,21 @@
 use book::{
-   date_utils::parse_date,
-   utils::{get_args,get_env},
+   utils::get_args,
    err_utils::ErrStr
 };
 
 use libs::{
-   git::fetch_pool_names,
-   processors::process_pools
+   processors::process_pools,
+   reports::report_proposes
 };
 
-fn version() -> String { "1.04".to_string() }
+fn version() -> String { "1.05".to_string() }
 
 #[tokio::main]
 async fn main() -> ErrStr<()> {
    if let [ath, dt] = get_args().as_slice() {
-      let auth = ath.to_uppercase();
-      let date = parse_date(dt)?;
-      let root = get_env(&format!("{auth}_URL"))?;
-      let pools = fetch_pool_names(&auth).await?;
+      let (proposals, no_closes) = process_pools(&ath, &dt).await?;
       println!("hound, version {}\n", version());
-      process_pools(&root, &pools, date).await?;
+      report_proposes(&proposals, &no_closes);
       Ok(())
    } else {
       usage()

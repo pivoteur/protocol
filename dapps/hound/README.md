@@ -13,6 +13,8 @@ that have no close pivots.
 
 ## Versions
 
+* 1.05, incremental improvement: separated processing from reporting proposed
+pivot closes.
 * [1.04](https://github.com/pivoteur/biz/tree/main/blog/2025/12/16), 2025-12-16:
  assets now reported by blockchain
 * [1.03](https://github.com/pivoteur/biz/tree/main/blog/2025/12/11), 2025-12-11:

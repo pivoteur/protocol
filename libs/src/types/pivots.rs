@@ -272,6 +272,10 @@ pub struct Propose {
    propose: PropAsset
 }
 
+pub fn pivot_amount(p: &Propose) -> ((Token, Blockchain), f32) {
+   pivot_amount0(&p.pivot)
+}
+
 fn weighted_days(p: &Propose) -> ErrStr<(f32, NaiveDate)> {
    if let Some(start_date) = p.header.opened.first().cloned() {
       let days: Vec<f32> =
@@ -428,6 +432,16 @@ fn mk_prop_asset(tkn: &str, blk: &str, c: f32, amount: f32, knd: &AssetType)
       -> PropAsset {
    PropAsset { token: tkn.to_string(), blockchain: blk.to_string(),
                close_price: mk_usd(c), amount, kind: knd.clone() }
+}
+
+fn pivot_amount0(p: &Vec<PropAsset>) -> ((Token, Blockchain), f32) {
+   if let Some(fst) = p.first() {
+      let tok = fst.token.clone();
+      let blk = fst.blockchain.clone();
+      ((tok, blk), size(p))
+   } else {
+      panic!("Could not find a pivot-asset for a close-recommendation!")
+   }
 }
 
 pub fn propose(q: &Quotes)

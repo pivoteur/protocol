@@ -1,6 +1,10 @@
 use chrono::NaiveDate;
 
-use book::err_utils::ErrStr;
+use book::{
+   date_utils::parse_date,
+   err_utils::ErrStr,
+   utils::get_env
+};
 
 use crate::{
    types::{
@@ -8,16 +12,25 @@ use crate::{
       pivots::{propose,next_close_id,partition_on}
    },
    fetchers::{fetch_pivots,fetch_quotes},
-   reports::{print_table,header}
+   git::fetch_pool_names,
+   reports::{Proposal,mk_proposal}
 };
 
-pub async fn process_pools(root_url: &str, pools: &Vec<Pool>, date: NaiveDate)
-      -> ErrStr<()> {
+pub async fn process_pools(auth_name: &str, dt: &str)
+      -> ErrStr<(Vec<Proposal>, Vec<Pool>)> {
+   let auth = auth_name.to_uppercase();
+   let date = parse_date(dt)?;
+   let root_url = get_env(&format!("{auth}_URL"))?;
+   let pools = fetch_pool_names(&auth).await?;
+   process_pools0(&root_url, &pools, date).await
+}
+
+async fn process_pools0(root_url: &str, pools: &Vec<Pool>, date: NaiveDate)
+      -> ErrStr<(Vec<Proposal>, Vec<Pool>)> {
    let quotes = fetch_quotes(&date).await?;
    let proposer = propose(&quotes);
    let mut no_closes = Vec::new();
-   let mut first_time = true;
-   fn printer(s: &String) { println!("{s}"); }
+   let mut proposals = Vec::new();
 
    for pool in pools {
       let (prim, piv) = pool;
@@ -25,30 +38,23 @@ pub async fn process_pools(root_url: &str, pools: &Vec<Pool>, date: NaiveDate)
       let next_close = next_close_id(&closes);
       let len = &opens.len();
       let (lefts, rights) = partition_on(prim, opens);
-      let mut props = Vec::new();
+      let mut props = false;
       let follow = if let Some((prop, nxt)) = proposer((lefts, next_close))? {
-         props.push(prop);
+         proposals.push(mk_proposal(&pool, max_date, *len, prop));
+         props = true;
          nxt
       } else {
          next_close
       };
       if let Some((prop, _)) = proposer((rights, follow))? {
-         props.push(prop);
+         proposals.push(mk_proposal(&pool, max_date, *len, prop));
+         props = true;
       }
 
-      if props.is_empty() {
-         no_closes.push(pool);
-      } else {
-         print_table(printer, &mut first_time, 
-                     prim, piv, *len, &max_date,
-                     "No close pivots", &props);
+      if !props {
+         no_closes.push(pool.clone());
       }
    }
-   if !no_closes.is_empty() {
-      println!("\nPivot pools with no closes:\n");
-      for (prim, piv) in no_closes {
-         println!("* {}", header(prim, piv));
-      }
-   }
-   Ok(())
+   Ok((proposals, no_closes))
 }
+
