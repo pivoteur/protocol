@@ -19,7 +19,7 @@ use crate::{
    parsers::parse_id,
    types::{
       quotes::{Quotes,lookup},
-      util::{Token, Id, CsvHeader, Partition, Measurable, weight,size}
+      util::{Token,Blockchain,Id,CsvHeader,Partition,Measurable,weight,size}
    }
 };
 
@@ -346,10 +346,12 @@ impl CsvWriter for Propose {
                    .fold((0.0, 0.0), |(a,e), x| {
                       let Amount { actual, ersatz } = &x.amount;
                       (a + actual, e + ersatz) });
-            let pri1 = mk_asset(&prince.token, mk_amt(amount, ersatz),
+            let pri1 = mk_asset(&prince.token, &prince.blockchain,
+                                mk_amt(amount, ersatz),
                                 mk_usd(weight(&self.principal)), &prince.kind);
             if let Some(piv) = self.pivot.first() {
-               let piv1 = mk_prop_asset(&piv.token, weight(&self.pivot),
+               let piv1 = mk_prop_asset(&piv.token, &piv.blockchain,
+                                        weight(&self.pivot),
                                         size(&self.pivot), &piv.kind);
                format!("{},{},{},{},{},{},{},{},{},{}", 
                        opnd,
@@ -447,7 +449,7 @@ pub fn propose(q: &Quotes)
          Ok(None)
       } else {
          if let Some(result) = res.first() {
-            let proposed = mk_prop_asset(&result.token, 
+            let proposed = mk_prop_asset(&result.token, &result.blockchain,
                                          result.close_price.amount,
                                          size(&res), &AssetType::TO);
             Ok(Some(mk_prop(princes, c, &q.date, pivs, proposed)))
@@ -461,15 +463,18 @@ pub fn propose(q: &Quotes)
 fn trade(q: &Quotes, p: &Pivot) -> ErrStr<Option<(PropAsset, PropAsset)>> {
    // with the quotes for the assets, ...
    let prim = &p.from.token;
+   let prim_blk = &p.from.blockchain;
    let piv = &p.to.token; 
+   let piv_blk = &p.to.blockchain;
    let prim_qt = lookup(q, prim)?;
    let piv_qt = lookup(q, piv)?;
    let to_trade = amount(&p.to.amount);
    let target = gain_10_percent(&p.from.amount);
    let computed_amount = to_trade * piv_qt / prim_qt;
    Ok(pred(computed_amount > target,
-           (mk_prop_asset(piv, piv_qt, to_trade, &AssetType::FROM),
-            mk_prop_asset(prim, prim_qt, computed_amount, &AssetType::TO))))
+           (mk_prop_asset(piv, piv_blk, piv_qt, to_trade, &AssetType::FROM),
+            mk_prop_asset(prim, prim_blk, prim_qt,
+                          computed_amount, &AssetType::TO))))
 }
 
 // ----- GROUPING  -------------------------------------------------------
