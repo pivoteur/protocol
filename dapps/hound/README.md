@@ -13,7 +13,8 @@ that have no close pivots.
 
 ## Versions
 
-* 2.0, 2025-12-17: renamed dapp from `hound` to `phound` as input-data now requires blockchain, so I'm doing a blue (`hound`) - green (`phound`) deployment until the next major overhaul calls for a revolutionary-release.
+* 2.01, 2025-12-17: incorporated `app_name()` into usage and error messaging.
+* 2.00, 2025-12-17: renamed dapp from `hound` to `phound` as input-data now requires blockchain, so I'm doing a blue (`hound`) - green (`phound`) deployment until the next major overhaul calls for a revolutionary-release.
 -----
 * 1.05, 2025-12-17, incremental improvement: separated processing from 
 reporting proposed pivot closes.
