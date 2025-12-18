@@ -19,7 +19,8 @@ use crate::{
    parsers::parse_id,
    types::{
       quotes::{Quotes,lookup},
-      util::{Token,Blockchain,Id,CsvHeader,Partition,Measurable,weight,size}
+      util::{Token,Blockchain,Id,CsvHeader,Partition,Measurable,
+             Asset as Coin,mk_asset as mk_coin,weight,size}
    }
 };
 
@@ -272,7 +273,7 @@ pub struct Propose {
    propose: PropAsset
 }
 
-pub fn pivot_amount(p: &Propose) -> ((Token, Blockchain), f32) {
+pub fn pivot_amount(p: &Propose) -> Coin {
    pivot_amount0(&p.pivot)
 }
 
@@ -434,11 +435,11 @@ fn mk_prop_asset(tkn: &str, blk: &str, c: f32, amount: f32, knd: &AssetType)
                close_price: mk_usd(c), amount, kind: knd.clone() }
 }
 
-fn pivot_amount0(p: &Vec<PropAsset>) -> ((Token, Blockchain), f32) {
+fn pivot_amount0(p: &Vec<PropAsset>) -> Coin {
    if let Some(fst) = p.first() {
-      let tok = fst.token.clone();
-      let blk = fst.blockchain.clone();
-      ((tok, blk), size(p))
+      let token = fst.token.clone();
+      let blockchain = fst.blockchain.clone();
+      mk_coin(&(blockchain, token), size(p))
    } else {
       panic!("Could not find a pivot-asset for a close-recommendation!")
    }

@@ -5,6 +5,9 @@
 /// Types used across the library
 pub mod types;
 
+/// Collections specific to Pivot Protocol dapps
+pub mod collections;
+
 /// Parsing row-data to tables
 pub mod tables;
 

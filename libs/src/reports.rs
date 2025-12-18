@@ -51,17 +51,21 @@ impl CsvWriter for Proposal {
    }
 }
 
-pub fn report_proposes(proposes: &Vec<Proposal>, no_closers: &Vec<Pool>) {
+pub fn print_table<T: CsvHeader + CsvWriter>(header: &str, v: &Vec<T>) {
    fn printer(s: &String) { println!("{s}"); }
    let mut first_time = true;
-   
-   for proposal in proposes {
-      print_row(printer, &mut first_time, proposal);
+   println!("{header}\n");
+   for row in v {
+      print_row(printer, &mut first_time, row);
    }
+}
+
+pub fn report_proposes(proposes: &Vec<Proposal>, no_closers: &Vec<Pool>) {
+   print_table("", proposes);
    if !no_closers.is_empty() { 
       println!("\nPivot pools with no closes:\n");
       for (prim, piv) in no_closers {
-         printer(&format!("* {}", header(prim, piv)));
+         println!("* {}", header(prim, piv));
       }
    }
 }
