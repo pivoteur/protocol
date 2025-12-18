@@ -4,7 +4,7 @@ use book::csv_utils::CsvWriter;
 
 use crate::types::{
    pivots::Propose,
-   util::{CsvHeader,Pool}
+   util::{CsvHeader,Pool,Measurable}
 };
 
 pub fn header(prim: &str, piv: &str) -> String {
@@ -20,6 +20,7 @@ fn print_row<T:CsvWriter + CsvHeader>(printer: impl Fn(&String) -> (),
    printer(&row.as_csv());
 }
 
+#[derive(Debug, Clone)]
 pub struct Proposal {
    pool: String,
    opens: usize,
@@ -49,6 +50,11 @@ impl CsvWriter for Proposal {
       format!("{},{},{},{}", self.pool, self.opens, self.max_date,
               self.proposal.as_csv())
    }
+}
+
+impl Measurable for Proposal {
+   fn sz(&self) -> f32 { proposal(&self).sz() }
+   fn aug(&self) -> f32 { proposal(&self).aug() }
 }
 
 pub fn print_table<T: CsvHeader + CsvWriter>(header: &str, v: &Vec<T>) {

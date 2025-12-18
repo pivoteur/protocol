@@ -9,10 +9,13 @@ use libs::{
    collections::assets::{Assets,assets,add},
    processors::process_pools,
    reports::{report_proposes,proposal,print_table},
-   types::pivots::pivot_amount
+   types::{
+      pivots::pivot_amount,
+      util::Measurable
+   }
 };
 
-fn version() -> String { "1.00".to_string() }
+fn version() -> String { "1.01".to_string() }
 fn app_name() -> String { "dusk".to_string() }
 
 fn usage() -> ErrStr<()> {
@@ -32,7 +35,9 @@ async fn main() -> ErrStr<()> {
    if let [ath, dt] = get_args().as_slice() {
       let (proposals, no_closes) = process_pools(&ath, &dt).await?;
       println!("{}, version: {}", app_name(), version());
-      report_proposes(&proposals, &no_closes);
+      let mut props = proposals.clone();
+      props.sort_by(|a, b| b.aug().total_cmp(&a.aug()));
+      report_proposes(&props, &no_closes);
       let mut tokens = Assets::new();
       proposals.iter().for_each(|p| {
          let asset = pivot_amount(&proposal(p));

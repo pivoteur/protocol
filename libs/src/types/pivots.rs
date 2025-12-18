@@ -277,6 +277,11 @@ pub fn pivot_amount(p: &Propose) -> Coin {
    pivot_amount0(&p.pivot)
 }
 
+impl Measurable for Propose {
+   fn sz(&self) -> f32 { self.propose.amount }
+   fn aug(&self) -> f32 { self.sz()*self.propose.close_price.amount  }
+}
+
 fn weighted_days(p: &Propose) -> ErrStr<(f32, NaiveDate)> {
    if let Some(start_date) = p.header.opened.first().cloned() {
       let days: Vec<f32> =
