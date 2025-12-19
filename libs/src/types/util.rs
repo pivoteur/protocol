@@ -1,4 +1,11 @@
-use book::csv_utils::CsvWriter;
+use std::cmp::Ordering;
+
+use chrono::NaiveDate;
+
+use book::{
+   csv_utils::CsvWriter,
+   currency::usd::USD
+};
 
 // ----- Your basic types used across all domains -------------------------
 
@@ -14,6 +21,32 @@ pub trait CsvHeader {
    fn header(&self) -> String;
 }
 
+// ----- PARTITION type ---------------------------------------------------
+
+pub type Partition<T> = (Vec<T>, Vec<T>);
+
+// ----- Measurable types -------------------------------------------------
+
+pub trait Measurable {
+   fn sz(&self) -> f32;
+   fn aug(&self) -> f32;
+}
+
+pub fn size<T: Measurable>(v: &Vec<T>) -> f32 {
+   v.iter().map(Measurable::sz).sum()
+}
+
+pub fn weight<T: Measurable>(v: &Vec<T>) -> f32 {
+   let (au, s) =
+      v.iter()
+       .fold((0.0, 0.0), |(a,b), x| (a + x.aug(), b + x.sz()));
+   au / s
+}
+
+pub fn sort_descending<M: Measurable>(a: &M, b: &M) -> Ordering {
+   b.aug().total_cmp(&a.aug())
+}
+
 // ----- ASSETS ----------------------------------------------------------
 
 /// An Asset (an element of Assets) is a Token distinguished by Blockchain
@@ -22,10 +55,21 @@ pub struct Asset {
    blockchain: Blockchain,
    token: Token,
    amount: f32
+   // quote: USD,
+   // date: NaiveDate
 }
 
+/*
+impl Measurable for Asset {
+   fn sz(&self) -> f32 { self.amount }
+   fn aug(&self) -> f32 { self.sz() * self.quote.amount }
+}
+*/
+
 impl CsvHeader for Asset {
-   fn header(&self) -> String { "blockchain,token,amount".to_string() }
+   fn header(&self) -> String {
+      "for_pivot,blockchain,token,quote,amount,total".to_string()
+   }
 }
 impl CsvWriter for Asset {
    fn ncols(&self) -> usize { 3 }
@@ -54,24 +98,3 @@ pub fn mk_asset(k: &(Blockchain, Token), amount: f32) -> Asset {
    Asset { blockchain: b.clone(), token: t.clone(), amount }
 }
 
-// ----- PARTITION type ---------------------------------------------------
-
-pub type Partition<T> = (Vec<T>, Vec<T>);
-
-// ----- Measurable types -------------------------------------------------
-
-pub trait Measurable {
-   fn sz(&self) -> f32;
-   fn aug(&self) -> f32;
-}
-
-pub fn size<T: Measurable>(v: &Vec<T>) -> f32 {
-   v.iter().map(Measurable::sz).sum()
-}
-
-pub fn weight<T: Measurable>(v: &Vec<T>) -> f32 {
-   let (au, s) =
-      v.iter()
-       .fold((0.0, 0.0), |(a,b), x| (a + x.aug(), b + x.sz()));
-   au / s
-}

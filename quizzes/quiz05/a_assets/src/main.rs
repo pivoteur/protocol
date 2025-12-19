@@ -11,7 +11,7 @@ use libs::{
    reports::{report_proposes,proposal,print_table},
    types::{
       pivots::pivot_amount,
-      util::Measurable
+      util::sort_descending
    }
 };
 
@@ -36,7 +36,7 @@ async fn main() -> ErrStr<()> {
       let (proposals, no_closes) = process_pools(&ath, &dt).await?;
       println!("{}, version: {}", app_name(), version());
       let mut props = proposals.clone();
-      props.sort_by(|a, b| b.aug().total_cmp(&a.aug()));
+      props.sort_by(sort_descending);
       report_proposes(&props, &no_closes);
       let mut tokens = Assets::new();
       proposals.iter().for_each(|p| {
