@@ -8,7 +8,7 @@ use book::{
 
 use crate::{
    types::{
-      util::Pool,
+      util::{Pool,sort_descending},
       pivots::{propose,next_close_id,partition_on}
    },
    fetchers::{fetch_pivots,fetch_quotes},
@@ -55,6 +55,7 @@ async fn process_pools0(root_url: &str, pools: &Vec<Pool>, date: NaiveDate)
          no_closes.push(pool.clone());
       }
    }
+   proposals.sort_by(sort_descending);
    Ok((proposals, no_closes))
 }
 

@@ -4,7 +4,7 @@ use chrono::NaiveDate;
 
 use book::{
    csv_utils::CsvWriter,
-   currency::usd::USD
+   currency::usd::{USD,mk_usd}
 };
 
 // ----- Your basic types used across all domains -------------------------
@@ -54,17 +54,15 @@ pub fn sort_descending<M: Measurable>(a: &M, b: &M) -> Ordering {
 pub struct Asset {
    blockchain: Blockchain,
    token: Token,
-   amount: f32
-   // quote: USD,
-   // date: NaiveDate
+   pub amount: f32,
+   quote: USD,
+   date: NaiveDate
 }
 
-/*
 impl Measurable for Asset {
    fn sz(&self) -> f32 { self.amount }
    fn aug(&self) -> f32 { self.sz() * self.quote.amount }
 }
-*/
 
 impl CsvHeader for Asset {
    fn header(&self) -> String {
@@ -72,29 +70,27 @@ impl CsvHeader for Asset {
    }
 }
 impl CsvWriter for Asset {
-   fn ncols(&self) -> usize { 3 }
+   fn ncols(&self) -> usize { 6 }
    fn as_csv(&self) -> String {
-      format!("{},{},{}", self.blockchain, self.token, self.amount)
+      format!("{},{},{},{},{},{}", 
+              self.date, self.blockchain, self.token, self.quote, self.amount,
+              mk_usd(self.amount * self.quote.amount))
    }
-}
-
-fn addm(amt: f32, mult: i32, adj: Option<&f32>) -> f32 {
-   let ans = adj.and_then(|a| Some(mult as f32 * a + amt));
-   if let Some(x) = ans { x } else { amt }
 }
 
 impl Asset {
    pub fn key(&self) -> (Blockchain, Token) {
       (self.blockchain.clone(), self.token.clone())
    }
-   pub fn madd(&self, amt: Option<&f32>) -> f32 { addm(self.amount, 1, amt) }
-   pub fn msubtract(&self, amt: Option<&f32>) -> f32 { 
-      addm(self.amount, -1, amt)
-   }
 }
 
-pub fn mk_asset(k: &(Blockchain, Token), amount: f32) -> Asset {
+pub fn mk_asset(k: &(Blockchain, Token), amount: f32,
+                quote: &USD, date: &NaiveDate) -> Asset {
    let (b, t) = k;
-   Asset { blockchain: b.clone(), token: t.clone(), amount }
+   Asset { blockchain: b.clone(),
+           token: t.clone(), 
+           amount, 
+           quote: quote.clone(),
+           date: date.clone() }
 }
 

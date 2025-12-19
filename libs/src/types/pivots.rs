@@ -20,7 +20,7 @@ use crate::{
    types::{
       quotes::{Quotes,lookup},
       util::{Token,Blockchain,Id,CsvHeader,Partition,Measurable,
-             Asset as Coin,mk_asset as mk_coin,weight,size}
+             Asset as Coin,mk_asset as mk_coin,weight,size,Pool}
    }
 };
 
@@ -273,8 +273,30 @@ pub struct Propose {
    propose: PropAsset
 }
 
+fn blockchain(p: &Propose) -> Blockchain {
+   if let Some(blk) =
+         p.pivot.first().and_then(|q| Some(q.blockchain.to_string())) {
+      blk
+   } else {
+      panic!("No blockchain for proposal!")
+   }
+}
+
+fn pool(p: &Propose) -> Pool {
+   if let Some(pool) = p.principal
+       .first()
+       .and_then(|q| 
+          p.pivot
+           .first()
+           .and_then(|r| Some((q.token.to_string(), r.token.to_string())))) {
+      pool
+   } else {
+      panic!("Missing principal or pivot (or both) asset from proposal")
+   }
+}
+      
 pub fn pivot_amount(p: &Propose) -> Coin {
-   pivot_amount0(&p.pivot)
+   pivot_amount0(blockchain(p), pool(p), &p.close_date, &p.pivot)
 }
 
 impl Measurable for Propose {
@@ -440,14 +462,10 @@ fn mk_prop_asset(tkn: &str, blk: &str, c: f32, amount: f32, knd: &AssetType)
                close_price: mk_usd(c), amount, kind: knd.clone() }
 }
 
-fn pivot_amount0(p: &Vec<PropAsset>) -> Coin {
-   if let Some(fst) = p.first() {
-      let token = fst.token.clone();
-      let blockchain = fst.blockchain.clone();
-      mk_coin(&(blockchain, token), size(p))
-   } else {
-      panic!("Could not find a pivot-asset for a close-recommendation!")
-   }
+fn pivot_amount0(blockchain: Blockchain, pool: Pool,
+                 date: &NaiveDate, assets: &Vec<PropAsset>) -> Coin {
+   let (_, piv) = pool.clone();
+   mk_coin(&(blockchain, piv), size(&assets), &mk_usd(weight(&assets)), &date)
 }
 
 pub fn propose(q: &Quotes)
