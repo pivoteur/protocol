@@ -5,29 +5,54 @@ use std::collections::HashMap;
 use chrono::NaiveDate;
 
 use book::{
+   currency::usd::USD,
    date_utils::{parse_date,datef},
-   err_utils::ErrStr,
+   err_utils::{err_or,ErrStr},
    list_utils::tail,
    num_utils::parse_num,
    rest_utils::read_rest,
-   table_utils::{cols,row,ingest},
+   table_utils::{Table,cols,row,rows,ingest},
    utils::pred
 };
 use crate::{
+   collections::assets::{PivotPool,mk_assets},
    parsers::{parse_str,enum_headers},
-   paths::{open_pivot_path,quotes_url},
+   paths::{open_pivot_path,quotes_url,pool_assets_url},
    tables::index_table,
    types::{
       pivots::{Pivot,parse_pivot,active},
-      quotes::{Quotes,mk_quotes}
+      quotes::{Quotes,mk_quotes},
+      util::mk_asset
    }
 };
+
+pub async fn fetch_assets(root_url: &str, primary: &str, pivot: &str)
+      -> ErrStr<PivotPool> {
+   let (pri, seggs) = enlowerify(primary, pivot);
+   let url = pool_assets_url(root_url, &pri, &seggs);
+   let lines = fetch_lines(&url).await?;
+   let table = ingest(parse_date, parse_str, parse_str, &lines, "\t")?;
+   let hdrs = enum_headers(cols(&table));
+   let (p, s) = enupperify(primary, pivot);
+   let max_date = rows(&table).iter().max().cloned()
+                              .ok_or(format!("No max_date for {p}+{s}"))?;
+   let top = row(&table, &max_date)
+                .ok_or(format!("No row for date {max_date}"))?;
+   let blockchain = top[hdrs["blockchain"]].clone();
+   let mut pool = mk_assets();
+   for asset in [p, s] {
+      let amt = parse_num(&top[hdrs[&asset]])?;
+      let qt: USD = err_or(top[hdrs[&format!("{asset} quote")]].parse(),
+                           &format!("No quote for {asset}"))?;
+      pool.add(mk_asset(&(blockchain.clone(), asset), amt, &qt, &max_date));
+   }
+   Ok(pool)
+}
 
 /// Fetch the pivots for pivot pool A+B; open pivots are reposed in git
 pub async fn fetch_pivots(root_url: &str, primary: &str, pivot: &str)
       -> ErrStr<(Vec<Pivot>, Vec<Pivot>, NaiveDate)> {
-   let pri = primary.to_lowercase();
-   let seggs = pivot.to_lowercase();
+   let (pri, seggs) = enlowerify(primary, pivot);
    let pool = format!("{pri}+{seggs}");
    let url = open_pivot_path(root_url, &pri, &seggs);
    let lines = fetch_lines(&url).await?;
@@ -35,12 +60,7 @@ pub async fn fetch_pivots(root_url: &str, primary: &str, pivot: &str)
 
    let hdrs = enum_headers(cols(&table));
 
-   let max_date =
-      &table.data
-            .iter()
-            .map(|row| datef(&row[hdrs["opened"]]))
-            .max()
-            .ok_or(format!("No max date for {pool} pivot pool"))?;
+   let max_date = max_diem(&table, hdrs["opened"], &pool)?;
    let mut acts: Vec<Pivot> = Vec::new();
    let mut pass: Vec<Pivot> = Vec::new();
 
@@ -52,7 +72,24 @@ pub async fn fetch_pivots(root_url: &str, primary: &str, pivot: &str)
          pass.push(piv);
       }
    }
-   Ok((acts, pass, *max_date))
+   Ok((acts, pass, max_date.clone()))
+}
+
+fn enlowerify(primary: &str, pivot: &str) -> (String, String) {
+   (primary.to_lowercase(), pivot.to_lowercase())
+}
+
+fn enupperify(primary: &str, pivot: &str) -> (String, String) {
+   (primary.to_uppercase(), pivot.to_uppercase())
+}
+
+fn max_diem<T>(table: &Table<T, String, String>, ix: usize, pool: &str)
+      -> ErrStr<NaiveDate> {
+   table.data
+        .iter()
+        .map(|row| datef(&row[ix]))
+        .max()
+        .ok_or(format!("No max date for {pool} pivot pool"))
 }
 
 /// Filter to only the open pivots for pivot pool A+B

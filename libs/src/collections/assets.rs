@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::types::util::{Token,Blockchain,Asset,sort_descending};
+use crate::types::util::{Token,Blockchain,Asset,sort_by_weight,tvl};
 
 /// An Assets (a singular collection of a plurality of assets) is a bag
 /// where the size is the amount of the asset
@@ -27,8 +27,21 @@ impl Assets {
    }
    pub fn assets(&self) -> Vec<Asset> {
       let mut ans: Vec<Asset> = self.map.values().cloned().collect();
-      ans.sort_by(sort_descending);
+      ans.sort_by(sort_by_weight);
       ans
    }
 }
+
+pub fn assets_by_price(a: &Assets) -> Vec<Asset> { a.assets() }
+pub fn assets_by_tvl(a: &Assets) -> Vec<Asset> {
+   let mut ans = a.assets();
+   ans.sort_by(|a, b| tvl(&b).cmp(&tvl(&a)));
+   ans
+}
+
+/// One way to look at a PivotPool is that it is an assets, ... I mean:
+/// I had pivot pools with three assets before ... it wasn't a good idea then,
+/// but who's to say I won't reevaluate that decision?
+
+pub type PivotPool = Assets;
 

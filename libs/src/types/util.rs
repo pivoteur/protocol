@@ -43,8 +43,16 @@ pub fn weight<T: Measurable>(v: &Vec<T>) -> f32 {
    au / s
 }
 
-pub fn sort_descending<M: Measurable>(a: &M, b: &M) -> Ordering {
+pub fn sort_by_weight<M: Measurable>(a: &M, b: &M) -> Ordering {
    b.aug().total_cmp(&a.aug())
+}
+
+pub fn sort_by_size<M: Measurable>(a: &M, b: &M) -> Ordering {
+   b.sz().total_cmp(&a.sz())
+}
+
+pub fn sort_descending<M: Measurable>(a: &M, b: &M) -> Ordering {
+   sort_by_weight(a, b)
 }
 
 // ----- ASSETS ----------------------------------------------------------
@@ -61,12 +69,12 @@ pub struct Asset {
 
 impl Measurable for Asset {
    fn sz(&self) -> f32 { self.amount }
-   fn aug(&self) -> f32 { self.sz() * self.quote.amount }
+   fn aug(&self) -> f32 { self.quote.amount }
 }
 
 impl CsvHeader for Asset {
    fn header(&self) -> String {
-      "for_pivot,blockchain,token,quote,amount,total".to_string()
+      "date,blockchain,token,quote,amount,total".to_string()
    }
 }
 impl CsvWriter for Asset {
@@ -93,4 +101,6 @@ pub fn mk_asset(k: &(Blockchain, Token), amount: f32,
            quote: quote.clone(),
            date: date.clone() }
 }
+
+pub fn tvl(a: &Asset) -> USD { mk_usd(a.amount * a.quote.amount) }
 

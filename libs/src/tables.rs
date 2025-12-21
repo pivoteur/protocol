@@ -18,3 +18,4 @@ pub fn index_table(lines: Vec<String>) -> ErrStr<Table<Id, String, String>> {
    body.insert(0, header);
    ingest(parse_id, parse_str, parse_str, &body, "\t")
 }
+
