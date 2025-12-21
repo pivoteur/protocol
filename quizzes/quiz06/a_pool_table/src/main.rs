@@ -4,7 +4,6 @@ use book::{
 };
 
 use libs::{
-   collections::assets::assets_by_price,
    fetchers::fetch_assets,
    reports::print_table
 };
