@@ -15,6 +15,7 @@ where:
 
 ## Revisions
 
+* 1.04, 2025-12-21: made git-fetch of pool names generic on path
 * 1.03, 2025-12-18: sorting aggregated assets to pivot by USD-value
 * 1.02, 2025-12-18: Generic sort-function for any Measurable-type
 * 1.01, 2025-12-18: Sort pivots by USD-amount-pivoted

@@ -9,8 +9,8 @@ use book::{
 
 use crate::types::util::Pool;
 
-pub async fn fetch_pool_names(auth: &str) -> ErrStr<Vec<Pool>> {
-   let (hdr, url) = marshall_git_call(auth)?;
+pub async fn fetch_pool_names(auth: &str, path: &str) -> ErrStr<Vec<Pool>> {
+   let (hdr, url) = marshall_git_call(auth, path)?;
    let json_str = read_rest_with(hdr, &url).await?;
    let json: Root = err_or(serde_json::from_str(&json_str),
        &format!("Could not parse JSON {json_str}"))?;
@@ -52,13 +52,11 @@ fn assets(file: &str) -> ErrStr<Pool> {
 
 // ----- marshalling the call to git to get pool directory contents ------
 
-fn marshall_git_call(token: &str) -> ErrStr<(HeaderMap, String)> {
+fn marshall_git_call(token: &str, path: &str) -> ErrStr<(HeaderMap, String)> {
    let header = build_header_with(token)?;
    let ownr = owner(token)?;
    let rep = repo(&ownr);
-   let path = "data/pivots/open/raw/";
    let url = mk_url(&ownr, &rep, path);
-
    Ok((header, url))
 }
 
