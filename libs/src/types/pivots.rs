@@ -19,8 +19,9 @@ use crate::{
    parsers::parse_id,
    types::{
       quotes::{Quotes,lookup},
-      util::{Token,Blockchain,Id,CsvHeader,Partition,Measurable,
-             Asset as Coin,mk_asset as mk_coin,weight,size,Pool}
+      util::{Token,Blockchain,Id,CsvHeader,Partition,Pool},
+      measurable::{Measurable,weight,size},
+      assets::{Asset as Coin,mk_asset as mk_coin}
    }
 };
 

@@ -8,8 +8,9 @@ use book::{
 
 use crate::{
    types::{
-      util::{Pool,sort_descending},
-      pivots::{propose,next_close_id,partition_on}
+      measurable::sort_descending,
+      pivots::{propose,next_close_id,partition_on},
+      util::Pool
    },
    fetchers::{fetch_pivots,fetch_quotes},
    git::fetch_pool_names,

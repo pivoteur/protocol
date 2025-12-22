@@ -4,7 +4,8 @@ use book::csv_utils::CsvWriter;
 
 use crate::types::{
    pivots::Propose,
-   util::{CsvHeader,Pool,Measurable}
+   measurable::Measurable,
+   util::{CsvHeader,Pool}
 };
 
 pub fn header(prim: &str, piv: &str) -> String {

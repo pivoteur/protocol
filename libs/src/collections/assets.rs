@@ -1,6 +1,10 @@
 use std::collections::HashMap;
 
-use crate::types::util::{Token,Blockchain,Asset,sort_by_weight,tvl};
+use crate::types::{
+   assets::{Asset,tvl},
+   measurable::{sort_by_weight},
+   util::{Token,Blockchain}
+};
 
 /// An Assets (a singular collection of a plurality of assets) is a bag
 /// where the size is the amount of the asset
