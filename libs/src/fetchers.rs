@@ -15,19 +15,20 @@ use book::{
    utils::pred
 };
 use crate::{
-   collections::assets::{PivotPool,mk_assets},
    parsers::{parse_str,enum_headers},
    paths::{open_pivot_path,quotes_url,pool_assets_url},
    tables::index_table,
    types::{
       pivots::{Pivot,parse_pivot,active},
       quotes::{Quotes,mk_quotes},
-      assets::mk_asset
+      assets::{Asset,mk_asset},
+      comps::{Composition,mk_composition},
+      util::{Token,Blockchain}
    }
 };
 
 pub async fn fetch_assets(root_url: &str, primary: &str, pivot: &str)
-      -> ErrStr<PivotPool> {
+      -> ErrStr<Composition> {
    let (pri, seggs) = enlowerify(primary, pivot);
    let url = pool_assets_url(root_url, &pri, &seggs);
    let lines = fetch_lines(&url).await?;
@@ -38,15 +39,29 @@ pub async fn fetch_assets(root_url: &str, primary: &str, pivot: &str)
                               .ok_or(format!("No max_date for {p}+{s}"))?;
    let top = row(&table, &max_date)
                 .ok_or(format!("No row for date {max_date}"))?;
-   let blockchain = top[hdrs["blockchain"]].clone();
-   let mut pool = mk_assets();
-   for asset in [p, s] {
-      let amt = parse_num(&top[hdrs[&asset]])?;
-      let qt: USD = err_or(top[hdrs[&format!("{asset} quote")]].parse(),
-                           &format!("No quote for {asset}"))?;
-      pool.add(mk_asset(&(blockchain.clone(), asset), amt, &qt, &max_date));
+   let blk = top[hdrs["blockchain"]].clone();
+   let primary = buidl_asset(&top[hdrs[&p]], qt_f(&top, &hdrs),
+                             &blk, &p, &max_date)?;
+   let pivot = buidl_asset(&top[hdrs[&s]], qt_f(&top, &hdrs),
+                             &blk, &s, &max_date)?;
+   Ok(mk_composition(primary, pivot))
+}
+
+fn qt_f<'a>(v: &'a Vec<String>, hdrs: &'a HashMap<String, usize>)
+      -> impl Fn(&'a Token) -> ErrStr<USD> {
+   |t: &'a Token| {
+      let q = &v[hdrs[&format!("{t} quote")]];
+      let quote: USD = err_or(q.parse(), &format!("No quote for {t}"))?;
+      Ok(quote)
    }
-   Ok(pool)
+}
+   
+fn buidl_asset<'a>(amount: &str, q: impl Fn(&'a Token) -> ErrStr<USD>, 
+                   blk: &Blockchain, t: &'a Token, dt: &NaiveDate)
+      -> ErrStr<Asset> {
+   let amt = parse_num(amount)?;
+   let quote = q(t)?;
+   Ok(mk_asset(&(blk.clone(), t.clone()), amt, &quote, dt))
 }
 
 /// Fetch the pivots for pivot pool A+B; open pivots are reposed in git

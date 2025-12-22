@@ -45,6 +45,7 @@ impl Asset {
    pub fn key(&self) -> (Blockchain, Token) {
       (self.blockchain.clone(), self.token.clone())
    }
+   pub fn tvl(&self) -> USD { mk_usd(self.amount * self.quote.amount) }
 }
 
 pub fn mk_asset(k: &(Blockchain, Token), amount: f32,
@@ -56,6 +57,4 @@ pub fn mk_asset(k: &(Blockchain, Token), amount: f32,
            quote: quote.clone(),
            date: date.clone() }
 }
-
-pub fn tvl(a: &Asset) -> USD { mk_usd(a.amount * a.quote.amount) }
 

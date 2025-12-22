@@ -10,7 +10,7 @@ use libs::{
    types::pivots::pivot_amount
 };
 
-fn version() -> String { "1.05".to_string() }
+fn version() -> String { "1.06".to_string() }
 fn app_name() -> String { "dusk".to_string() }
 
 fn usage() -> ErrStr<()> {

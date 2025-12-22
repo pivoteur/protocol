@@ -58,7 +58,7 @@ impl Measurable for Proposal {
    fn aug(&self) -> f32 { proposal(&self).aug() }
 }
 
-pub fn print_table<T: CsvHeader + CsvWriter>(header: &str, v: &Vec<T>) {
+pub fn print_table<T: CsvHeader + CsvWriter>(header: &str, v: &[T]) {
    fn printer(s: &String) { println!("{s}"); }
    let mut first_time = true;
    println!("{header}\n");

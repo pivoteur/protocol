@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use crate::types::{
-   assets::{Asset,tvl},
+   assets::Asset,
    measurable::{sort_by_weight},
    util::{Token,Blockchain}
 };
@@ -39,7 +39,7 @@ impl Assets {
 pub fn assets_by_price(a: &Assets) -> Vec<Asset> { a.assets() }
 pub fn assets_by_tvl(a: &Assets) -> Vec<Asset> {
    let mut ans = a.assets();
-   ans.sort_by(|a, b| tvl(&b).cmp(&tvl(&a)));
+   ans.sort_by(|a, b| b.tvl().cmp(&a.tvl()));
    ans
 }
 
