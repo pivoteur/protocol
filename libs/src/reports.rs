@@ -68,9 +68,15 @@ pub fn print_table<T: CsvHeader + CsvWriter>(header: &str, v: &[T]) {
 }
 
 pub fn report_proposes(proposes: &Vec<Proposal>, no_closers: &Vec<Pool>) {
-   print_table("", proposes);
+   let pools = if proposes.is_empty() {
+      println!("\nNo close pivots.");
+      "analyzed"
+   } else {
+      print_table("", proposes);
+      "with no closes"
+   };
    if !no_closers.is_empty() { 
-      println!("\nPivot pools with no closes:\n");
+      println!("\nPivot pools {pools}:\n");
       for (prim, piv) in no_closers {
          println!("* {}", header(prim, piv));
       }

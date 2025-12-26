@@ -15,6 +15,7 @@ where:
 
 ## Revisions
 
+* 1.07, 2025-12-26: if there are no pivots to close, report that explicitly
 * 1.06, 2025-12-22: upgraded to match Composition-aware libraries
 * 1.05, 2025-12-21: moved Asset and Measurable to their own modules
 * 1.04, 2025-12-21: made git-fetch of pool names generic on path

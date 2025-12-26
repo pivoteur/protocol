@@ -6,11 +6,11 @@ use book::{
 use libs::{
    collections::assets::mk_assets,
    processors::process_pools,
-   reports::{report_proposes,proposal,print_table},
+   reports::{report_proposes,proposal,print_table,Proposal},
    types::pivots::pivot_amount
 };
 
-fn version() -> String { "1.06".to_string() }
+fn version() -> String { "1.07".to_string() }
 fn app_name() -> String { "dusk".to_string() }
 
 fn usage() -> ErrStr<()> {
@@ -19,7 +19,7 @@ fn usage() -> ErrStr<()> {
 $ {} <protocol> <date>
 
 where:
-* <protocol> is the protocol-name, e.g. PIVOT
+
 * <date> is the date to propose pivots, e.g. 2025-12-18
 ", app_name());
    Err("Need <protocol> and <date> arguments".to_string())
@@ -31,14 +31,19 @@ async fn main() -> ErrStr<()> {
       let (proposals, no_closes) = process_pools(&ath, &dt).await?;
       println!("{}, version: {}", app_name(), version());
       report_proposes(&proposals, &no_closes);
-      let mut tokens = mk_assets();
-      proposals.iter().for_each(|p| {
-         let asset = pivot_amount(&proposal(p));
-         tokens.add(asset);
-      });
-      print_table("\nAssets to pivot:", &tokens.assets());
+      if !proposals.is_empty() { tokens_to_pivot(proposals); }
       Ok(())
    } else {
       usage()
    }
 }
+
+fn tokens_to_pivot(proposals: Vec<Proposal>) {
+   let mut tokens = mk_assets();
+   proposals.iter().for_each(|p| {
+         let asset = pivot_amount(&proposal(p));
+         tokens.add(asset);
+   });
+   print_table("\nAssets to pivot:", &tokens.assets());
+}
+
