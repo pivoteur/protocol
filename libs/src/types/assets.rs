@@ -28,16 +28,12 @@ impl Measurable for Asset {
 }
 
 impl CsvHeader for Asset {
-   fn header(&self) -> String {
-      "date,blockchain,token,quote,amount,total".to_string()
-   }
+   fn header(&self) -> String { format!("date,blockchain,{}", base_header()) }
 }
 impl CsvWriter for Asset {
-   fn ncols(&self) -> usize { 6 }
+   fn ncols(&self) -> usize { 2 + base_sz() }
    fn as_csv(&self) -> String {
-      format!("{},{},{},{},{},{}", 
-              self.date, self.blockchain, self.token, self.quote, self.amount,
-              mk_usd(self.amount * self.quote.amount))
+      format!("{},{},{}", self.date, self.blockchain, base_csv_values(&self))
    }
 }
 
@@ -45,7 +41,6 @@ impl Asset {
    pub fn key(&self) -> (Blockchain, Token) {
       (self.blockchain.clone(), self.token.clone())
    }
-   pub fn tvl(&self) -> USD { mk_usd(self.amount * self.quote.amount) }
 }
 
 pub fn mk_asset(k: &(Blockchain, Token), amount: f32,
@@ -57,4 +52,35 @@ pub fn mk_asset(k: &(Blockchain, Token), amount: f32,
            quote: quote.clone(),
            date: date.clone() }
 }
+
+/// Representation of an asset without the redundant date and blockchain data
+#[derive(Debug,Clone)]
+pub struct PivotAsset { asset: Asset }
+
+pub fn mk_pivot_asset(asset: Asset) -> PivotAsset { PivotAsset { asset } }
+
+impl CsvHeader for PivotAsset {
+   fn header(&self) -> String { base_header() }
+}
+impl CsvWriter for PivotAsset {
+   fn ncols(&self) -> usize { base_sz() }
+   fn as_csv(&self) -> String { base_csv_values(&self.asset) }
+}
+
+fn base_header() -> String { "token,quote,amount,total".to_string() }
+fn base_csv_values(a: &Asset) -> String {
+   format!("{},{},{},{}", a.token, a.quote, a.amount, tvl(a))
+}
+fn base_sz() -> usize { 4 }
+
+impl Measurable for PivotAsset {
+   fn sz(&self) -> f32 { self.asset.sz() }
+   fn aug(&self) -> f32 { self.asset.aug() }
+}
+
+impl PivotAsset {
+   pub fn key(&self) -> Token { self.asset.token.clone() }
+}
+
+pub fn tvl<M: Measurable>(asset: &M) -> USD { mk_usd(asset.sz() * asset.aug()) }
 

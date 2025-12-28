@@ -6,7 +6,7 @@ use book::{
 };
 
 use super::{
-   assets::Asset,
+   assets::{Asset,PivotAsset,tvl,mk_pivot_asset},
    measurable::{Measurable,size},
    util::CsvHeader
 };
@@ -14,21 +14,26 @@ use super::{
 #[derive(Debug,Clone)]
 pub struct Composition {
    primary: Asset,
-   pivot: Asset
+   pivot: PivotAsset
 }
 
 pub fn mk_composition(primary: Asset, pivot: Asset) -> Composition {
-   Composition { primary, pivot }
+   Composition { primary, pivot: mk_pivot_asset(pivot) }
 }
 
 impl Composition {
    pub fn pool_name(&self) -> String {
       let (_, pri) = self.primary.key();
-      let (_, piv) = self.pivot.key();
+      let piv = self.pivot.key();
       format!("{pri}+{piv}")
    }
 
-   pub fn tvl(&self) -> USD { self.primary.tvl() + self.pivot.tvl() }
+   pub fn tvl(&self) -> USD { tvl(&self.primary) + tvl(&self.pivot) }
+}
+
+impl Measurable for Composition {
+   fn sz(&self) -> f32 { self.tvl().amount }
+   fn aug(&self) -> f32 { 1.0 }
 }
 
 pub fn total(pools: &Vec<Composition>) -> USD {
@@ -37,11 +42,6 @@ pub fn total(pools: &Vec<Composition>) -> USD {
 
 pub fn last_updated(pools: &Vec<Composition>) -> Option<NaiveDate> {
    pools.iter().map(|p| p.primary.date).max()
-}
-
-impl Measurable for Composition {
-   fn sz(&self) -> f32 { self.tvl().amount }
-   fn aug(&self) -> f32 { 1.0 }
 }
 
 impl CsvWriter for Composition {

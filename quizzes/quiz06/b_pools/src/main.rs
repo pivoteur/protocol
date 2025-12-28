@@ -1,5 +1,5 @@
 use book::{
-   currency::usd::{USD,mk_usd},
+   currency::usd::{USD,mk_usd,no_monay},
    csv_utils::{CsvWriter,mk_blank},
    err_utils::ErrStr,
    num_utils::parse_or,
@@ -16,7 +16,7 @@ use libs::{
   }
 };
 
-fn version() -> String { "1.03".to_string() }
+fn version() -> String { "1.04".to_string() }
 fn app_name() -> String { "assets".to_string() }
 fn min_default() -> f32 { 10000.0 }
 
@@ -32,30 +32,33 @@ async fn main() -> ErrStr<()> {
       let pool = fetch_assets(&root_url, &prim, &piv).await?;
       pools.push(pool);
    }
+   report_on_assets(pools, min_val);
+   Ok(())
+}
+
+fn report_on_assets(pools: Vec<Composition>, min_val: USD) {
    let skip = if let Some(a_pool) = pools.first() { a_pool.ncols() } else {
       panic!("Portfolio has no pivot pools!")
    } - 3;
    let (mut viab, mut poor): (Vec<_>, Vec<_>)
       = pools.into_iter().partition(|p| p.tvl() > min_val);
-   viab.sort_by(sort_by_size);
-   let sz1 = total(&viab);
-   poor.sort_by(sort_by_size);
-   let sz2 = total(&poor);
    println!("{}, version: {}", app_name(), version());
-   print_update("main pools", &viab);
-   footer(skip, "Main pools,subtotal", &sz1);
-   print_update("pools to review", &poor);
-   footer(skip, "pools to review,subtotal", &sz2);
+   let sz1 = print_update(skip, "main pools", &mut viab);
+   let sz2 = print_update(skip, "pools to review", &mut poor);
    footer(skip, " ,total", &(sz1 + sz2));
-   Ok(())
 }
 
-fn print_update(title: &str, pools: &Vec<Composition>) {
+fn print_update(skip: usize, title: &str, pools: &mut Vec<Composition>) -> USD {
    if let Some(updated) = last_updated(pools) {
+      pools.sort_by(sort_by_size);
+      let tot = total(pools);
       let header = format!("{title},updated:,{updated}");
       print_table(&header, pools);
+      footer(skip, &format!("{title},subtotal"), &tot);
+      tot
    } else {
       println!("\nNo {title}");
+      no_monay()
    }
 }
 

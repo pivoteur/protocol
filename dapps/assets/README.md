@@ -8,6 +8,8 @@ Snapshot of the protocol's pivot pools. Partitions pools by TVL
 
 ## History
 
+* 1.04, 2025-12-28: removed redundant blockchain and date-information from pivot
+assets
 * 1.03, 2025-12-28: added last-updated information to pivot pools
 * 1.02, 2025-12-28: totalling partitioned- and all pivot pools' assets
 * 1.01, 2025-12-28: refactored `min_default` to a function
