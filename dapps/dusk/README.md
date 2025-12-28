@@ -5,6 +5,8 @@ blockchain.
 
 ![Assets to pivot by blockchain](../../quizzes/quiz05/a_assets/imgs/01-assets.png)
 
+[Source](../../quizzes/quiz05/a_assets/src/main.rs)
+
 ## Usage
 
 `$ dusk <protocol> <date>`
