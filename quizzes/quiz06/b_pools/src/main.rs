@@ -1,5 +1,6 @@
 use book::{
    currency::usd::mk_usd,
+   csv_utils::{CsvWriter,mk_blank},
    err_utils::ErrStr,
    num_utils::parse_or,
    utils::{get_args,get_env}
@@ -8,12 +9,11 @@ use book::{
 use libs::{
    fetchers::fetch_assets,
    git::fetch_pool_names,
-   // types::comps::Composition,
    reports::print_table,
-   types::measurable::sort_by_size
+   types::measurable::{sort_by_size,size}
 };
 
-fn version() -> String { "1.01".to_string() }
+fn version() -> String { "1.02".to_string() }
 fn app_name() -> String { "assets".to_string() }
 fn min_default() -> f32 { 10000.0 }
 
@@ -29,14 +29,27 @@ async fn main() -> ErrStr<()> {
       let pool = fetch_assets(&root_url, &prim, &piv).await?;
       pools.push(pool);
    }
+   let skip = if let Some(a_pool) = pools.first() { a_pool.ncols() } else {
+      panic!("Portfolio has no pivot pools!")
+   } - 3;
    let (mut viab, mut poor): (Vec<_>, Vec<_>)
       = pools.into_iter().partition(|p| p.tvl() > min_val);
    viab.sort_by(sort_by_size);
+   let sz1 = size(&viab);
    poor.sort_by(sort_by_size);
+   let sz2 = size(&poor);
    println!("{}, version: {}", app_name(), version());
    print_table("Power Pools", &viab);
+   footer(skip, "Main pools,subtotal", sz1);
    print_table("Pools to review", &poor);
+   footer(skip, "pools to review,subtotal", sz2);
+   footer(skip, " ,total", sz1 + sz2);
    Ok(())
+}
+
+fn footer(skip: usize, header: &str, sz: f32) {
+   let pre = mk_blank(skip);
+   println!("\n{}{header}:,{}", pre.as_csv(), mk_usd(sz));
 }
 
 fn usage() -> String {
