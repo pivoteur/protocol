@@ -6,3 +6,7 @@ Snapshot of the protocol's pivot pools. Partitions pools by TVL
 
 [source](../../quizzes/quiz06/b_pools/src/main.rs)
 
+## History
+
+* 1.00, 2025-12-28: released
+
