@@ -9,16 +9,17 @@ use book::{
    date_utils::{parse_date,datef},
    err_utils::{err_or,ErrStr},
    list_utils::tail,
-   num_utils::parse_num,
+   num_utils::{parse_num,parse_commaless},
    rest_utils::read_rest,
    table_utils::{Table,cols,row,rows,ingest},
    utils::pred
 };
-use crate::{
+use super::{
    parsers::{parse_str,enum_headers},
    paths::{open_pivot_path,quotes_url,pool_assets_url},
    tables::index_table,
    types::{
+      aliases::aliases,
       pivots::{Pivot,parse_pivot,active},
       quotes::{Quotes,mk_quotes},
       assets::{Asset,mk_asset},
@@ -59,7 +60,7 @@ fn qt_f<'a>(v: &'a Vec<String>, hdrs: &'a HashMap<String, usize>)
 fn buidl_asset<'a>(amount: &str, q: impl Fn(&'a Token) -> ErrStr<USD>, 
                    blk: &Blockchain, t: &'a Token, dt: &NaiveDate)
       -> ErrStr<Asset> {
-   let amt = parse_num(amount)?;
+   let amt = parse_commaless(amount)?;
    let quote = q(t)?;
    Ok(mk_asset(&(blk.clone(), t.clone()), amt, &quote, dt))
 }
@@ -95,7 +96,8 @@ fn enlowerify(primary: &str, pivot: &str) -> (String, String) {
 }
 
 fn enupperify(primary: &str, pivot: &str) -> (String, String) {
-   (primary.to_uppercase(), pivot.to_uppercase())
+   let a = aliases();
+   (a.alias(primary), a.alias(pivot))
 }
 
 fn max_diem<T>(table: &Table<T, String, String>, ix: usize, pool: &str)

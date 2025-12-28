@@ -3,8 +3,9 @@ use book::{
    csv_utils::CsvWriter
 };
 
-use crate::types::{
+use super::{
    assets::Asset,
+   measurable::Measurable,
    util::CsvHeader
 };
 
@@ -28,6 +29,11 @@ impl Composition {
    pub fn tvl(&self) -> USD { self.primary.tvl() + self.pivot.tvl() }
 }
 
+impl Measurable for Composition {
+   fn sz(&self) -> f32 { self.tvl().amount }
+   fn aug(&self) -> f32 { 1.0 }
+}
+
 impl CsvWriter for Composition {
    fn ncols(&self) -> usize {
       1 + self.primary.ncols() + self.pivot.ncols() + 1
@@ -44,15 +50,15 @@ impl CsvWriter for Composition {
 impl CsvHeader for Composition {
    fn header(&self) -> String {
       format!("pool,{},{},tvl",
-              contextualize(PoolType::PRIMARY, &self.primary.header()),
-              contextualize(PoolType::PIVOT, &self.pivot.header()))
+              contextualize(PRIMARY, &self.primary.header()),
+              contextualize(PIVOT, &self.pivot.header()))
    }
 }
 
-enum PoolType { PRIMARY, PIVOT }
-use PoolType::*;
+enum PoolAsset { PRIMARY, PIVOT }
+use PoolAsset::*;
 
-impl PoolType {
+impl PoolAsset {
    fn kind(&self) -> String {
       match self {
          PRIMARY => "primary",
@@ -61,7 +67,7 @@ impl PoolType {
    }
 }
 
-fn contextualize(p: PoolType, hdr: &str) -> String {
+fn contextualize(p: PoolAsset, hdr: &str) -> String {
    hdr.split(",").map(|s| format!("{}_{}", p.kind(), s))
       .collect::<Vec<_>>()
       .join(",")

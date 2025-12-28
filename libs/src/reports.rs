@@ -61,7 +61,7 @@ impl Measurable for Proposal {
 pub fn print_table<T: CsvHeader + CsvWriter>(header: &str, v: &[T]) {
    fn printer(s: &String) { println!("{s}"); }
    let mut first_time = true;
-   println!("{header}\n");
+   println!("\n{header}\n");
    for row in v {
       print_row(printer, &mut first_time, row);
    }

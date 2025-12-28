@@ -11,9 +11,11 @@ pub mod quotes;
 /// Represents a pivot (from -> to swap) and also recommends a proposal
 pub mod pivots;
 
+/// Alias one wrapped or synthetic token-name to the base asset
+pub mod aliases;
+
 /// trait that measures types (across divers types)
 pub mod measurable;
 
 /// types used across the systems, like Id, Token, Blochcain
 pub mod util;
-

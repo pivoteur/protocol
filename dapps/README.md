@@ -18,3 +18,7 @@ Applications for protocol workflow
 
 * [dawn](dawn): the start of a start, reading pivot pool assets
 
+## `assets`: state of all pools
+
+* [assets](assets): partitions pools by TVL
+
