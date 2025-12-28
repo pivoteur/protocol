@@ -19,7 +19,7 @@ pub struct Asset {
    token: Token,
    pub amount: f32,
    quote: USD,
-   date: NaiveDate
+   pub date: NaiveDate
 }
 
 impl Measurable for Asset {

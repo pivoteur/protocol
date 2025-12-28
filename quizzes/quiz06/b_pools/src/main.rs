@@ -1,5 +1,5 @@
 use book::{
-   currency::usd::mk_usd,
+   currency::usd::{USD,mk_usd},
    csv_utils::{CsvWriter,mk_blank},
    err_utils::ErrStr,
    num_utils::parse_or,
@@ -10,10 +10,13 @@ use libs::{
    fetchers::fetch_assets,
    git::fetch_pool_names,
    reports::print_table,
-   types::measurable::{sort_by_size,size}
+   types::{
+      comps::{Composition,total,last_updated},
+      measurable::sort_by_size
+  }
 };
 
-fn version() -> String { "1.02".to_string() }
+fn version() -> String { "1.03".to_string() }
 fn app_name() -> String { "assets".to_string() }
 fn min_default() -> f32 { 10000.0 }
 
@@ -35,21 +38,30 @@ async fn main() -> ErrStr<()> {
    let (mut viab, mut poor): (Vec<_>, Vec<_>)
       = pools.into_iter().partition(|p| p.tvl() > min_val);
    viab.sort_by(sort_by_size);
-   let sz1 = size(&viab);
+   let sz1 = total(&viab);
    poor.sort_by(sort_by_size);
-   let sz2 = size(&poor);
+   let sz2 = total(&poor);
    println!("{}, version: {}", app_name(), version());
-   print_table("Power Pools", &viab);
-   footer(skip, "Main pools,subtotal", sz1);
-   print_table("Pools to review", &poor);
-   footer(skip, "pools to review,subtotal", sz2);
-   footer(skip, " ,total", sz1 + sz2);
+   print_update("main pools", &viab);
+   footer(skip, "Main pools,subtotal", &sz1);
+   print_update("pools to review", &poor);
+   footer(skip, "pools to review,subtotal", &sz2);
+   footer(skip, " ,total", &(sz1 + sz2));
    Ok(())
 }
 
-fn footer(skip: usize, header: &str, sz: f32) {
+fn print_update(title: &str, pools: &Vec<Composition>) {
+   if let Some(updated) = last_updated(pools) {
+      let header = format!("{title},updated:,{updated}");
+      print_table(&header, pools);
+   } else {
+      println!("\nNo {title}");
+   }
+}
+
+fn footer(skip: usize, header: &str, total: &USD) {
    let pre = mk_blank(skip);
-   println!("\n{}{header}:,{}", pre.as_csv(), mk_usd(sz));
+   println!("\n{}{header}:,{total}", pre.as_csv());
 }
 
 fn usage() -> String {

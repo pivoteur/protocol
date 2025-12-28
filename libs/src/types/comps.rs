@@ -1,11 +1,13 @@
+use chrono::NaiveDate;
+
 use book::{
-   currency::usd::USD,
+   currency::usd::{USD,mk_usd},
    csv_utils::CsvWriter
 };
 
 use super::{
    assets::Asset,
-   measurable::Measurable,
+   measurable::{Measurable,size},
    util::CsvHeader
 };
 
@@ -27,6 +29,14 @@ impl Composition {
    }
 
    pub fn tvl(&self) -> USD { self.primary.tvl() + self.pivot.tvl() }
+}
+
+pub fn total(pools: &Vec<Composition>) -> USD {
+   mk_usd(size(pools))
+}
+
+pub fn last_updated(pools: &Vec<Composition>) -> Option<NaiveDate> {
+   pools.iter().map(|p| p.primary.date).max()
 }
 
 impl Measurable for Composition {
