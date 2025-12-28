@@ -4,6 +4,7 @@ use super::util::Token;
 
 type Alias = HashMap<Token, Token>;
 
+#[derive(Debug, Clone)]
 pub struct Aliases { aliaz: Alias }
 
 pub fn aliases() -> Aliases {

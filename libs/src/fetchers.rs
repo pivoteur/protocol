@@ -129,7 +129,8 @@ async fn fetch_lines(url: &str) -> ErrStr<Vec<String>> {
 pub async fn fetch_quotes(date: &NaiveDate) -> ErrStr<Quotes> {
    let lines = fetch_lines(&quotes_url()).await?;
    let body: Vec<String> = tail(&lines);
-   let table = ingest(parse_date, parse_str, parse_str, &body, ",")?;
+   fn capitalize(s: &str) -> ErrStr<String> { Ok(s.to_uppercase()) }
+   let table = ingest(parse_date, capitalize, parse_str, &body, ",")?;
    if let Some(quotes_row) = row(&table, date) {
       let mut quotes = HashMap::new();
       let hdrs = cols(&table);

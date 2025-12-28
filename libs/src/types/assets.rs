@@ -2,11 +2,11 @@ use chrono::NaiveDate;
 
 use book::{
    csv_utils::CsvWriter,
-   currency::usd::{USD,mk_usd}
+   currency::usd::USD
 };
 
 use crate::types::{
-   measurable::Measurable,
+   measurable::{Measurable,tvl},
    util::{Blockchain,CsvHeader,Token}
 };
 
@@ -81,6 +81,4 @@ impl Measurable for PivotAsset {
 impl PivotAsset {
    pub fn key(&self) -> Token { self.asset.token.clone() }
 }
-
-pub fn tvl<M: Measurable>(asset: &M) -> USD { mk_usd(asset.sz() * asset.aug()) }
 

@@ -1,5 +1,7 @@
 use std::cmp::Ordering;
 
+use book::currency::usd::{USD, mk_usd};
+
 // ----- Measurable types -------------------------------------------------
 
 pub trait Measurable {
@@ -28,5 +30,11 @@ pub fn sort_by_size<M: Measurable>(a: &M, b: &M) -> Ordering {
 
 pub fn sort_descending<M: Measurable>(a: &M, b: &M) -> Ordering {
    sort_by_weight(a, b)
+}
+
+pub fn tvl<M: Measurable>(asset: &M) -> USD { mk_usd(asset.sz() * asset.aug()) }
+
+pub fn sort_by_tvl<M: Measurable>(a: &M, b: &M) -> Ordering {
+   tvl(b).cmp(&tvl(a))
 }
 

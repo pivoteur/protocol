@@ -67,19 +67,43 @@ pub fn print_table<T: CsvHeader + CsvWriter>(header: &str, v: &[T]) {
    }
 }
 
-pub fn report_proposes(proposes: &Vec<Proposal>, no_closers: &Vec<Pool>) {
+pub fn report_proposes(proposes: &[Proposal], no_closers: &[Pool]) {
    let pools = if proposes.is_empty() {
       println!("\nNo close pivots.");
       "analyzed"
    } else {
-      print_table("", proposes);
+      print_table("Close Pivot Calls", proposes);
       "with no closes"
    };
-   if !no_closers.is_empty() { 
-      println!("\nPivot pools {pools}:\n");
-      for (prim, piv) in no_closers {
-         println!("* {}", header(prim, piv));
-      }
+   compact(&format!("Pivot pools {pools}"), "No pools without close calls",
+           no_closers, proposes.first(), 24);
+}
+
+fn compact<T: CsvWriter>(hdr: &str, nada: &str, no_closers: &[Pool],
+                         propose: Option<&T>, default: usize) {
+   if no_closers.is_empty() {
+      println!("\n{nada}\n");
+   } else {
+      print_compact(hdr, no_closers, propose, default);
+   }
+}
+
+fn print_compact<T: CsvWriter>(hdr: &str, no_closers: &[Pool],
+                               propose: Option<&T>, default: usize) {
+   if let Some(ncols)
+         = propose.and_then(|p| Some(p.ncols())).or(Some(default)) {
+      let len = no_closers.len();
+      let nrows: usize = len * 2 / ncols + 1; // each entry takes two columns
+      let entries_per_row: usize = len / nrows;
+      println!("\n{hdr}\n");
+      no_closers.chunks(entries_per_row).for_each(|chunk| {
+         println!("{}", chunk.iter()
+                             .map(|(p,q)| header(p,q))
+                             .collect::<Vec<_>>()
+                             .join(", ,"));
+      });
+   } else {
+      panic!("Can't compute number of columns to report compactly.");
    }
 }
 

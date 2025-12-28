@@ -6,8 +6,8 @@ use book::{
 };
 
 use super::{
-   assets::{Asset,PivotAsset,tvl,mk_pivot_asset},
-   measurable::{Measurable,size},
+   assets::{Asset,PivotAsset,mk_pivot_asset},
+   measurable::{Measurable,size,tvl},
    util::CsvHeader
 };
 

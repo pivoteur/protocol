@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 
 use crate::types::{
-   assets::{Asset,tvl},
-   measurable::{sort_by_weight},
+   assets::Asset,
+   measurable::{sort_by_tvl,sort_by_weight},
    util::{Token,Blockchain}
 };
 
@@ -29,17 +29,19 @@ impl Assets {
          panic!("No asset {:?} to remove!", asset)
       }
    }
-   pub fn assets(&self) -> Vec<Asset> {
-      let mut ans: Vec<Asset> = self.map.values().cloned().collect();
-      ans.sort_by(sort_by_weight);
-      ans
-   }
 }
 
-pub fn assets_by_price(a: &Assets) -> Vec<Asset> { a.assets() }
+fn assets(a: &Assets) -> Vec<Asset> { a.map.values().cloned().collect() }
+
+pub fn assets_by_price(a: &Assets) -> Vec<Asset> {
+   let mut ans = assets(a);
+   ans.sort_by(sort_by_weight);
+   ans
+}
+
 pub fn assets_by_tvl(a: &Assets) -> Vec<Asset> {
-   let mut ans = a.assets();
-   ans.sort_by(|a, b| tvl(b).cmp(&tvl(a)));
+   let mut ans = assets(a);
+   ans.sort_by(sort_by_tvl);
    ans
 }
 
