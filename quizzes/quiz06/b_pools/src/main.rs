@@ -13,15 +13,16 @@ use libs::{
    types::measurable::sort_by_size
 };
 
-fn version() -> String { "1.00".to_string() }
+fn version() -> String { "1.01".to_string() }
 fn app_name() -> String { "assets".to_string() }
+fn min_default() -> f32 { 10000.0 }
 
 #[tokio::main]
 async fn main() -> ErrStr<()> {
    let args = get_args();
    let auth = args.first().ok_or_else(|| usage())?.to_uppercase();
    let root_url = get_env(&format!("{auth}_URL"))?;
-   let min_val = mk_usd(parse_or(args.last(), 20000.0));
+   let min_val = mk_usd(parse_or(args.last(), min_default()));
    let pool_names = fetch_pool_names(&auth, "data/pools").await?;
    let mut pools = Vec::new();
    for (prim, piv) in pool_names {
@@ -39,17 +40,21 @@ async fn main() -> ErrStr<()> {
 }
 
 fn usage() -> String {
-   println!("Reports pivot pools' TVL (total value locked)
+   let dapp = app_name();
+   let minime = min_default();
+   println!("{dapp}
+
+Reports pivot pools' TVL (total value locked)
 
 Usage:
 
-$ {} <protocol> [min=20000.0]
+$ {dapp} <protocol> [min={minime}]
 
 where
 
 * <protocol> is the dapp processing the pools
-* [min] minimum pool TVL, default $20,000.00
-", app_name());
+* [min] minimum pool TVL, default {minime}
+");
    "<protocol>-argument missing.".to_string()
 }
 
