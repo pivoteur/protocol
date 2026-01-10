@@ -29,4 +29,3 @@ effort, as well.
 
 * [b_pools](b_pools): read the pool-names from git
 
-

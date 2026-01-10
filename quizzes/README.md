@@ -12,6 +12,7 @@
 ## `dawn` evolution
 
 * [06](quiz06): Pool tables, ... but not billiards.
+* [07](quiz07): Pool tables - open pivots = available assets
 
 # Resources
 
