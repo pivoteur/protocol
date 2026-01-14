@@ -53,6 +53,8 @@ pub fn mk_asset(k: &(Blockchain, Token), amount: f32,
            date: date.clone() }
 }
 
+// ----- PIVOT ASSET -------------------------------------------------------
+
 /// Representation of an asset without the redundant date and blockchain data
 #[derive(Debug,Clone)]
 pub struct PivotAsset { asset: Asset }

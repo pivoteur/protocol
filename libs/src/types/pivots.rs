@@ -35,6 +35,16 @@ pub struct Pivot {
    to: Asset
 }
 
+pub fn is_virtual(p: &Pivot) -> bool { is_virt1(&p.from) }
+pub fn committed(p: &Pivot) -> Coin { pivot_amount1(p) }
+
+fn pivot_amount1(p: &Pivot) -> Coin {
+   let date = &p.header.opened;
+   let blockchain = p.to.blockchain.clone();
+   let piv = p.to.token.clone();
+   mk_coin(&(blockchain, piv), p.to.sz(), &mk_usd(p.to.aug()), date)
+}
+
 impl CsvWriter for Pivot {
    fn ncols(&self) -> usize { 
       self.header.ncols() + self.from.ncols() + self.to.ncols() + 1
@@ -152,6 +162,8 @@ struct Asset {
    kind: AssetType
 }
 
+fn is_virt1(a: &Asset) -> bool { is_virt2(&a.amount) }
+
 impl Measurable for Asset {
    fn sz(&self) -> f32 { amount(&self.amount) }
    fn aug(&self) -> f32 { self.sz() * self.quote.amount }
@@ -244,6 +256,8 @@ struct Amount {
    actual: f32,
    ersatz: f32      // 'ersatz' meaning 'virtual' as 'virtual' is reserved
 }
+
+fn is_virt2(a: &Amount) -> bool { a.ersatz > 0.0 }
 
 impl CsvWriter for Amount {
    fn ncols(&self) -> usize { 2 }

@@ -9,7 +9,6 @@ use libs::{
    fetchers::{fetch_quotes,fetch_assets,fetch_open_pivots},
    git::fetch_pool_names,
    reports::{header,print_table}
-//   types::quotes::lookup
 };
 
 #[tokio::main]
