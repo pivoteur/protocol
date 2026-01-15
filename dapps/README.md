@@ -18,7 +18,13 @@ Applications for protocol workflow
 
 * [dawn](dawn): the start of a start, reading pivot pool assets
 
-## `assets`: state of all pools
+Standalone dapps that also support `dawn` include:
+
+### `assets`: state of all pools
 
 * [assets](assets): partitions pools by TVL
+
+### `virtsz`: Assets committed to virtual pivots
+
+* [virtsz](virtsz)
 

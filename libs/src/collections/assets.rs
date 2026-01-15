@@ -16,7 +16,11 @@ pub fn mk_assets() -> Assets { Assets { map: HashMap::new() } }
 impl Assets {
    pub fn add(&mut self, asset: Asset) {
       self.map.entry(asset.key())
-          .and_modify(|a| a.amount += asset.amount)
+          .and_modify(|a| {
+             a.amount += asset.amount;
+             a.quote = asset.quote;
+             a.date = asset.date;
+          })
           .or_insert(asset);
    }
    pub fn subtract(&mut self, asset: &Asset) {
@@ -29,6 +33,7 @@ impl Assets {
          panic!("No asset {:?} to remove!", asset)
       }
    }
+   pub fn is_empty(&self) -> bool { self.map.is_empty() }
 }
 
 fn assets(a: &Assets) -> Vec<Asset> { a.map.values().cloned().collect() }

@@ -18,7 +18,7 @@ pub struct Asset {
    blockchain: Blockchain,
    token: Token,
    pub amount: f32,
-   quote: USD,
+   pub quote: USD,
    pub date: NaiveDate
 }
 

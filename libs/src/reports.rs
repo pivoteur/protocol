@@ -79,7 +79,7 @@ pub fn report_proposes(proposes: &[Proposal], no_closers: &[Pool]) {
            no_closers, proposes.first(), 24);
 }
 
-fn compact<T: CsvWriter>(hdr: &str, nada: &str, no_closers: &[Pool],
+pub fn compact<T: CsvWriter>(hdr: &str, nada: &str, no_closers: &[Pool],
                          propose: Option<&T>, default: usize) {
    if no_closers.is_empty() {
       println!("\n{nada}\n");
