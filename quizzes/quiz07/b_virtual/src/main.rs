@@ -40,6 +40,7 @@ async fn show_me(args: Vec<String>) -> ErrStr<()> {
       let pool_names = fetch_pool_names(&auth, "data/pools").await?;
       let truz = aliases();
       for (pri, piv) in pool_names {
+         eprintln!("*** trying: {}", header(&pri, &piv));
          let mut asts = mk_assets();
          let mut key = (String::new(), String::new());
          let (open_pivs, _) = fetch_open_pivots(&root_url, &pri, &piv).await?;
