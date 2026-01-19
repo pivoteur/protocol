@@ -13,8 +13,8 @@ pub fn aliases() -> Aliases {
       h.insert(t1.to_string(), t2.to_string());
    }
    inserter(&mut aliaz, "WBTC", "BTC");
-   inserter(&mut aliaz, "WETH", "ETH");
    inserter(&mut aliaz, "IBTC", "BTC");
+   inserter(&mut aliaz, "WETH", "ETH");
    inserter(&mut aliaz, "IETH", "ETH");
    inserter(&mut aliaz, "IUSD", "USDC");
    inserter(&mut aliaz, "ISOL", "SOL");

@@ -43,8 +43,11 @@ pub async fn fetch_assets(root_url: &str, primary: &str, pivot: &str)
    let blk = top[hdrs["blockchain"]].clone();
    let primary = buidl_asset(&top[hdrs[&p]], qt_f(&top, &hdrs),
                              &blk, &p, &max_date)?;
-   let pivot = buidl_asset(&top[hdrs[&s]], qt_f(&top, &hdrs),
-                             &blk, &s, &max_date)?;
+   let h_s = hdrs.get(&s)
+      .expect(&format!("No header labeled {}; headers are {:?}", s, hdrs));
+   let s_amt = &top.get(*h_s).expect(&format!("No value at index {}", h_s));
+   let f = qt_f(&top, &hdrs);
+   let pivot = buidl_asset(s_amt, f, &blk, &s, &max_date)?;
    Ok(mk_composition(primary, pivot))
 }
 

@@ -9,7 +9,7 @@ use book::{
 use libs::{
    fetchers::fetch_assets,
    git::fetch_pool_names,
-   reports::print_table,
+   reports::{print_table,header},
    types::{
       comps::{Composition,total,last_updated},
       measurable::sort_by_size
@@ -29,6 +29,7 @@ async fn main() -> ErrStr<()> {
    let pool_names = fetch_pool_names(&auth, "data/pools").await?;
    let mut pools = Vec::new();
    for (prim, piv) in pool_names {
+      eprintln!("*** processing pool {}", header(&prim, &piv));
       let pool = fetch_assets(&root_url, &prim, &piv).await?;
       pools.push(pool);
    }
