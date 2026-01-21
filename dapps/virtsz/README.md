@@ -8,5 +8,7 @@ Show assets committed to virtual pivots.
 
 ## Revisions
 
+* 1.02, 2026-01-21: moved total_line to libs::reports
+* 1.01, 2026-01-21: added app_name and version, improved report-format
 * 1.00, 2026-01-15: release
 

@@ -1,6 +1,6 @@
 use book::{
    currency::usd::{USD,mk_usd,no_monay},
-   csv_utils::{CsvWriter,mk_blank},
+   csv_utils::CsvWriter,
    err_utils::ErrStr,
    num_utils::parse_or,
    utils::{get_args,get_env}
@@ -9,14 +9,14 @@ use book::{
 use libs::{
    fetchers::fetch_assets,
    git::fetch_pool_names,
-   reports::print_table,
+   reports::{print_table,total_line},
    types::{
       comps::{Composition,total,last_updated},
       measurable::sort_by_size
   }
 };
 
-fn version() -> String { "1.04".to_string() }
+fn version() -> String { "1.05".to_string() }
 fn app_name() -> String { "assets".to_string() }
 fn min_default() -> f32 { 10000.0 }
 
@@ -45,7 +45,7 @@ fn report_on_assets(pools: Vec<Composition>, min_val: USD) {
    println!("{}, version: {}", app_name(), version());
    let sz1 = print_update(skip, "main pools", &mut viab);
    let sz2 = print_update(skip, "pools to review", &mut poor);
-   footer(skip, " ,total", &(sz1 + sz2));
+   total_line(skip, " ,total", &(sz1 + sz2));
 }
 
 fn print_update(skip: usize, title: &str, pools: &mut Vec<Composition>) -> USD {
@@ -54,17 +54,12 @@ fn print_update(skip: usize, title: &str, pools: &mut Vec<Composition>) -> USD {
       let tot = total(pools);
       let header = format!("{title},updated:,{updated}");
       print_table(&header, pools);
-      footer(skip, &format!("{title},subtotal"), &tot);
+      total_line(skip, &format!("{title},subtotal"), &tot);
       tot
    } else {
       println!("\nNo {title}");
       no_monay()
    }
-}
-
-fn footer(skip: usize, header: &str, total: &USD) {
-   let pre = mk_blank(skip);
-   println!("\n{}{header}:,{total}", pre.as_csv());
 }
 
 fn usage() -> String {

@@ -8,6 +8,7 @@ Snapshot of the protocol's pivot pools. Partitions pools by TVL
 
 ## History
 
+* 1.05, 2026-01-21: moved total_line to libs::reports
 * 1.04, 2025-12-28: removed redundant blockchain and date-information from pivot
 assets
 * 1.03, 2025-12-28: added last-updated information to pivot pools

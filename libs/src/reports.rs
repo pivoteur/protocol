@@ -1,6 +1,9 @@
 use chrono::NaiveDate;
 
-use book::csv_utils::CsvWriter;
+use book::{
+   currency::usd::USD,
+   csv_utils::{CsvWriter,mk_blank}
+};
 
 use crate::types::{
    pivots::Propose,
@@ -10,6 +13,11 @@ use crate::types::{
 
 pub fn header(prim: &str, piv: &str) -> String {
    format!("{}+{}", prim.to_uppercase(), piv.to_uppercase())
+}
+
+pub fn total_line(skip: usize, header: &str, total: &USD) {
+   let pre = mk_blank(skip);
+   println!("\n{}{header}:,{total}", pre.as_csv());
 }
 
 fn print_row<T:CsvWriter + CsvHeader>(printer: impl Fn(&String) -> (),

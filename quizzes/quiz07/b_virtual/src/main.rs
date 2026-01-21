@@ -2,6 +2,7 @@ use chrono::NaiveDate;
 
 use book::{
    currency::usd::mk_usd,
+   csv_utils::CsvWriter,
    date_utils::parse_date,
    err_utils::ErrStr,
    tuple_utils::fst,
@@ -12,16 +13,19 @@ use libs::{
    collections::assets::{mk_assets,assets_by_price},
    fetchers::{fetch_quotes,fetch_open_pivots},
    git::fetch_pool_names,
-   reports::{header,print_table,compact},
+   reports::{header,total_line,print_table,compact},
    types::{
       aliases::{Aliases,aliases},
       assets::{Asset,mk_asset},
-      comps::mk_composition,
+      comps::{Composition,mk_composition,total},
       pivots::{is_virtual,committed},
       quotes::{Quotes,lookup},
       util::{Blockchain,Token}
    }
 };
+
+fn version() -> String { "1.02".to_string() }
+fn app_name() -> String { "virtsz".to_string() }
 
 #[tokio::main]
 async fn main() -> ErrStr<()> {
@@ -87,21 +91,30 @@ so, you know: handle those.
             }
          }
       }
-      print_table("Virtual Pivot Assets:", &virts);
+      report_on_assets(&virts);
       compact("Pivot pools with no virtual pivots", "", &no_virts, 
               virts.first(), 12);
    }
    Ok(())
 }
 
+fn report_on_assets(pools: &Vec<Composition>) {
+   let skip = if let Some(a_pool) = pools.first() { a_pool.ncols() } else {
+      panic!("Portfolio has no pivot pools!")
+   } - 3;
+   println!("{}, version: {}", app_name(), version());
+   print_table("Virtual Pivot Assets", pools);
+   total_line(skip, " ,total", &total(pools));
+}
+
 fn usage() -> String {
-   println!("\n$ ./virtsz <protocol> <date>
+   println!("\n$ ./{} <protocol> <date>
 
 Computes assets committed to virtual pivots.
 
 where
 * <protocol> is the protocol, e.g. PIVOT
 * <date> to check availability, e.g.: $LE_DATE
-");
+", app_name());
    "Needs arguments <protocol> <date>".to_string()
 }
