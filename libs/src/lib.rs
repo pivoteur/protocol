@@ -26,5 +26,9 @@ pub mod reports;
 /// marshalling requests to the git API
 pub mod git;
 
-/// the whole kit-and-kaboodle
+/// processing close-pivot proposals
 pub mod processors;
+
+/// computing virtual pivots of a pool
+pub mod virtuals;
+

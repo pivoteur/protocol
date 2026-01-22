@@ -18,7 +18,7 @@ use book::{
 use crate::{
    parsers::parse_id,
    types::{
-      quotes::{Quotes,lookup},
+      quotes::Quotes,
       util::{Token,Blockchain,Id,CsvHeader,Partition,Pool},
       measurable::{Measurable,weight,size},
       assets::{Asset as Coin,mk_asset as mk_coin}
@@ -519,8 +519,8 @@ fn trade(q: &Quotes, p: &Pivot) -> ErrStr<Option<(PropAsset, PropAsset)>> {
    let prim_blk = &p.from.blockchain;
    let piv = &p.to.token; 
    let piv_blk = &p.to.blockchain;
-   let prim_qt = lookup(q, prim)?;
-   let piv_qt = lookup(q, piv)?;
+   let prim_qt = q.lookup(prim)?;
+   let piv_qt = q.lookup(piv)?;
    let to_trade = amount(&p.to.amount);
    let target = gain_10_percent(&p.from.amount);
    let computed_amount = to_trade * piv_qt / prim_qt;

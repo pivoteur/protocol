@@ -45,9 +45,11 @@ pub fn mk_quotes(date: NaiveDate, quotes: HashMap<Token, f32>) -> Quotes {
    Quotes { date, quotes, aliases: aliases() }
 }
 
-pub fn lookup(q: &Quotes, key: &Token) -> ErrStr<f32> {
-   q.quotes.get(&q.aliases.alias(key))
-           .ok_or(format!("Unable to find quote for {key}"))
-           .copied()
+impl Quotes {
+   pub fn lookup(&self, key: &Token) -> ErrStr<f32> {
+      self.quotes.get(&self.aliases.alias(key))
+                 .ok_or(format!("Unable to find quote for {key}"))
+                 .copied()
+   }
 }
 
