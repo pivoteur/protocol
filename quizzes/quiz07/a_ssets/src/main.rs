@@ -40,7 +40,7 @@ async fn show_me(args: Vec<String>) -> ErrStr<()> {
 fn usage() -> String {
    println!("\n$ ./aurora <protocol> <date> [min=1000]
 
-Computes available assets to pivot.
+Shows assets of the pool and its open pivots.
 
 where
 * <protocol> is the protocol, e.g. PIVOT
