@@ -2,17 +2,19 @@ use chrono::NaiveDate;
 
 use book::{
    currency::usd::mk_usd,
+   date_utils::parse_date,
    err_utils::ErrStr,
    tuple_utils::fst,
-   utils::pred
+   utils::{pred,get_env}
 };
 
 use super::{
    collections::assets::{Assets,mk_assets,assets_by_price},
-   fetchers::fetch_open_pivots,
+   fetchers::{fetch_open_pivots,fetch_quotes},
+   git::fetch_pool_names,
    reports::header,
    types::{
-      aliases::Aliases,
+      aliases::{Aliases,aliases},
       assets::{Asset,mk_asset},
       comps::{Composition,mk_composition},
       pivots::{is_virtual,committed},
@@ -20,6 +22,24 @@ use super::{
       util::{Blockchain,Token,Pool}
    }
 };
+
+pub async fn compute_virtuals(protocol: &str, dt: &str)
+      -> ErrStr<(Vec<Composition>, Vec<Pool>)> {
+   let auth = protocol.to_uppercase();
+   let root_url = get_env(&format!("{auth}_URL"))?;
+   let date = parse_date(&dt)?;
+   let quotes = fetch_quotes(&date).await?;
+   let mut virts = Vec::new();
+   let mut no_virts = Vec::new();
+   let a = aliases();
+   let pool_names = fetch_pool_names(&auth, "data/pools").await?;
+   for pool in pool_names {
+      let mb_virts = virtuals(&root_url, &date, &a, &quotes, &pool).await?;
+      let _: Option<()> = mb_virts.and_then(|v| { virts.push(v); Some(()) })
+                                  .or_else(|| { no_virts.push(pool); None });
+   }
+   Ok((virts, no_virts))
+}
 
 type Key = (Blockchain, Token);
 fn null_key() -> Key { (String::new(), String::new()) }
@@ -68,15 +88,11 @@ fn mk_virtuals(blk: Blockchain, pool: &Pool, a: &Aliases, q: &Quotes,
 #[cfg(test)]
 mod tests {
    use chrono::Local;
+   use std::collections::HashMap;
 
    use super::*;
 
-   use std::collections::HashMap;
-
-   use crate::types::{
-      aliases::aliases,
-      quotes::mk_quotes
-   };
+   use crate::types::quotes::mk_quotes;
 
    fn today() -> NaiveDate { Local::now().naive_local().date() }
 
