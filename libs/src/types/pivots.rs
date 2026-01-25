@@ -6,7 +6,7 @@ use std::{
 use chrono::{Days,NaiveDate};
 
 use book::{
-   csv_utils::CsvWriter,
+   csv_utils::{CsvHeader,CsvWriter},
    currency::usd::{USD,mk_usd},
    date_utils::parse_date,
    err_utils::ErrStr,
@@ -19,7 +19,7 @@ use crate::{
    parsers::parse_id,
    types::{
       quotes::{Quotes,lookup},
-      util::{Token,Blockchain,Id,CsvHeader,Partition,Pool},
+      util::{Token,Blockchain,Id,Partition,Pool},
       measurable::{Measurable,weight,size},
       assets::{Asset as Coin,mk_asset as mk_coin}
    }

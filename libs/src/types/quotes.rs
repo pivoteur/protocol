@@ -4,13 +4,13 @@ use chrono::NaiveDate;
 
 use book::{
    currency::usd::mk_usd,
-   csv_utils::CsvWriter,
+   csv_utils::{CsvHeader,CsvWriter},
    err_utils::ErrStr,
 };
 
 use super::{
    aliases::{Aliases,aliases},
-   util::{Token,CsvHeader}
+   util::Token
 };
 
 /// One populates the quotes with the fetcher.
