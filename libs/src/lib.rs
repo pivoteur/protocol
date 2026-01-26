@@ -11,9 +11,6 @@ pub mod collections;
 /// Parsing row-data to tables
 pub mod tables;
 
-/// parsers used to convert raw data to Rust-types
-pub mod parsers;
-
 /// Resolves the paths of the pivot-pools
 pub mod paths;
 
