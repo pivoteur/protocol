@@ -1,4 +1,4 @@
-# a_vailable_assets
+# a_ssets
 
 Fetch the pools' assets, their open pivots, and compute available assets to
 pivot (we'll determine which pivot to call in a future quiz)
