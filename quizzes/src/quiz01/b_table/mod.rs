@@ -10,12 +10,15 @@ use book::{
    list_utils::ht,
    num_utils::parse_num,
    rest_utils::read_rest,
-   table_utils::{ingest,cols},
+   table_utils::{Table,ingest,cols},
    tuple_utils::swap,
-   utils::pred
+   utils::{get_env,pred}
 };
 
-use libs::paths::open_pivot_path;
+use libs::{
+   paths::open_pivot_path,
+   types::util::Partition
+};
 
 trait CsvHeader {
    fn header(&self) -> String;
@@ -32,7 +35,7 @@ fn parse_str(s: &str) -> ErrStr<String> {
 type Id = usize;
 
 #[derive(Debug, Clone)]
-struct Header {
+pub struct Header {
    opened: NaiveDate,
    id: Id,
    close: Id
@@ -48,13 +51,13 @@ impl CsvHeader for Header {
    fn header(&self) -> String { "opened,id,close_id".to_string() }
 }
 
-fn mk_hdr(opend: &str, id: Id, close: Id) -> ErrStr<Header> {
+pub fn mk_hdr(opend: &str, id: Id, close: Id) -> ErrStr<Header> {
    let opened = parse_date(opend)?;
    Ok(Header { opened, id, close })
 }
 
 #[derive(Debug, Clone)]
-struct Amount {
+pub struct Amount {
    actual: f32,
    ersatz: f32      // 'ersatz' meaning 'virtual' as 'virtual' is reserved
 }
@@ -68,15 +71,15 @@ fn kinderize(k: &AssetType, s: &[&str]) -> Vec<String> {
    s.iter().map(|elt| format!("{}_{}", k.kind(), elt)).collect()
 }
 
-fn amount(a: &Amount) -> f32 { a.actual + a.ersatz }
+pub fn amount(a: &Amount) -> f32 { a.actual + a.ersatz }
 fn mk_amt(actual: f32, ersatz: f32) -> Amount {
    Amount { actual, ersatz }
 }
 
 #[derive(Debug, Clone)]
-struct Asset {
-   token: String,
-   amount: Amount,
+pub struct Asset {
+   pub token: String,
+   pub amount: Amount,
    quote: USD,
    kind: AssetType
 }
@@ -148,7 +151,7 @@ fn parse_asset(a: AssetType, hdrs: &HashMap<String, usize>, row: &Vec<String>)
 
 /// Defines the structure of an open pivot
 #[derive(Debug, Clone)]
-struct Pivot {
+pub struct Pivot {
    header: Header,
    from: Asset,
    to: Asset
@@ -176,14 +179,14 @@ impl CsvHeader for Pivot {
 fn closed(p: &Pivot) -> bool {
    p.header.close > 0
 }
-fn active(p: &Pivot) -> bool {
+pub fn active(p: &Pivot) -> bool {
    !closed(p)
 }
 
-fn mk_lookup_f(hdrs: &HashMap<String, usize>, row: &Vec<String>)
-      -> impl Fn(String) -> String {
-   move |key: String| {
-      let col = hdrs[&key];
+fn mk_lookup_f<'a>(hdrs: &'a HashMap<String, usize>, row: &'a Vec<String>)
+      -> impl Fn(&'a str) -> String {
+   move |key: &'a str| {
+      let col = hdrs[key];
       row[col].clone()
    }
 }
@@ -191,18 +194,13 @@ fn mk_lookup_f(hdrs: &HashMap<String, usize>, row: &Vec<String>)
 fn parse_header(hdrs: &HashMap<String, usize>, row: &Vec<String>)
       -> ErrStr<Header> {
    let lookf = mk_lookup_f(hdrs, row);
-   fn looker<'a>(f: impl Fn(String) -> String + 'a)
-         -> impl Fn(&'a str) -> String + 'a {
-      move |key| f(key.to_string())
-   }
-   let look = looker(lookf);
-   let dt = look("opened");
-   let id = parse_int(&look("open"))?;
-   let closed = parse_int(&look("close"))?;
+   let dt = lookf("opened");
+   let id = parse_int(&lookf("open"))?;
+   let closed = parse_int(&lookf("close"))?;
    mk_hdr(&dt, id, closed)
 }
 
-fn mk_pivot_2(hdrs: &HashMap<String, usize>, row: &Vec<String>)
+pub fn mk_pivot_2(hdrs: &HashMap<String, usize>, row: &Vec<String>)
       -> ErrStr<Pivot> {
    let header = parse_header(hdrs, row)?;
    let from = parse_asset(AssetType::FROM, hdrs, row)?;
@@ -215,8 +213,8 @@ fn enum_headers<HEADER: Eq + Hash>(headers: Vec<HEADER>)
    headers.into_iter().enumerate().map(swap).collect()
 }
 
-struct Bag<T> {
-    counts: HashMap<T, usize>,
+pub struct Bag<T> {
+    pub counts: HashMap<T, usize>,
 }
 
 impl<T: Eq + std::hash::Hash> Bag<T> {
@@ -231,14 +229,9 @@ impl<T: Eq + std::hash::Hash> Bag<T> {
     }
 }
 
-#[tokio::main]
-async fn main() -> ErrStr<()> {
-   // println!("Voilà: {:?}", sample_pivot());
-
-// let's read in real open pivot data and first, put those data into a 
-// (untyped) table
-
-   let url = open_pivot_path("btc", "eth");
+pub async fn ingest_table() -> ErrStr<Table<usize, String, String>> {
+   let piv_url = get_env("PIVOT_URL")?;
+   let url = open_pivot_path(&piv_url, "btc", "eth");
    let daters = read_rest(&url).await?;
    let lines: Vec<String> =
       daters.lines()
@@ -250,55 +243,87 @@ async fn main() -> ErrStr<()> {
    let mut body: Vec<String> =
       t.iter().enumerate().map(|(a, b)| format!("{a}\t{b}")).collect();
    body.insert(0, header);
-   let table = ingest(parse_int, parse_str, parse_str, &body, "\t")?;
+   ingest(parse_int, parse_str, parse_str, &body, "\t")
+}
 
-// We have our (unstructured) pivots tablized, now let's reify those pivots
-// (... starting with just the opened-date data ... and now adding the rest of
-// the header).
-
-// Let's also parse the FROM- and TO-assets.
-
+pub fn actives_closeds(table: &Table<usize,String,String>)
+      -> ErrStr<Partition<Pivot>> {
    let hdrs = enum_headers(cols(&table));
-
    let mut acts: Vec<Pivot> = Vec::new();
    let mut pass: Vec<Pivot> = Vec::new();
 
-   let mut btc: f32 = 0.0;
-   let mut eth: f32 = 0.0;
-   let mut bag: Bag<String> = Bag::new();
-   let mut print_header: bool = true;
-   let mut x: i32 = 1;
-   for row in table.data {
+   for row in &table.data {
       let piv = mk_pivot_2(&hdrs, &row)?;
       if active(&piv) {
-         acts.push(piv.clone());
-         if print_header {
-            println!("ix,{}", piv.header());
-            print_header = false;
-         }
-         let tok = piv.from.token.clone();
-         let amt: f32 = amount(&piv.from.amount);
-         if &tok == "BTC" {
-            btc += amt;
-         } else {
-            eth += amt;
-         }
-         bag.add(tok);
-         println!("{x},{}", piv.as_csv());
-         x = x + 1;
+         acts.push(piv);
       } else {
          pass.push(piv);
       }
    }
+   Ok((acts, pass))
+}
 
-   let a = acts.len();
-   let p = pass.len();
-   println!("\nThere are {a} active pivots and {p} closed pivots.\n");
+pub fn amounts(actives: &Vec<Pivot>) -> (Bag<String>, f32, f32) {
+   let mut btc: f32 = 0.0;
+   let mut eth: f32 = 0.0;
+   let mut bag: Bag<String> = Bag::new();
 
-   for (k,v) in bag.counts {
-      let amt: f32 = if k == "BTC" { btc } else { eth };
-      println!("There are {v} {k} open pivots, totaling {amt} {k}");
+   for piv in actives {
+      let tok = &piv.from.token;
+      let amt: f32 = amount(&piv.from.amount);
+      if tok == "BTC" { btc += amt; } else { eth += amt; }
+      bag.add(tok.to_string());
+   }
+   (bag, btc, eth)
+}
+
+pub fn print_actives(actives: &Vec<Pivot>) {
+   if actives.is_empty() {
+      println!("No active pivots.");
+   } else {
+      println!("Active pivots\n");
+      let mut x: i32 = 1;
+      let mut header_printed = false;
+      for piv in actives {
+         if !header_printed {
+            println!("ix,{}", piv.header());
+            header_printed = true;
+         }
+         println!("{x},{}", piv.as_csv());
+         x = x + 1;
+      }
+   }
+   println!(" ");
+}
+
+#[cfg(test)]
+mod tests {
+   use super::*;
+
+   #[tokio::test]
+   async fn test_ingest_table() {
+      let table = ingest_table().await;
+      assert!(table.is_ok());
    }
 
-   Ok(())
+   #[tokio::test]
+   async fn test_actives_closeds() -> ErrStr<()> {
+      let table = ingest_table().await?;
+      let (acts, pass) = actives_closeds(&table)?;
+      assert!(!acts.is_empty());
+      assert!(!pass.is_empty());
+      Ok(())
+   }
+
+   #[tokio::test]
+   async fn test_amounts() -> ErrStr<()> {
+      let table = ingest_table().await?;
+      let (acts, _pass) = actives_closeds(&table)?;
+      let (bag, btc, eth) = amounts(&acts);
+      assert_eq!(2, bag.counts.len());
+      assert!(eth > 0.0);
+      assert!(btc > 0.0);
+      Ok(())
+   }
 }
+

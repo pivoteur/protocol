@@ -8,6 +8,7 @@ edition = "2021"
 [dependencies]
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 book = { path = "../../../../crypto-n-rust/src/libs/book" }
+quiz01 = { path = ".." }
 
-# cwd protocol/quizzes/quiz01/a_read
+# cwd protocol/quizzes/quiz01/src/a_read
 
