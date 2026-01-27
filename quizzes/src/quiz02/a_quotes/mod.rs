@@ -51,7 +51,7 @@ pub mod functional_tests {
 
    pub async fn runoff() -> ErrStr<()> {
 
-      println!("a_quotes functional tests\n");
+      println!("quiz02: a_quotes functional test\n");
 
       let (quotes, max_date) = parse_quotes().await?;
       println!("Quotes are {quotes:?} for date: {}", max_date);

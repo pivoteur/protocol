@@ -304,7 +304,7 @@ pub mod functional_tests {
 
    pub async fn runoff() -> ErrStr<()> {
 
-      println!("b_table functional test.\n");
+      println!("quiz01: b_table functional test.\n");
 
       // let's read in real open pivot data and first, put those data into a 
       // (untyped) table
@@ -339,7 +339,7 @@ mod tests {
    use super::*;
 
    #[tokio::test]
-   async fn test_ingest_table() {
+   async fn test_ingest_table_ok() {
       let table = ingest_table().await;
       assert!(table.is_ok());
    }
