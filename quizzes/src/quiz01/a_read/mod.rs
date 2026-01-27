@@ -7,6 +7,21 @@ pub async fn reader() -> ErrStr<String> {
    read_rest(&btc_eth).await
 }
 
+pub mod functional_tests {
+
+   use book::err_utils::ErrStr;
+
+   use super::reader;
+
+   pub async fn runoff() -> ErrStr<()> {
+      println!("a_read functional test.\n");
+
+      let body = reader().await?;
+      println!("I got {body}");
+      Ok(())
+   }
+}
+
 #[cfg(test)]
 mod tests {
    use super::*;

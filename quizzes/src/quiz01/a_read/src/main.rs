@@ -1,10 +1,7 @@
 use book::err_utils::ErrStr;
 
-use quiz01::a_read::reader;
+use quizzes::quiz01::a_read::functional_tests::runoff;
 
 #[tokio::main]
-async fn main() -> ErrStr<()> {
-   let body = reader().await?;
-   println!("I got {body}");
-   Ok(())
-}
+async fn main() -> ErrStr<()> { runoff().await }
+
