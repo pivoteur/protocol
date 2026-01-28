@@ -28,3 +28,9 @@ Standalone dapps that also support `dawn` include:
 
 * [virtsz](virtsz)
 
+### `itr`: Integration tester
+
+Iterates `cargo build` over each subdir in `<dir>`
+
+* [itr](itr)
+
