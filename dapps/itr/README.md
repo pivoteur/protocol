@@ -5,7 +5,7 @@ Integration test-suite that runs `cargo build` over each sub-directory in
 
 ![Integrate tests](imgs/01-itr.png)
 
-[src](../../quizzes/src/quiz09/mod.rs)
+[src](../../quizzes/src/quiz09/a_itr/mod.rs)
 
 -----
 
