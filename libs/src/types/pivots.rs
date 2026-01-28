@@ -13,12 +13,13 @@ use book::{
    num::percentage::{Percentage,mk_percentage},
    num_utils::parse_commaless,
    parse_utils::parse_id,
+   tuple_utils::Partition,
    utils::pred
 };
 
 use super::{
    quotes::{Quotes,lookup},
-   util::{Token,Blockchain,Id,Partition,Pool},
+   util::{Token,Blockchain,Id,Pool},
    measurable::{Measurable,weight,size},
    assets::{Asset as Coin,mk_asset as mk_coin}
 };

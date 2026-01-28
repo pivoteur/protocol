@@ -11,14 +11,11 @@ use book::{
    num_utils::parse_num,
    rest_utils::read_rest,
    table_utils::{Table,ingest,cols},
-   tuple_utils::swap,
+   tuple_utils::{swap,Partition},
    utils::{get_env,pred}
 };
 
-use libs::{
-   paths::open_pivot_path,
-   types::util::Partition
-};
+use libs::paths::open_pivot_path;
 
 trait CsvHeader {
    fn header(&self) -> String;
