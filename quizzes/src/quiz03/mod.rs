@@ -9,9 +9,9 @@ pub mod functional_tests {
       // b_compute_close::functional_tests::runoff as b
    };
 
-   pub async fn runoff() -> ErrStr<()> {
+   pub async fn runoff() -> ErrStr<usize> {
       println!("\nquiz03 functional tests\n");
-      a().await.and(Ok(()))  // b().await)
+      a().await
    }
 }
 

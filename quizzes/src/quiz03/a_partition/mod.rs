@@ -1,3 +1,5 @@
+use book::csv_utils::{CsvHeader,print_csv};
+
 use libs::types::pivots::Pivot;
 
 fn list_open_pivots(piv: &str, opens: Vec<Pivot>) {
@@ -19,43 +21,40 @@ fn list_open_pivots(piv: &str, opens: Vec<Pivot>) {
 
 pub mod functional_tests {
 
-   use chrono::NaiveDate;
-
    use book::{
-      csv_utils::{print_csv,CsvHeader},
-      date_utils::parse_date,
       err_utils::ErrStr,
-      test_utils::{collate_results,mk_tests},
       utils::{get_args,get_env}
    };
 
    use libs::{
       fetchers::fetch_pivots,
-      types::pivots::{partition_on,Pivot}
+      types::pivots::partition_on
    };
 
+   use super::*;
+
    pub async fn runoff_get_args() -> ErrStr<()> {
-      if let [root_url, prim, piv, date] = get_args().as_slice() {
-         let dt = parse_date(&date)?;
-         do_it(root_url, prim, piv, dt).await
+      if let [root_url, prim, piv] = get_args().as_slice() {
+         do_it(root_url, prim, piv).await
       } else {
          usage()
       }
    }
 
-   pub async fn run_partition() -> ErrStr<()> {
+   pub async fn run_partition() -> ErrStr<usize> {
       let root_url = get_env("PIVOT_URL")?;
-      let dt = parse_date("2026-01-30")?;
-      do_it(&root_url, "BTC", "ETH", dt).await
+      match do_it(&root_url, "BTC", "ETH").await {
+         Ok(_) => Ok(1),
+         Err(x) => Err(x)
+      }
    }
    
-   pub async fn runoff() -> ErrStr<()> {
-      collate_results("quiz03: a_partition",
-         &mk_tests("run_partition", vec![run_partition()]))
+   pub async fn runoff() -> ErrStr<usize> {
+      println!("\nquiz03: a_partition\n");
+      run_partition().await
    }
 
-   async fn do_it(root_url: &str, prim: &str, piv: &str, _date: NaiveDate)
-         -> ErrStr<()> {
+   async fn do_it(root_url: &str, prim: &str, piv: &str) -> ErrStr<()> {
       let (opens, _closes, _max_date) =
          fetch_pivots(root_url, prim, piv).await?;
       let (lefts, rights) = partition_on(prim, opens);
@@ -67,7 +66,7 @@ pub mod functional_tests {
    fn usage() -> ErrStr<()> {
       println!("Usage:
 
-	$ cargo run <root URL> <primary asset> <pivot asset> <date>
+	$ cargo run <root URL> <primary asset> <pivot asset>
 
 Partitions open pivots.
 
@@ -75,6 +74,6 @@ The pivot pools are reposed (in git, currently) at <root URL>.
 
 Open pivots are stored as raw-CSV files in git at protocol <root URL>.
 ");
-       Err("Needs <root URL> <primary> <pivot> <date> arguments".to_string())
-    }
+       Err("Needs <root URL> <primary> <pivot> arguments".to_string())
+   }
 }

@@ -6,8 +6,8 @@ pub mod functional_tests {
 
    use book::err_utils::ErrStr;
 
-   pub fn runoff() -> ErrStr<()> {
+   pub fn runoff() -> ErrStr<usize> {
       println!("\nquiz09 functional tests\n");
-      a().and(Ok(()))
+      a()
    }
 }

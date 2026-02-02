@@ -34,11 +34,11 @@ pub mod functional_tests {
           ].into_iter().map(to_string).collect()
    }
 
-   pub fn runoff() -> ErrStr<()> {
+   pub fn runoff() -> ErrStr<usize> {
       println!("\ntables functional test\n");
       let table = index_table(some_rows())?;
       println!("Indexed table is:\n\n{}", table.as_csv());
-      Ok(())
+      Ok(1)
    }
 }
 

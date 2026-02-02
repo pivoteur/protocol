@@ -36,16 +36,17 @@ fn build_dapps(dir: &str) -> Partition<String> {
    (successes,failures)
 }
 
-fn report_build_results(p: Partition<String>) -> ErrStr<()> {
+fn report_build_results(p: Partition<String>) -> ErrStr<usize> {
    println!("Integration test results\n");
    let (s, f) = &p;
    let flen = f.len();
    let tot = s.len() + flen;
    report_dirs("Successful dapp builds", "ok", s, tot);
    report_dirs("Build failures", "FAILED", f, tot);
-   if flen > 0 {
-      Err(format!("{}!", plural(flen, "build failure")))
-   } else { Ok(()) }
+   match flen {
+      0 => Ok(1),
+      _ => Err(format!("{}!", plural(flen, "build failure")))
+   }
 }
 
 fn report_dirs(hdr: &str, kind: &str, dirs: &[String], total: usize) {
@@ -79,30 +80,35 @@ pub mod functional_tests {
 
    pub fn runoff_get_args() -> ErrStr<()> {
       let args = get_args();
-      do_it(args.first().as_deref().map(|s| s.as_str()))
+      let _ = do_it(args.first().as_deref().map(|s| s.as_str()))?;
+      Ok(())
    }
 
-   fn do_it(mb_dir: Option<&str>) -> ErrStr<()> {
+   fn do_it(mb_dir: Option<&str>) -> ErrStr<usize> {
       print_heading();
       let dir = mb_dir.ok_or_else(|| usage())?;
       let res = build_dapps(dir);
       report_build_results(res)
    }
 
-   fn runoff1() -> ErrStr<()> {
+   fn runoff1() -> ErrStr<usize> {
       println!("\nquiz09: a_itr build successes\n");
       do_it(Some("data/sample_dapps"))
    }
 
-   fn runoff2() -> ErrStr<()> {
+   fn runoff2() -> ErrStr<usize> {
       println!("\nquiz09: a_itr build FAILURE!\n");
       match do_it(Some("data/sample_broken_dapp")) {
-         Ok(()) => Err("No build failures detected!".to_string()),
-         Err(_) => Ok(())
+         Ok(_) => Err("No build failures detected!".to_string()),
+         Err(_) => Ok(1)
       }
    }
 
-   pub fn runoff() -> ErrStr<()> { runoff1().and(runoff2()) }
+   pub fn runoff() -> ErrStr<usize> {
+      let n1 = runoff1()?;
+      let n2 = runoff2()?;
+      Ok(n1+n2)
+   }
 }
 
 #[cfg(test)]

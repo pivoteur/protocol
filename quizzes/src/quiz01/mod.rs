@@ -10,9 +10,11 @@ pub mod functional_tests {
       b_table::functional_tests::runoff as b
    };
 
-   pub async fn runoff() -> ErrStr<()> {
+   pub async fn runoff() -> ErrStr<usize> {
       println!("\nquiz01 functional tests\n");
-      a().await.and(b().await)
+      let n1 = a().await?;
+      let n2 = b().await?;
+      Ok(n1 + n2)
    }
 }
 

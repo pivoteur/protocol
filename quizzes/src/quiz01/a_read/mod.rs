@@ -13,12 +13,12 @@ pub mod functional_tests {
 
    use super::reader;
 
-   pub async fn runoff() -> ErrStr<()> {
+   pub async fn runoff() -> ErrStr<usize> {
       println!("quiz01: a_read functional test.\n");
 
       let body = reader().await?;
       println!("I got {body}");
-      Ok(())
+      Ok(1)
    }
 }
 

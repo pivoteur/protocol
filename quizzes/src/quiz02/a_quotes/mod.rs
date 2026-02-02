@@ -49,13 +49,13 @@ pub mod functional_tests {
 
    use super::*;
 
-   pub async fn runoff() -> ErrStr<()> {
+   pub async fn runoff() -> ErrStr<usize> {
 
       println!("quiz02: a_quotes functional test\n");
 
       let (quotes, max_date) = parse_quotes().await?;
       println!("Quotes are {quotes:?} for date: {}", max_date);
-      Ok(())
+      Ok(1)
    }
 }
 

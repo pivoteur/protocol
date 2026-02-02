@@ -90,11 +90,11 @@ pub mod functional_tests {
    use super::*;
    use crate::reports::header;
 
-   pub async fn runoff() -> ErrStr<()> {
+   pub async fn runoff() -> ErrStr<usize> {
       let pools = fetch_pool_names("PIVOT", "data/pools").await?;
       println!("\ngit functional tests\n\nPools are:\n");
       for (prim, piv) in pools { println!("* {}", header(&prim, &piv)); }
-      Ok(())
+      Ok(1)
    }
 }
 

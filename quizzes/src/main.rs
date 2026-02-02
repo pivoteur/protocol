@@ -1,6 +1,8 @@
+use futures::Future;
+
 use book::{
    err_utils::ErrStr,
-   test_utils::{collate_results,mk_tests}
+   test_utils::{test_result,report_test_results}
 };
 
 use quizzes::{
@@ -11,15 +13,32 @@ use quizzes::{
 };
 
 fn test_names() -> Vec<String> {
-   [1,2,3,9].iter().map(|n| format!("quiz0{n}")).collect()
+   [1,2,3,9]
+   // [2,3,9]
+      .iter().map(|n| format!("quiz0{n}")).collect()
 }
-async fn tests() -> Vec<ErrStr<()>> { 
-   [a().await, b().await, c().await, i()].to_vec()
+
+async fn run_testa<F: Future<Output = ErrStr<usize>>>(name: &str, test: F)
+      -> ErrStr<usize> {
+   let res = test.await;
+   test_result(name, res)
+}
+   
+async fn tests() -> Vec<ErrStr<usize>> {
+   vec![
+run_testa("quiz01",a()).await,
+run_testa("quiz02",b()).await,
+run_testa("quiz03",c()).await,
+test_result("quiz09",i())
+]
 }
 
 #[tokio::main]
 async fn main() -> ErrStr<()> {
-   println!("\nquizzes functional tests\n");
-   collate_results("quizzes", &mk_tests(&test_names().join(" "), &tests()))
+   println!("quizzes functional tests\n");
+   let res = tests().await;
+   match report_test_results(test_names(), res) {
+      Ok(_) => Ok(()), Err(x) => Err(x)
+   }
 }
 

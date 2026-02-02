@@ -112,14 +112,14 @@ pub mod functional_tests {
       }
    }
 
-   pub async fn runoff() -> ErrStr<()> {
+   pub async fn runoff() -> ErrStr<usize> {
 
       println!("\nquiz02: b_compute_close functional test\n");
 
       let pivot_url = get_env("PIVOT_URL")?;
       let args: Vec<String> = [&pivot_url, "AVAX", "UNDEAD", "2026-01-25"]
          .into_iter().map(to_string).collect();
-      do_it(args).await
+      match do_it(args).await { Ok(()) => Ok(1), Err(x) => Err(x) }
    }
 }
 

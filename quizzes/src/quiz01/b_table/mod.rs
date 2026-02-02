@@ -299,7 +299,7 @@ pub mod functional_tests {
 
    use super::{ingest_table,print_actives,actives_closeds,amounts};
 
-   pub async fn runoff() -> ErrStr<()> {
+   pub async fn runoff() -> ErrStr<usize> {
 
       println!("quiz01: b_table functional test.\n");
 
@@ -327,7 +327,7 @@ pub mod functional_tests {
          println!("There are {v} {k} open pivots, totaling {amt} {k}");
       }
 
-      Ok(())
+      Ok(1)
    }
 }
 
