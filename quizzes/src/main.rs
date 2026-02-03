@@ -9,11 +9,12 @@ use quizzes::{
    quiz01::functional_tests::runoff as a,
    quiz02::functional_tests::runoff as b,
    quiz03::functional_tests::runoff as c,
+   quiz06::functional_tests::runoff as f,
    quiz09::functional_tests::runoff as i
 };
 
 fn test_names() -> Vec<String> {
-   [1,2,3,9].iter().map(|n| format!("quiz0{n}")).collect()
+   [1,2,3,6,9].iter().map(|n| format!("quiz0{n}")).collect()
 }
 
 async fn run_testa<F: Future<Output = ErrStr<usize>>>(name: &str, test: F)
@@ -26,6 +27,7 @@ async fn tests() -> Vec<ErrStr<usize>> {
    vec![run_testa("quiz01",a()).await,
         run_testa("quiz02",b()).await,
         run_testa("quiz03",c()).await,
+        run_testa("quiz06",f()).await,
         test_result("quiz09",i())]
 }
 

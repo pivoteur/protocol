@@ -1,4 +1,5 @@
 pub mod a_partition;
+pub mod b_aggregate;
 
 pub mod functional_tests {
 
@@ -6,12 +7,14 @@ pub mod functional_tests {
 
    use super::{
       a_partition::functional_tests::runoff as a,
-      // b_compute_close::functional_tests::runoff as b
+      b_aggregate::functional_tests::runoff as b
    };
 
    pub async fn runoff() -> ErrStr<usize> {
       println!("\nquiz03 functional tests\n");
-      a().await
+      let n1 = a().await?;
+      let n2 = b().await?;
+      Ok(n1 + n2)
    }
 }
 

@@ -15,3 +15,4 @@ libs = { path = "../../libs" }
 
 book = { path = "../../../crypto-n-rust/src/libs/book" }
 
+quizzes = { path = "../../quizzes" }

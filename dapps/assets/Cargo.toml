@@ -5,7 +5,7 @@ edition = "2024"
 
 [[bin]]
 name = "assets"
-path = "../../quizzes/quiz06/b_pools/src/main.rs"
+path = "../../quizzes/quiz06/src/b_pools/src/main.rs"
 
 [dependencies]
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
@@ -14,3 +14,4 @@ libs = { path = "../../libs" }
 
 book = { path = "../../../crypto-n-rust/src/libs/book" }
 
+quizzes = { path = "../../quizzes" }
