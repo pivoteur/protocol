@@ -6,23 +6,22 @@ use std::{
 use chrono::{Days,NaiveDate};
 
 use book::{
-   csv_utils::CsvWriter,
+   csv_utils::{CsvHeader,CsvWriter},
    currency::usd::{USD,mk_usd},
    date_utils::parse_date,
    err_utils::ErrStr,
    num::percentage::{Percentage,mk_percentage},
    num_utils::parse_commaless,
+   parse_utils::parse_id,
+   tuple_utils::Partition,
    utils::pred
 };
 
-use crate::{
-   parsers::parse_id,
-   types::{
-      quotes::{Quotes,lookup},
-      util::{Token,Blockchain,Id,CsvHeader,Partition,Pool},
-      measurable::{Measurable,weight,size},
-      assets::{Asset as Coin,mk_asset as mk_coin}
-   }
+use super::{
+   quotes::{Quotes,lookup},
+   util::{Token,Blockchain,Id,Pool},
+   measurable::{Measurable,weight,size},
+   assets::{Asset as Coin,mk_asset as mk_coin}
 };
 
 // ----- PIVOT types -------------------------------------------------------

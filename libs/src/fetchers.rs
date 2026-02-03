@@ -10,12 +10,13 @@ use book::{
    err_utils::{err_or,ErrStr},
    list_utils::tail,
    num_utils::{parse_num,parse_commaless},
+   parse_utils::parse_str,
    rest_utils::read_rest,
-   table_utils::{Table,cols,row,rows,ingest},
+   table_utils::{Table,cols,row,rows,ingest,enum_headers},
    utils::pred
 };
+
 use super::{
-   parsers::{parse_str,enum_headers},
    paths::{open_pivot_path,quotes_url,pool_assets_url},
    tables::index_table,
    types::{

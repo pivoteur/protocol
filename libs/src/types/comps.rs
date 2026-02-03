@@ -2,13 +2,12 @@ use chrono::NaiveDate;
 
 use book::{
    currency::usd::{USD,mk_usd},
-   csv_utils::CsvWriter
+   csv_utils::{CsvHeader,CsvWriter}
 };
 
 use super::{
    assets::{Asset,PivotAsset,mk_pivot_asset},
-   measurable::{Measurable,size,tvl},
-   util::CsvHeader
+   measurable::{Measurable,size,tvl}
 };
 
 #[derive(Debug,Clone)]

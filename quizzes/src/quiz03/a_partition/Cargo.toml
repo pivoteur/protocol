@@ -1,0 +1,13 @@
+[package]
+name = "a_partition"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
+
+libs = { path = "../../../../libs" }
+
+book = { path = "../../../../../crypto-n-rust/src/libs/book" }
+
+quizzes = { path = "../../../" }

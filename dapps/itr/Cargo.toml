@@ -1,0 +1,15 @@
+[package]
+name = "itr"
+version = "0.1.0"
+edition = "2024"
+
+[[bin]]
+name = "itr"
+path = "../../quizzes/src/quiz09/a_itr/src/main.rs"
+
+[dependencies]
+
+quizzes = { path = "../../quizzes" }
+
+book = { path = "../../../crypto-n-rust/src/libs/book" }
+

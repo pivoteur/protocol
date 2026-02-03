@@ -5,7 +5,7 @@ edition = "2024"
 
 [[bin]]
 name = "basset"
-path = "../../quizzes/quiz03/b_aggregate/src/main.rs"
+path = "../../quizzes/src/quiz03/b_aggregate/src/main.rs"
 
 [dependencies]
 chrono = "0.4.38"

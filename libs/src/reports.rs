@@ -1,15 +1,24 @@
 use chrono::NaiveDate;
 
-use book::csv_utils::CsvWriter;
+use book::{
+   currency::usd::USD,
+   csv_utils::{CsvWriter,CsvHeader,mk_blank},
+   types::indexed::mk_idx_offset
+};
 
 use crate::types::{
    pivots::Propose,
    measurable::Measurable,
-   util::{CsvHeader,Pool}
+   util::Pool
 };
 
 pub fn header(prim: &str, piv: &str) -> String {
    format!("{}+{}", prim.to_uppercase(), piv.to_uppercase())
+}
+
+pub fn total_line(skip: usize, header: &str, total: &USD) {
+   let pre = mk_blank(skip);
+   println!("\n{}{header}:,{total}", pre.as_csv());
 }
 
 fn print_row<T:CsvWriter + CsvHeader>(printer: impl Fn(&String) -> (),
@@ -72,11 +81,13 @@ pub fn report_proposes(proposes: &[Proposal], no_closers: &[Pool]) {
       println!("\nNo close pivots.");
       "analyzed"
    } else {
-      print_table("Close Pivot Calls", proposes);
+      let ix_props: Vec<_> =
+         proposes.iter().enumerate().map(mk_idx_offset(1)).collect();
+      print_table("Close Pivot Calls", &ix_props);
       "with no closes"
    };
    compact(&format!("Pivot pools {pools}"), "No pools without close calls",
-           no_closers, proposes.first(), 24);
+           no_closers, proposes.first(), 12);
 }
 
 pub fn compact<T: CsvWriter>(hdr: &str, nada: &str, no_closers: &[Pool],

@@ -1,13 +1,13 @@
 use chrono::NaiveDate;
 
 use book::{
-   csv_utils::CsvWriter,
+   csv_utils::{CsvHeader,CsvWriter},
    currency::usd::USD
 };
 
 use crate::types::{
    measurable::{Measurable,tvl},
-   util::{Blockchain,CsvHeader,Token}
+   util::{Blockchain,Token}
 };
 
 // ----- ASSETS ----------------------------------------------------------

@@ -85,3 +85,39 @@ fn build_header_with(token: &str) -> ErrStr<HeaderMap> {
    Ok(hm)
 }
 
+pub mod functional_tests {
+
+   use super::*;
+   use crate::reports::header;
+
+   pub async fn runoff() -> ErrStr<usize> {
+      let pools = fetch_pool_names("PIVOT", "data/pools").await?;
+      println!("\ngit functional tests\n\nPools are:\n");
+      for (prim, piv) in pools { println!("* {}", header(&prim, &piv)); }
+      Ok(1)
+   }
+}
+
+#[cfg(test)]
+mod tests {
+
+   use super::*;
+
+   async fn fetch_pivot_pools() -> ErrStr<Vec<Pool>> {
+      fetch_pool_names("PIVOT", "data/pools").await
+   }
+
+   #[tokio::test]
+   async fn test_fetch_pool_names_ok() {
+      let ans = fetch_pivot_pools().await;
+      assert!(ans.is_ok());
+   }
+
+   #[tokio::test]
+   async fn test_fetch_pool_names_has_pools() -> ErrStr<()> {
+      let ans = fetch_pivot_pools().await?;
+      assert!(!ans.is_empty());
+      Ok(())
+   }
+}
+
