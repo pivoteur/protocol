@@ -15,7 +15,7 @@
 
 `dawn` (eventually) makes open-pivot calls [WIP].
 
-* [06](quiz06): Pool tables, ... but not billiards.
+* [06](src/quiz06): Pool tables, ... but not billiards.
 * [07](quiz07): Pool tables - open pivots = available assets
 
 ## `closer` evolution
