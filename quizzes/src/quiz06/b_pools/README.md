@@ -7,3 +7,5 @@ by TVL.
 
 > sidenote: this quiz introduces [aliases](../../../libs/src/types/aliases.rs).
 
+[tweet](https://x.com/pivocateur/status/2005226441181630677)
+

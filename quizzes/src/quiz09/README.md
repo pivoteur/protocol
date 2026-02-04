@@ -13,6 +13,8 @@ for dapp in dir:
 report(results)
 ```
 
+[tweet](https://x.com/pivocateur/status/2016273729932714142)
+
 ### Future work?
 
 At some point do we want to simulate command line arguments or actually
