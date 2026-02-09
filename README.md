@@ -20,6 +20,14 @@ of quizzes
 
 ```mermaid
 
+pie showData
+	title Pivot Protocol Automation
+	Automations in progress : 10
+        Automations complete : 9
+```
+
+```mermaid
+
 gantt
 
 	dateFormat  YYYY-MM-DD
@@ -53,6 +61,7 @@ gantt
 	code coverage	:done,	des18,	2026-01-28,	2026-01-28
 	integration testing	:done,	des8,	2026-01-27,	2026-01-28
 	functional testing	:done,	des9,	2026-01-30,	2026-02-02
+	DIY pivot assets filter	:done,	des19,	2026-02-06,	2026-02-09
 ```
 
 | Task                               | Id    | Depends on | Group    | Dapp      | Ots   | Status | Started    | Released    | Duration |
@@ -72,6 +81,7 @@ gantt
 | update distribution table          | 13    | 12         | dists    |           | FALSE | ...    | tbd        |             | 5        |
 | show virtual open-pivots           | 14    | 3          | analysis | virtsz    | FALSE | ✅      | 2026-01-14 | 2026-01-15  | 1        |
 | recommend cancel virtual pivots    | 15    | 14         | analysis |           | FALSE | ...    | tbd        |             | 5        |
+| DIY pivot assets filter            | 19    |            | analysis | pools     | FALSE | ✅      | 2026-02-06 | 2026-02-09  | 3        |
 | report close pivot                 | 16    | 7          | reports  |           | FALSE | ...    | tbd        |             | 5        |
 | unit testing                       | 17    |            | tests    | cfg       | TRUE  | ✅      | 2026-01-26 | 2026-01-26  | 0        |
 | code coverage                      | 18    |            | tests    | tarpaulin | TRUE  | ✅      | 2026-01-28 | 2026-01-28  | 0        |

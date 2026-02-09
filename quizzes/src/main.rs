@@ -34,7 +34,7 @@ async fn tests() -> Vec<ErrStr<usize>> {
         run_testa("quiz03",c()).await,
         run_testa("quiz06",f()).await,
         test_result("quiz09",i()),
-        test_result("quiz10", j())]
+        run_testa("quiz10", j()).await]
 }
 
 #[tokio::main]
