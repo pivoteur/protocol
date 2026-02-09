@@ -22,8 +22,8 @@ of quizzes
 
 pie showData
 	title Pivot Protocol Automation
-	Automations in progress : 10
-        Automations complete : 9
+	"Automations in progress" : 10
+        "Automations complete" : 9
 ```
 
 ```mermaid
