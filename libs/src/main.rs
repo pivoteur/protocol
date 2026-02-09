@@ -13,7 +13,7 @@ use libs::{
 #[tokio::main]
 async fn main() -> ErrStr<()> {
    let tests = vec![mk_async(g()), mk_sync(t)];
-   let _ = collate_results("libs", mk_tests("git tables", tests))?;
+   let _ = collate_results("libs", &mut mk_tests("git tables", tests))?;
    Ok(())
 }
 

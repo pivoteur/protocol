@@ -148,3 +148,28 @@ pub async fn fetch_quotes(date: &NaiveDate) -> ErrStr<Quotes> {
    }
 }
 
+#[cfg(test)]
+mod tests {
+   use super::*;
+   use book::date_utils::today;
+
+   #[tokio::test]
+   async fn test_fetch_lines_ok() {
+      let ans = fetch_lines(&quotes_url()).await;
+      assert!(ans.is_ok());
+   }
+
+   #[tokio::test]
+   async fn fail_fetch_lines() {
+      let ans = fetch_lines("READYOU.md").await;
+      assert!(ans.is_err());
+   }
+
+   #[tokio::test]
+   async fn test_quotes_ok() {
+      let tday = today();
+      let ans = fetch_quotes(&tday).await;
+      assert!(ans.is_ok());
+   }
+}
+

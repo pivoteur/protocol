@@ -1,0 +1,8 @@
+[package]
+name = "quiz10"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+book = { path = "../../../../crypto-n-rust/src/libs/book" }
+quizzes = { path = "../.." }

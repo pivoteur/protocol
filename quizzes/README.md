@@ -28,6 +28,10 @@
 
 * [09](src/quiz09): test that all app build, at least
 
+## Infrastructure
+
+* [10](src/quiz10): list files of a directory. Yes. I know
+
 # Resources
 
 The quizzes and infrastructure uses [libraries from @logicalgraphs crypto-n-rust

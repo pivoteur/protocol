@@ -17,7 +17,7 @@ fn lg_raw_url() -> String {
 }
 
 fn quotes_url() -> String {
-   format!("{}/refs/heads/main/data-files/csv/pivots.csv", lg_raw_url())
+   format!("{}/refs/heads/main/data-files/csv/quotes.csv", lg_raw_url())
 }
 
 fn parse_str(s: &str) -> ErrStr<String> { Ok(s.to_string()) }

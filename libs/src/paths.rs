@@ -29,5 +29,5 @@ fn lg_raw_url() -> String {
 
 /// URL to pull the table of quotes reposed in git
 pub fn quotes_url() -> String {
-   format!("{}/refs/heads/main/data-files/csv/pivots.csv", lg_raw_url())
+   format!("{}/refs/heads/main/data-files/csv/quotes.csv", lg_raw_url())
 }
