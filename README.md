@@ -52,6 +52,7 @@ gantt
 	section Analysis Automation
 	show virtual open-pivots	:done,	des14,	2026-01-14,	2026-01-15
 	recommend cancel virtual pivots	:active,	des15,	after des14,	5d
+	DIY pivot assets filter	:done,	des19,	2026-02-06,	2026-02-09
 
 	section Reports Automation
 	report close pivot	:active,	des16,	after des7,	5d
@@ -61,7 +62,6 @@ gantt
 	code coverage	:done,	des18,	2026-01-28,	2026-01-28
 	integration testing	:done,	des8,	2026-01-27,	2026-01-28
 	functional testing	:done,	des9,	2026-01-30,	2026-02-02
-	DIY pivot assets filter	:done,	des19,	2026-02-06,	2026-02-09
 ```
 
 | Task                               | Id    | Depends on | Group    | Dapp      | Ots   | Status | Started    | Released    | Duration |
