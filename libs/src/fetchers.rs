@@ -150,6 +150,7 @@ pub async fn fetch_quotes(date: &NaiveDate) -> ErrStr<Quotes> {
 
 #[cfg(test)]
 mod tests {
+   use chrono::Duration;
    use super::*;
    use book::date_utils::today;
 
@@ -168,7 +169,8 @@ mod tests {
    #[tokio::test]
    async fn test_quotes_ok() {
       let tday = today();
-      let ans = fetch_quotes(&tday).await;
+      let yday = tday - Duration::days(1);
+      let ans = fetch_quotes(&yday).await;
       assert!(ans.is_ok());
    }
 }
