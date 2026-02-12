@@ -11,6 +11,7 @@ stateDiagram-v2
    class State1 {
       [*] --> gecko
       gecko --> [*]
+   }
 ```
 
 # dapps
