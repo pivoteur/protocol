@@ -5,8 +5,8 @@ The daily workflow for Pivot protocol can be viewed as phasal.
 ```mermaid
 stateDiagram-v2
    [*] --> Tests
-   Tests --> Quotes
-   Quotes --> Closes
+   Tests --> Setup
+   Setup --> Closes
    Closes --> [*]
 
    Tests: Health Check
@@ -17,12 +17,12 @@ stateDiagram-v2
 
       Integration: Integration Tests
       state Integration {
+         direction LR
          Tarp: cargo tarpaulin
          Func: cargo run
          note right of Func
             Runs my functional test framework.
          end note
-         direction LR
          [*] --> itr
          itr --> Tarp
          Tarp --> Func
@@ -30,11 +30,18 @@ stateDiagram-v2
       }
    }
 
-   Quotes: Ingest quotes
-   state Quotes {
+   Setup: Setup
+   state Setup {
       direction LR
-      [*] --> gecko
-      gecko --> [*]
+      [*] --> Quotes
+      Quotes --> [*]
+
+      Quotes: Ingest quotes
+      state Quotes {
+         direction LR
+         [*] --> gecko
+         gecko --> [*]
+      }
    }
 
    Closes: Close Pivots
