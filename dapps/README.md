@@ -34,13 +34,21 @@ stateDiagram-v2
    state Setup {
       direction LR
       [*] --> Quotes
-      Quotes --> [*]
+      Quotes --> Pools
+      Pools --> [*]
 
       Quotes: Ingest quotes
       state Quotes {
          direction LR
          [*] --> gecko
          gecko --> [*]
+      }
+
+      Pools: Scan active pivot pools
+      state Pools {
+         direction LR
+         [*] --> pools
+         pools --> [*]
       }
    }
 
