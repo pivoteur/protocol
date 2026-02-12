@@ -5,6 +5,7 @@ Infrastructure for pivot arbitrage, staking, and distribution on the Pivot proto
 ## Applications
 
 * [dapps](dapps) Set of gradually evolving applications for protocol workflow
+  * workflow outlined in this directory
 
 ## Libraries
 

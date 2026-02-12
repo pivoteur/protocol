@@ -1,3 +1,18 @@
+# Automation Workflow
+
+The daily workflow for Pivot protocol can be viewed as phasal.
+
+```mermaid
+stateDiagram-v2
+   direction LR
+   [*] --> State1
+   State1 --> [*]
+   State1: Ingest quotes
+   class State1 {
+      [*] --> gecko
+      gecko --> [*]
+```
+
 # dapps
 
 Applications for protocol workflow
