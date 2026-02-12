@@ -5,9 +5,22 @@ The daily workflow for Pivot protocol can be viewed as phasal.
 ```mermaid
 stateDiagram-v2
    direction LR
-   [*] --> Quotes
+   [*] --> Tests
+   Tests --> Quotes
    Quotes --> Closes
    Closes --> [*]
+
+   Tests: Health Check
+   state Tests {
+      [*] --> Integration
+      Integration --> [*]
+
+      Integration: Integration Tests
+      state Integration {
+         [*] --> itr
+         itr --> [*]
+      }
+   }
 
    Quotes: Ingest quotes
    state Quotes {
@@ -32,21 +45,19 @@ stateDiagram-v2
 
 Applications for protocol workflow
 
-## `dusk`: close pivots
+## Integration Testing
+
+### `itr`: Integration tester
+
+Iterates `cargo build` over each subdir in `<dir>`
+
+* [itr](itr)
+
+## Released
+
+### `dusk`: close pivots
 
 * [dusk](dusk): aggregates assets to pivot by blockchain
-
-... and its evolution:
-
-* [chihuahua](chihuahua): close recommendations on one pivot pool
-* [basset](basset): close-pivot recommendations condensed to one trade per asset
-* [phound / hound](hound): close pivots for all pivot pools
-
-## `dawn`: open pivots
-
-... very much a WIP
-
-* [dawn](dawn): the start of a start, reading pivot pool assets
 
 Standalone dapps that also support `dawn` include:
 
@@ -58,9 +69,19 @@ Standalone dapps that also support `dawn` include:
 
 * [virtsz](virtsz)
 
-### `itr`: Integration tester
+## WIP / Works in Progress
 
-Iterates `cargo build` over each subdir in `<dir>`
+## `dawn`: open pivots
 
-* [itr](itr)
+... very much a WIP
+
+* [dawn](dawn): the start of a start, reading pivot pool assets
+
+## Archived
+
+### Evolution of `dusk`
+
+* [chihuahua](chihuahua): close recommendations on one pivot pool
+* [basset](basset): close-pivot recommendations condensed to one trade per asset
+* [phound / hound](hound): close pivots for all pivot pools
 
