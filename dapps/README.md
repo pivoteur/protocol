@@ -18,10 +18,15 @@ stateDiagram-v2
       Integration: Integration Tests
       state Integration {
          Tarp: cargo tarpaulin
+         Func: cargo run
+         note right of Func
+            Runs my functional test framework.
+         end note
          direction LR
          [*] --> itr
          itr --> Tarp
-         Tarp --> [*]
+         Tarp --> Func
+         Func --> [*]
       }
    }
 
