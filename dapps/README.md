@@ -4,7 +4,6 @@ The daily workflow for Pivot protocol can be viewed as phasal.
 
 ```mermaid
 stateDiagram-v2
-   direction LR
    [*] --> Tests
    Tests --> Quotes
    Quotes --> Closes
@@ -12,6 +11,7 @@ stateDiagram-v2
 
    Tests: Health Check
    state Tests {
+      direction LR
       [*] --> Integration
       Integration --> [*]
 
@@ -24,12 +24,14 @@ stateDiagram-v2
 
    Quotes: Ingest quotes
    state Quotes {
+      direction LR
       [*] --> gecko
       gecko --> [*]
    }
 
    Closes: Close Pivots
    state Closes {
+      direction LR
       [*] --> Scan
       Scan --> [*]
 
