@@ -17,9 +17,11 @@ stateDiagram-v2
 
       Integration: Integration Tests
       state Integration {
+         Tarp: cargo tarpaulin
          direction LR
          [*] --> itr
-         itr --> [*]
+         itr --> Tarp
+         Tarp --> [*]
       }
    }
 
