@@ -17,6 +17,7 @@ stateDiagram-v2
 
       Integration: Integration Tests
       state Integration {
+         direction LR
          [*] --> itr
          itr --> [*]
       }
@@ -37,6 +38,7 @@ stateDiagram-v2
 
       Scan: Scan Pools for Close calls
       state Scan {
+         direction LR
          [*] --> dusk
          dusk --> [*]
       }
