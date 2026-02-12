@@ -23,12 +23,19 @@ stateDiagram-v2
          [*] --> itr
          itr --> Tarp
          Tarp --> Func
-         Func --> [*]
+         Func --> Rep
+         Rep --> [*]
          Func: Runs my functional test framework
          state Func {
             direction LR
             [*] --> Run
             Run --> [*]
+         }
+         Rep: Automation Status Report [manual]
+         state Rep {
+            direction LR
+            [*] --> report
+            report --> [*]
          }
       }
    }
