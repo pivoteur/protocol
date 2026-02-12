@@ -8,7 +8,7 @@ stateDiagram-v2
    [*] --> State1
    State1 --> [*]
    State1: Ingest quotes
-   class State1 {
+   state State1 {
       [*] --> gecko
       gecko --> [*]
    }
