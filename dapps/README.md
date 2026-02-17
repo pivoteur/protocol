@@ -151,8 +151,6 @@ stateDiagram-v2
 
       CloseAndDistribute: Close Pivots and Distribute Gains
       state CloseAndDistribute {
-         direction LR
-
          [*] --> Close
          Close --> Distribute
          Distribute --> [*]
@@ -161,6 +159,8 @@ stateDiagram-v2
 
          Distribute: Distribute or Reinvest Gains
          state Distribute {
+            direction LR
+
             [*] --> distribute
             distribute --> reinvest
             reinvest --> [*]
