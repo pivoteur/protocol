@@ -184,6 +184,13 @@ stateDiagram-v2
    }
 ```
 
+Each phase is subdivided into states. State colors mean:
+
+* green: automated
+* yellow: wip
+* violet: manual
+* black: not yet implemented
+
 # dapps
 
 Applications for protocol workflow
