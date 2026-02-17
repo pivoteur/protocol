@@ -4,7 +4,18 @@ The daily workflow for Pivot protocol can be viewed as phasal.
 
 ```mermaid
 stateDiagram-v2
+
+   accTitle: Protocol Pivot Arbitrage Workflow
+   accDescription: The day-to-day process of opening and closing pivots.
+
+   classDef inUse fill:green,color:black
+   classDef wip fill:yellow,color:black
+   classDef manual fill:violet,color:white
+   classDef notYet fill:black,color:white
+
+   class Run inUse
    Run: cargo run
+
    [*] --> Tests
    Tests --> Setup
    Setup --> Closes
