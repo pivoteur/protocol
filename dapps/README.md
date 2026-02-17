@@ -3,11 +3,10 @@
 The daily workflow for Pivot protocol can be viewed as phasal.
 
 ```mermaid
+---
+title: Protocol Pivot Arbitrage Workflow
+---
 stateDiagram-v2
-
-   accTitle: Protocol Pivot Arbitrage Workflow
-   accDescription: The day-to-day process of opening and closing pivots.
-
    classDef inUse fill:lime,color:black
    classDef wip fill:yellow,color:black
    classDef manual fill:violet,color:white
@@ -23,6 +22,7 @@ stateDiagram-v2
    class Tests wip
    class Setup wip
    class Closes wip
+   class WorkFlow wip
 
    class report manual
    class ReportwithoutUpdatingDatabase manual
@@ -31,15 +31,22 @@ stateDiagram-v2
    class UpdateDbwithoutReporting1 manual
    class Finalize manual
 
-   direction LR
-   [*] --> Tests
-   Tests --> Setup
-   Setup --> Finalize
-   Setup --> Closes
-   Closes --> Finalize
-   Closes --> Opens
-   Opens --> Finalize
+   [*] --> Workflow
+   Workflow --> Finalize
    Finalize --> [*]
+
+   Workflow: The day-to-day process of opening and closing pivots
+   state Workflow {
+      direction LR
+
+      [*] --> Tests
+      Tests --> Setup
+      Setup --> Finalize
+      Setup --> Closes
+      Closes --> Finalize
+      Closes --> Opens
+      Opens --> [*]
+   }
 
    Finalize: Update Database and Report results
    state Finalize {
