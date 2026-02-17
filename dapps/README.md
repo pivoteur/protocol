@@ -18,14 +18,29 @@ stateDiagram-v2
    class itr inUse
    class bae inUse
    class dusk inUse
+   class virtsz inUse
+
    class Tests wip
    class Setup wip
    class Closes wip
+
    class report manual
+   class ReportwithoutUpdatingDatabase manual
    class UpdateDb manual
+   class UpdateDbwithoutReporting manual
+   class UpdateDbwithoutReporting1 manual
+   class Finalize manual
+
    UpdateDb: update database
 
    Run: cargo run
+
+   Finalize: Update Database and Report results
+   state Finalize {
+      [*] --> report
+      report --> UpdateDb
+      UpdateDb --> [*]
+   }
 
    [*] --> Tests
    Tests --> Setup
@@ -59,8 +74,10 @@ stateDiagram-v2
          state Rep {
             direction LR
 
-            [*] --> report
-            report --> [*]
+            [*] --> ReportwithoutUpdatingDatabase
+            ReportwithoutUpdatingDatabase --> [*]
+
+            ReportwithoutUpdatingDatabase: report
          }
       }
    }
@@ -79,8 +96,8 @@ stateDiagram-v2
          direction LR
 
          [*] --> bae
-         bae --> UpdateDb
-         UpdateDb --> [*]
+         bae --> UpdateDbwithoutReporting
+         UpdateDbwithoutReporting --> [*]
       }
 
       Pools: Scan active pivot pools
@@ -88,8 +105,10 @@ stateDiagram-v2
          direction LR
 
          [*] --> pools
-         pools --> UpdateDb
-         UpdateDb --> [*]
+         pools --> UpdateDbwithoutReporting1
+         UpdateDbwithoutReporting1 --> [*]
+
+         UpdateDbwithoutReporting1: Update database
       }
 
       AdjustVirtualPivots: Adjust Virtual Open Pivots
@@ -98,9 +117,8 @@ stateDiagram-v2
 
          [*] --> ScanVirtsz
          ScanVirtsz --> AdjustVirtsz
-         AdjustVirtsz --> UpdateDb
-         UpdateDb --> report
-         report --> [*]
+         AdjustVirtsz --> Finalize
+         Finalize --> [*]
 
          ScanVirtsz: Scan Pivot Pools for Virtual Pivots
          state ScanVirtsz {
