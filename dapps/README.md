@@ -137,7 +137,7 @@ stateDiagram-v2
 
    Closes: Close Pivots
    state Closes {
-      [*] --> ScaCloses
+      [*] --> ScanCloses
       ScanCloses --> CloseAndDistribute
       CloseAndDistribute --> [*]
 
@@ -151,6 +151,8 @@ stateDiagram-v2
 
       CloseAndDistribute: Close Pivots and Distribute Gains
       state CloseAndDistribute {
+         direction LR
+
          [*] --> Close
          Close --> Distribute
          Distribute --> [*]
