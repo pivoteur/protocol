@@ -163,7 +163,8 @@ stateDiagram-v2
             direction LR
 
             [*] --> distribute
-            distribute --> reinvest
+            distribute --> [*]
+            [*] --> reinvest
             reinvest --> [*]
          }
       }
