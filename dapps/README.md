@@ -45,8 +45,12 @@ stateDiagram-v2
 
    [*] --> Tests
    Tests --> Setup
+   Setup --> Finalize
    Setup --> Closes
-   Closes --> [*]
+   Closes --> Finalize
+   Closes --> Opens
+   Opens --> Finalize
+   Finalize --> [*]
 
    Tests: Health Check
    state Tests {
@@ -105,13 +109,10 @@ stateDiagram-v2
       state AdjustVirtualPivots {
          [*] --> ScanVirtsz
          ScanVirtsz --> AdjustVirtsz
-         AdjustVirtsz --> Finalize
-         Finalize --> [*]
+         AdjustVirtsz --> [*]
 
          ScanVirtsz: Scan Pivot Pools for Virtual Pivots
          state ScanVirtsz {
-            direction LR
-
             [*] --> virtsz
             virtsz --> [*]
          }
@@ -127,8 +128,7 @@ stateDiagram-v2
       Close --> UpdateDb
       UpdateDb --> report
       report --> Distribute
-      Distribute --> Finalize
-      Finalize --> [*]
+      Distribute --> [*]
 
       ScanCloses: Scan Pools for Close calls
       state ScanCloses {
@@ -143,8 +143,7 @@ stateDiagram-v2
       ScanOpens --> Call
       Call --> Open
       Open --> OpenOrHedge
-      OpenOrHedge --> Finalize
-      Finalize --> [*]
+      OpenOrHedge --> [*]
 
       ScanOpens: Scan Pools for (virtual and real) available assets
       Call: Analyze EMA20 Trendlines to make open pivot call
