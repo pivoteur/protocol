@@ -35,6 +35,7 @@ stateDiagram-v2
    Tests: Health Check
    state Tests {
       direction LR
+
       [*] --> Integration
       Integration --> [*]
 
@@ -67,13 +68,16 @@ stateDiagram-v2
    Setup: Setup
    state Setup {
       direction LR
+
       [*] --> Quotes
       Quotes --> Pools
-      Pools --> [*]
+      Pools --> AdjustVirtualPivots
+      AdjustVirtualPivots --> [*]
 
       Quotes: Ingest quotes
       state Quotes {
          direction LR
+
          [*] --> bae
          bae --> UpdateDb
          UpdateDb --> [*]
@@ -82,9 +86,31 @@ stateDiagram-v2
       Pools: Scan active pivot pools
       state Pools {
          direction LR
+
          [*] --> pools
          pools --> UpdateDb
          UpdateDb --> [*]
+      }
+
+      AdjustVirtualPivots: Adjust Virtual Open Pivots
+      state AdjustVirtualPivots {
+         direction LR
+
+         [*] --> ScanVirtsz
+         ScanVirtsz --> AdjustVirtsz
+         AdjustVirtsz --> UpdateDb
+         UpdateDb --> report
+         report --> [*]
+
+         ScanVirtsz: Scan Pivot Pools for Virtual Pivots
+         state ScanVirtsz {
+            direction LR
+
+            [*] --> virtsz
+            virtsz --> [*]
+         }
+
+         AdjustVirtsz: Update virtual pivots
       }
    }
 
@@ -92,7 +118,7 @@ stateDiagram-v2
    state Closes {
       direction LR
 
-      [*] --> Scan
+      [*] --> ScaClosesn
       ScanCloses --> Close
       Close --> UpdateDb
       UpdateDb --> report
@@ -102,8 +128,9 @@ stateDiagram-v2
       report --> [*]
 
       ScanCloses: Scan Pools for Close calls
-      state Scan {
+      state ScanCloses {
          direction LR
+
          [*] --> dusk
          dusk --> [*]
       }
