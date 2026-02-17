@@ -41,9 +41,7 @@ stateDiagram-v2
 
       [*] --> Tests
       Tests --> Setup
-      Setup --> Finalize
       Setup --> Closes
-      Closes --> Finalize
       Closes --> Opens
       Opens --> [*]
    }
