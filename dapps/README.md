@@ -16,8 +16,14 @@ stateDiagram-v2
    class Tarp inUse
    class Run inUse
    class itr inUse
+   class bae inUse
+   class dusk inUse
    class Tests wip
+   class Setup wip
+   class Closes wip
    class report manual
+   class UpdateDb manual
+   UpdateDb: update database
 
    Run: cargo run
 
@@ -68,30 +74,57 @@ stateDiagram-v2
       Quotes: Ingest quotes
       state Quotes {
          direction LR
-         [*] --> gecko
-         gecko --> [*]
+         [*] --> bae
+         bae --> UpdateDb
+         UpdateDb --> [*]
       }
 
       Pools: Scan active pivot pools
       state Pools {
          direction LR
          [*] --> pools
-         pools --> [*]
+         pools --> UpdateDb
+         UpdateDb --> [*]
       }
    }
 
    Closes: Close Pivots
    state Closes {
       direction LR
-      [*] --> Scan
-      Scan --> [*]
 
-      Scan: Scan Pools for Close calls
+      [*] --> Scan
+      ScanCloses --> Close
+      Close --> UpdateDb
+      UpdateDb --> report
+      report --> Distribute
+      Distribute --> UpdateDb
+      UpdateDb --> report
+      report --> [*]
+
+      ScanCloses: Scan Pools for Close calls
       state Scan {
          direction LR
          [*] --> dusk
          dusk --> [*]
       }
+   }
+
+   Opens: Open New Pivots
+   state Opens {
+      direction LR
+   
+      [*] --> ScanOpens
+      ScanOpens --> Call
+      Call --> Open
+      Open --> OpenOrHedge
+      OpenOrHedge --> UpdateDb
+      UpdateDb --> report
+      report --> [*]
+
+      ScanOpens: Scan Pools for (virtual and real) available assets
+      Call: Analyze EMA20 Trendlines to make open pivot call
+      Open: Open a new pivot
+      OpenOrHedge: Open a hedge against the pivot or open the dual pivot
    }
 ```
 
