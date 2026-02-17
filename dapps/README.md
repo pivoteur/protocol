@@ -125,9 +125,7 @@ stateDiagram-v2
    state Closes {
       [*] --> ScaClosesn
       ScanCloses --> Close
-      Close --> UpdateDb
-      UpdateDb --> report
-      report --> Distribute
+      Close --> Distribute
       Distribute --> [*]
 
       ScanCloses: Scan Pools for Close calls
