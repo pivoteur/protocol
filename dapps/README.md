@@ -137,17 +137,32 @@ stateDiagram-v2
 
    Closes: Close Pivots
    state Closes {
-      [*] --> ScaClosesn
-      ScanCloses --> Close
-      Close --> Distribute
-      Distribute --> [*]
+      [*] --> ScaCloses
+      ScanCloses --> CloseAndDistribute
+      CloseAndDistribute --> [*]
 
       ScanCloses: Scan Pools for Close calls
       state ScanCloses {
-            direction LR
+         direction LR
 
          [*] --> dusk
          dusk --> [*]
+      }
+
+      CloseAndDistribute: Close Pivots and Distribute Gains
+      state CloseAndDistribute {
+         [*] --> Close
+         Close --> Distribute
+         Distribute --> [*]
+
+         Close: Close Pivots
+
+         Distribute: Distribute or Reinvest Gains
+         state Distribute {
+            [*] --> distribute
+            distribute --> reinvest
+            reinvest --> [*]
+         }
       }
    }
 
