@@ -31,8 +31,15 @@ stateDiagram-v2
    class UpdateDbwithoutReporting1 manual
    class Finalize manual
 
-
-   Run: cargo run
+   direction LR
+   [*] --> Tests
+   Tests --> Setup
+   Setup --> Finalize
+   Setup --> Closes
+   Closes --> Finalize
+   Closes --> Opens
+   Opens --> Finalize
+   Finalize --> [*]
 
    Finalize: Update Database and Report results
    state Finalize {
@@ -42,15 +49,6 @@ stateDiagram-v2
 
       UpdateDb: update database
    }
-
-   [*] --> Tests
-   Tests --> Setup
-   Setup --> Finalize
-   Setup --> Closes
-   Closes --> Finalize
-   Closes --> Opens
-   Opens --> Finalize
-   Finalize --> [*]
 
    Tests: Health Check
    state Tests {
@@ -69,6 +67,8 @@ stateDiagram-v2
          state Func {
             [*] --> Run
             Run --> [*]
+
+            Run: cargo run
          }
          Rep: Automation Status Report
          state Rep {
