@@ -13,7 +13,10 @@ stateDiagram-v2
    classDef manual fill:violet,color:white
    classDef notYet fill:black,color:white
 
+   class Tarp inUse
    class Run inUse
+   class Tests wip
+
    Run: cargo run
 
    [*] --> Tests
@@ -21,7 +24,6 @@ stateDiagram-v2
    Setup --> Closes
    Closes --> [*]
 
-   class Tests wip
    Tests: Health Check
    state Tests {
       direction LR
@@ -32,7 +34,6 @@ stateDiagram-v2
       state Integration {
          direction LR
 
-         class Tarp inUse
          Tarp: cargo tarpaulin
          [*] --> itr
          itr --> Tarp
