@@ -18,6 +18,7 @@ stateDiagram-v2
    class bae inUse
    class dusk inUse
    class virtsz inUse
+   class pools inUse
 
    class Tests wip
    class Setup wip
@@ -47,9 +48,9 @@ stateDiagram-v2
 
    Finalize: Update Database and Report results
    state Finalize {
-      [*] --> report
-      report --> UpdateDb
-      UpdateDb --> [*]
+      [*] --> UpdateDb
+      UpdateDb --> report 
+      report --> [*]
 
       UpdateDb: update database
    }
