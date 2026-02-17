@@ -15,7 +15,9 @@ stateDiagram-v2
 
    class Tarp inUse
    class Run inUse
+   class itr inUse
    class Tests wip
+   class report manual
 
    Run: cargo run
 
@@ -30,7 +32,7 @@ stateDiagram-v2
       [*] --> Integration
       Integration --> [*]
 
-      Integration: Integration Tests
+      Integration: Tests
       state Integration {
          direction LR
 
@@ -50,7 +52,6 @@ stateDiagram-v2
          state Rep {
             direction LR
 
-            class report manual
             [*] --> report
             report --> [*]
          }
