@@ -29,7 +29,6 @@ stateDiagram-v2
    class UpdateDb manual
    class UpdateDbwithoutReporting manual
    class UpdateDbwithoutReporting1 manual
-   class Finalize manual
 
    [*] --> Workflow
    Workflow --> Finalize
@@ -70,6 +69,8 @@ stateDiagram-v2
          Rep --> [*]
          Func: Runs my functional test framework
          state Func {
+            direction LR
+
             [*] --> Run
             Run --> [*]
 
@@ -77,6 +78,8 @@ stateDiagram-v2
          }
          Rep: Automation Status Report
          state Rep {
+            direction LR
+
             [*] --> ReportwithoutUpdatingDatabase
             ReportwithoutUpdatingDatabase --> [*]
 
@@ -94,6 +97,8 @@ stateDiagram-v2
 
       Quotes: Ingest quotes
       state Quotes {
+            direction LR
+
          [*] --> bae
          bae --> UpdateDbwithoutReporting
          UpdateDbwithoutReporting --> [*]
@@ -103,6 +108,8 @@ stateDiagram-v2
 
       Pools: Scan active pivot pools
       state Pools {
+            direction LR
+
          [*] --> pools
          pools --> UpdateDbwithoutReporting1
          UpdateDbwithoutReporting1 --> [*]
@@ -118,6 +125,8 @@ stateDiagram-v2
 
          ScanVirtsz: Scan Pivot Pools for Virtual Pivots
          state ScanVirtsz {
+            direction LR
+
             [*] --> virtsz
             virtsz --> [*]
          }
@@ -135,6 +144,8 @@ stateDiagram-v2
 
       ScanCloses: Scan Pools for Close calls
       state ScanCloses {
+            direction LR
+
          [*] --> dusk
          dusk --> [*]
       }
