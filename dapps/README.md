@@ -8,7 +8,7 @@ stateDiagram-v2
    accTitle: Protocol Pivot Arbitrage Workflow
    accDescription: The day-to-day process of opening and closing pivots.
 
-   classDef inUse fill:green,color:black
+   classDef inUse fill:lime,color:black
    classDef wip fill:yellow,color:black
    classDef manual fill:violet,color:white
    classDef notYet fill:black,color:white
@@ -21,6 +21,7 @@ stateDiagram-v2
    Setup --> Closes
    Closes --> [*]
 
+   class Tests wip
    Tests: Health Check
    state Tests {
       direction LR
@@ -30,6 +31,8 @@ stateDiagram-v2
       Integration: Integration Tests
       state Integration {
          direction LR
+
+         class Tarp inUse
          Tarp: cargo tarpaulin
          [*] --> itr
          itr --> Tarp
@@ -42,9 +45,11 @@ stateDiagram-v2
             [*] --> Run
             Run --> [*]
          }
-         Rep: Automation Status Report [manual]
+         Rep: Automation Status Report
          state Rep {
             direction LR
+
+            class report manual
             [*] --> report
             report --> [*]
          }
