@@ -31,7 +31,6 @@ stateDiagram-v2
    class UpdateDbwithoutReporting1 manual
    class Finalize manual
 
-   UpdateDb: update database
 
    Run: cargo run
 
@@ -40,6 +39,8 @@ stateDiagram-v2
       [*] --> report
       report --> UpdateDb
       UpdateDb --> [*]
+
+      UpdateDb: update database
    }
 
    [*] --> Tests
@@ -49,15 +50,11 @@ stateDiagram-v2
 
    Tests: Health Check
    state Tests {
-      direction LR
-
       [*] --> Integration
       Integration --> [*]
 
       Integration: Tests
       state Integration {
-         direction LR
-
          Tarp: cargo tarpaulin
          [*] --> itr
          itr --> Tarp
@@ -66,14 +63,11 @@ stateDiagram-v2
          Rep --> [*]
          Func: Runs my functional test framework
          state Func {
-            direction LR
             [*] --> Run
             Run --> [*]
          }
          Rep: Automation Status Report
          state Rep {
-            direction LR
-
             [*] --> ReportwithoutUpdatingDatabase
             ReportwithoutUpdatingDatabase --> [*]
 
@@ -84,8 +78,6 @@ stateDiagram-v2
 
    Setup: Setup
    state Setup {
-      direction LR
-
       [*] --> Quotes
       Quotes --> Pools
       Pools --> AdjustVirtualPivots
@@ -93,17 +85,15 @@ stateDiagram-v2
 
       Quotes: Ingest quotes
       state Quotes {
-         direction LR
-
          [*] --> bae
          bae --> UpdateDbwithoutReporting
          UpdateDbwithoutReporting --> [*]
+
+         UpdateDbwithoutReporting: Update database
       }
 
       Pools: Scan active pivot pools
       state Pools {
-         direction LR
-
          [*] --> pools
          pools --> UpdateDbwithoutReporting1
          UpdateDbwithoutReporting1 --> [*]
@@ -113,8 +103,6 @@ stateDiagram-v2
 
       AdjustVirtualPivots: Adjust Virtual Open Pivots
       state AdjustVirtualPivots {
-         direction LR
-
          [*] --> ScanVirtsz
          ScanVirtsz --> AdjustVirtsz
          AdjustVirtsz --> Finalize
@@ -134,21 +122,16 @@ stateDiagram-v2
 
    Closes: Close Pivots
    state Closes {
-      direction LR
-
       [*] --> ScaClosesn
       ScanCloses --> Close
       Close --> UpdateDb
       UpdateDb --> report
       report --> Distribute
-      Distribute --> UpdateDb
-      UpdateDb --> report
-      report --> [*]
+      Distribute --> Finalize
+      Finalize --> [*]
 
       ScanCloses: Scan Pools for Close calls
       state ScanCloses {
-         direction LR
-
          [*] --> dusk
          dusk --> [*]
       }
@@ -156,15 +139,12 @@ stateDiagram-v2
 
    Opens: Open New Pivots
    state Opens {
-      direction LR
-   
       [*] --> ScanOpens
       ScanOpens --> Call
       Call --> Open
       Open --> OpenOrHedge
-      OpenOrHedge --> UpdateDb
-      UpdateDb --> report
-      report --> [*]
+      OpenOrHedge --> Finalize
+      Finalize --> [*]
 
       ScanOpens: Scan Pools for (virtual and real) available assets
       Call: Analyze EMA20 Trendlines to make open pivot call
