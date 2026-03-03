@@ -142,7 +142,7 @@ stateDiagram-v2
       ScanCloses --> CloseAndDistribute
       CloseAndDistribute --> [*]
 
-      ScanCloses: Scan Pools for Close calls
+      ScanCloses: Scan Pools and make Close calls
       state ScanCloses {
          direction LR
 
