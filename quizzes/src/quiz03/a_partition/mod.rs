@@ -28,7 +28,7 @@ pub mod functional_tests {
 
    use libs::{
       fetchers::fetch_pivots,
-      types::pivots::partition_on
+      types::{ aliases::aliases, pivots::partition_on }
    };
 
    use super::*;
@@ -55,8 +55,9 @@ pub mod functional_tests {
    }
 
    async fn do_it(root_url: &str, prim: &str, piv: &str) -> ErrStr<()> {
+      let a = aliases();
       let (opens, _closes, _max_date) =
-         fetch_pivots(root_url, prim, piv).await?;
+         fetch_pivots(root_url, prim, piv, &a).await?;
       let (lefts, rights) = partition_on(prim, opens);
       list_open_pivots(prim, lefts);
       list_open_pivots(piv, rights);

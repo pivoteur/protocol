@@ -8,11 +8,11 @@ Shows the assets of the selected pivot pool.
 
 Usage:
 
-	$ {} <root URL> <primary> <pivot>
+	$ {} <auth> <primary> <pivot>
 
 where
 
-* <root URL> is repository REST endpoint
+* <auth> is protocol authenticator
 * <primary> is the pool's primary asset
 * <pivot> is the pool's pivot asset
 ", app_name());
@@ -27,15 +27,24 @@ pub mod functional_tests {
 
    use libs::{
       fetchers::fetch_assets,
-      reports::{print_table,header}
+      reports::{print_table,header},
+      types::aliases::aliases
    };
+
+   async fn fetch_pool_assets(auth: &str, prim: &str, piv: &str)
+         -> ErrStr<usize> {
+      let aliases = aliases();
+      let root = get_env(&format!("{}_URL", auth.to_uppercase()))?;
+      let og = fetch_assets(&root, &prim, &piv, &aliases).await?;
+      print_table(&format!("{} assets", header(&prim, &piv)), &[og]);
+      Ok(1)
+   }
 
    pub async fn runoff_get_args() -> ErrStr<()> {
       println!("\n{}, version: {}\n", app_name(), version());
       let args = get_args();
-      if let [root, prim, piv] = args.as_slice() {
-         let og = fetch_assets(&root, &prim, &piv).await?;
-         print_table(&format!("{} assets", header(&prim, &piv)), &[og]);
+      if let [auth, prim, piv] = args.as_slice() {
+         let _ = fetch_pool_assets(auth, prim, piv).await?;
          Ok(())
       } else {
          usage()
@@ -43,9 +52,6 @@ pub mod functional_tests {
    }
 
    pub async fn runoff() -> ErrStr<usize> {
-      let piv = get_env("PIVOT_URL")?;
-      let pool = fetch_assets(&piv, "BTC", "ETH").await?;
-      print_table("BTC+ETH assets", &[pool]);
-      Ok(1)
+      fetch_pool_assets("pivot", "btc", "eth").await
    }
 }

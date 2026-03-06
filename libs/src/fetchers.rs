@@ -12,7 +12,7 @@ use book::{
    num_utils::{parse_num,parse_commaless},
    parse_utils::parse_str,
    rest_utils::read_rest,
-   table_utils::{Table,cols,row,rows,ingest,enum_headers},
+   table_utils::{Table,cols,row,rows,ingest},
    utils::pred
 };
 
@@ -20,7 +20,7 @@ use super::{
    paths::{open_pivot_path,quotes_url,pool_assets_url},
    tables::index_table,
    types::{
-      aliases::aliases,
+      aliases::{Aliases,aliases},
       pivots::{Pivot,parse_pivot,active},
       quotes::{Quotes,mk_quotes},
       assets::{Asset,mk_asset},
@@ -29,13 +29,13 @@ use super::{
    }
 };
 
-pub async fn fetch_assets(root_url: &str, primary: &str, pivot: &str)
-      -> ErrStr<Composition> {
+pub async fn fetch_assets(root_url: &str, primary: &str, pivot: &str,
+                          aliases: &Aliases) -> ErrStr<Composition> {
    let (pri, seggs) = enlowerify(primary, pivot);
    let url = pool_assets_url(root_url, &pri, &seggs);
    let lines = fetch_lines(&url).await?;
    let table = ingest(parse_date, parse_str, parse_str, &lines, "\t")?;
-   let hdrs = enum_headers(cols(&table));
+   let hdrs = aliases.enum_headers(cols(&table));
    let (p, s) = enupperify(primary, pivot);
    let max_date = rows(&table).iter().max().cloned()
                               .ok_or(format!("No max_date for {p}+{s}"))?;
@@ -70,7 +70,8 @@ fn buidl_asset<'a>(amount: &str, q: impl Fn(&'a Token) -> ErrStr<USD>,
 }
 
 /// Fetch the pivots for pivot pool A+B; open pivots are reposed in git
-pub async fn fetch_pivots(root_url: &str, primary: &str, pivot: &str)
+pub async fn fetch_pivots(root_url: &str, primary: &str, pivot: &str,
+                          a: &Aliases)
       -> ErrStr<(Vec<Pivot>, Vec<Pivot>, NaiveDate)> {
    let (pri, seggs) = enlowerify(primary, pivot);
    let pool = format!("{pri}+{seggs}");
@@ -78,7 +79,7 @@ pub async fn fetch_pivots(root_url: &str, primary: &str, pivot: &str)
    let lines = fetch_lines(&url).await?;
    let table = index_table(lines)?;
 
-   let hdrs = enum_headers(cols(&table));
+   let hdrs = a.enum_headers(cols(&table));
 
    let max_date = max_diem(&table, hdrs["opened"], &pool)?;
    let mut acts: Vec<Pivot> = Vec::new();
@@ -114,9 +115,9 @@ fn max_diem<T>(table: &Table<T, String, String>, ix: usize, pool: &str)
 }
 
 /// Filter to only the open pivots for pivot pool A+B
-pub async fn fetch_open_pivots(root_url: &str, primary: &str, pivot: &str)
-      -> ErrStr<(Vec<Pivot>, NaiveDate)> {
-   let (ans, _, max_date) = fetch_pivots(root_url, primary, pivot).await?;
+pub async fn fetch_open_pivots(root_url: &str, primary: &str, pivot: &str,
+                               a: &Aliases) -> ErrStr<(Vec<Pivot>, NaiveDate)> {
+   let (ans, _, max_date) = fetch_pivots(root_url, primary, pivot, a).await?;
    Ok((ans, max_date))
 }
 

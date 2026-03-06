@@ -3,6 +3,7 @@ pub mod quiz02;
 pub mod quiz03;
 
 pub mod quiz06;
+pub mod quiz07;
 
 pub mod quiz09;
 pub mod quiz10;

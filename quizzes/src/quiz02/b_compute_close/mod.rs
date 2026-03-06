@@ -20,10 +20,11 @@ struct Report {
    max_date: NaiveDate
 }
 
-async fn compute_closes(root_url: &str, prim: &str, piv: &str, date: NaiveDate)
-      -> ErrStr<Report> {
-   let (opens, closes, max_date) = fetch_pivots(root_url, prim, piv).await?;
+async fn compute_closes(root_url: &str, prim: &str, piv: &str, 
+                        date: NaiveDate) -> ErrStr<Report> {
    let quotes = fetch_quotes(&date).await?;
+   let a = &quotes.aliases;
+   let (opens, closes, max_date) = fetch_pivots(root_url, prim, piv, a).await?;
    let mut next_close = next_close_id(&closes);
    let proposer = propose(&quotes);
    let mut props = Vec::new();

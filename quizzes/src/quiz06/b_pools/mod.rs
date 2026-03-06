@@ -10,6 +10,7 @@ use libs::{
    git::fetch_pool_names,
    reports::{print_table,total_line},
    types::{
+      aliases::aliases,
       comps::{Composition,total,last_updated},
       measurable::sort_by_size
   }
@@ -66,10 +67,11 @@ where
 
 async fn fetch_all_pools_assets(auth: &str, root_url: &str)
       -> ErrStr<Vec<Composition>> {
+   let aliases = aliases();
    let pool_names = fetch_pool_names(&auth, "data/pools").await?;
    let mut pools = Vec::new();
    for (prim, piv) in pool_names {
-      let pool = fetch_assets(&root_url, &prim, &piv).await?;
+      let pool = fetch_assets(&root_url, &prim, &piv, &aliases).await?;
       pools.push(pool);
    }
    Ok(pools)

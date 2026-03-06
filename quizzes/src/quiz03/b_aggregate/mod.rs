@@ -13,8 +13,9 @@ use libs::{
 
 async fn aggregate(root_url: &str, prim: &str, piv: &str, date: NaiveDate)
       -> ErrStr<()> {
-   let (opens, closes, max_date) = fetch_pivots(root_url, prim, piv).await?;
    let quotes = fetch_quotes(&date).await?;
+   let a = &quotes.aliases;
+   let (opens, closes, max_date) = fetch_pivots(root_url, prim, piv, a).await?;
    let next_close = next_close_id(&closes);
    preamble(prim, piv, opens.len(), &max_date, &date);
    let proposer = propose(&quotes);

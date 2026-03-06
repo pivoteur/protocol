@@ -29,13 +29,15 @@ pub async fn process_pools(auth_name: &str, dt: &str)
 async fn process_pools0(root_url: &str, pools: &Vec<Pool>, date: NaiveDate)
       -> ErrStr<(Vec<Proposal>, Vec<Pool>)> {
    let quotes = fetch_quotes(&date).await?;
+   let a = &quotes.aliases;
    let proposer = propose(&quotes);
    let mut no_closes = Vec::new();
    let mut proposals = Vec::new();
 
    for pool in pools {
       let (prim, piv) = pool;
-      let (opens, closes, max_date) = fetch_pivots(root_url, prim, piv).await?;
+      let (opens, closes, max_date) =
+         fetch_pivots(root_url, prim, piv, a).await?;
       let next_close = next_close_id(&closes);
       let len = &opens.len();
       let (lefts, rights) = partition_on(prim, opens);

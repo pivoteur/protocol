@@ -19,7 +19,7 @@ use super::{
 pub struct Quotes {
    pub date: NaiveDate,
    quotes: HashMap<Token, f32>,
-   aliases: Aliases
+   pub aliases: Aliases
 }
 
 impl CsvWriter for Quotes {

@@ -2,6 +2,8 @@ use std::collections::HashMap;
 
 use super::util::Token;
 
+use book::string_utils::words;
+
 type Alias = HashMap<Token, Token>;
 
 #[derive(Debug, Clone)]
@@ -29,5 +31,24 @@ impl Aliases {
       } else {
          panic!("No alias for {cap}")
       }
+   }
+
+   pub fn enum_headers(&self, headers: Vec<String>)
+         -> HashMap<String, usize> {
+      let mut ix: usize = 0;
+      let mut hdrs = HashMap::new();
+      fn ikthos(a: &Aliases, hdr: &str) -> String {
+         if let [h, t] = words(hdr).as_slice() {
+            format!("{} {t}", a.alias(&h))
+         } else { 
+            a.alias(hdr)
+         }
+      }
+      for hdr in headers {
+         hdrs.insert(ikthos(self, &hdr), ix);
+         hdrs.insert(hdr, ix);
+         ix += 1;
+      }
+      hdrs
    }
 }
