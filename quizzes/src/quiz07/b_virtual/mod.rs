@@ -24,7 +24,7 @@ use libs::{
    }
 };
 
-fn version() -> String { "1.02".to_string() }
+fn version() -> String { "2.00".to_string() }
 fn app_name() -> String { "virtsz".to_string() }
 
 async fn show_virtual_pivots(protocol: &str, dt: &str) -> ErrStr<()> {

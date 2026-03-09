@@ -31,6 +31,7 @@
 ## Infrastructure
 
 * [10](src/quiz10): list files of a directory. Yes. I know
+* [11](src/quiz11): Read open-pivots, write them, read them right back.
 
 # Resources
 

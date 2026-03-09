@@ -77,6 +77,11 @@ pub async fn fetch_pivots(root_url: &str, primary: &str, pivot: &str,
    let pool = format!("{pri}+{seggs}");
    let url = open_pivot_path(root_url, &pri, &seggs);
    let lines = fetch_lines(&url).await?;
+   parse_pivots(pool, lines, a)
+}
+
+pub fn parse_pivots(pool: String, lines: Vec<String>, a: &Aliases)
+      -> ErrStr<(Vec<Pivot>, Vec<Pivot>, NaiveDate)> {
    let table = index_table(lines)?;
 
    let hdrs = a.enum_headers(cols(&table));
@@ -151,14 +156,20 @@ pub async fn fetch_quotes(date: &NaiveDate) -> ErrStr<Quotes> {
 
 #[cfg(test)]
 mod tests {
-   use chrono::Duration;
    use super::*;
-   use book::date_utils::today;
+   use book::{ date_utils::{yesterday,tomorrow}, utils::get_env };
 
    #[tokio::test]
    async fn test_fetch_lines_ok() {
       let ans = fetch_lines(&quotes_url()).await;
       assert!(ans.is_ok());
+   }
+
+   #[tokio::test]
+   async fn test_fetch_lines() -> ErrStr<()> {
+      let ans = fetch_lines(&quotes_url()).await?;
+      assert!(!ans.is_empty());
+      Ok(())
    }
 
    #[tokio::test]
@@ -169,10 +180,46 @@ mod tests {
 
    #[tokio::test]
    async fn test_quotes_ok() {
-      let tday = today();
-      let yday = tday - Duration::days(1);
+      let yday = yesterday();
       let ans = fetch_quotes(&yday).await;
       assert!(ans.is_ok());
+   }
+
+   #[tokio::test]
+   async fn test_quotes() -> ErrStr<()> {
+      let yday = yesterday();
+      let ans = fetch_quotes(&yday).await?;
+      assert!(ans.lookup(&"BTC".to_string())? > 0.0);
+      Ok(())
+   }
+
+   #[tokio::test]
+   async fn test_fetch_assets_ok() -> ErrStr<()> {
+      let root_url = get_env("PIVOT_URL")?;
+      let a = aliases();
+      let mb_assets = fetch_assets(&root_url, "btc", "eth", &a).await;
+      assert!(mb_assets.is_ok());
+      Ok(())
+   }
+
+   #[tokio::test]
+   async fn test_fetch_pivots_ok() -> ErrStr<()> {
+      let root_url = get_env("PIVOT_URL")?;
+      let a = aliases();
+      let mb_opns = fetch_pivots(&root_url, "btc", "eth", &a).await;
+      assert!(mb_opns.is_ok());
+      Ok(())
+   }
+
+   #[tokio::test]
+   async fn test_fetch_pivots() -> ErrStr<()> {
+      let root_url = get_env("PIVOT_URL")?;
+      let a = aliases();
+      let (opns, cls, mx) = fetch_pivots(&root_url, "btc", "eth", &a).await?;
+      assert!(!opns.is_empty());
+      assert!(!cls.is_empty());
+      assert!(tomorrow() > mx);
+      Ok(())
    }
 }
 
