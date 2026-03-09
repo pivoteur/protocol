@@ -1,9 +1,10 @@
+use std::iter::once;
+
 use book::{
-   csv_utils::CsvHeader,
    err_utils::ErrStr,
-   list_utils::{ht,tail},
+   list_utils::ht,
    parse_utils::{parse_id,parse_str},
-   table_utils::{Table,ingest}
+   table_utils::{Table,ingest,cols}
 };
 
 use super::types::util::Id;
@@ -21,14 +22,13 @@ pub fn index_table(lines: Vec<String>) -> ErrStr<IxTable> {
    ingest(parse_id, parse_str, parse_str, &body, "\t")
 }
 
-pub fn print_sans_index(t: &IxTable) {
-   let hdrs: Vec<String> = tail(&t.header().split(",").collect());
+pub fn sans_index(t: &IxTable) -> Vec<String> {
+   let hdrs: &Vec<String> = &cols(t);
    let hdr = hdrs.join("\t");
-   println!("{hdr}");
-   for row in t.data {
-      let r = row.join("\t");
-      println!("{r}");
-   } // by printing the rows of data, we don't print the index (the ROW Id)
+   let ans: Vec<String> =
+      once(hdr).chain(t.data.clone().into_iter().map(|r| r.join("\t")))
+               .collect();
+   ans
 }
 
 pub mod functional_tests {
@@ -53,7 +53,7 @@ pub mod functional_tests {
       println!("Indexed table is:\n\n{}", table.as_csv());
 
       println!("\nTable without indices as TSV:\n");
-      print_sans_index(&table);
+      println!("{}", sans_index(&table).join("\n"));
       Ok(2)
    }
 }
@@ -75,6 +75,50 @@ mod tests {
    fn test_index_table_rows_same_number_as_input_data() -> ErrStr<()> {
       let table = index_table(functional_tests::some_rows())?;
       assert_eq!(functional_tests::some_rows().len() - 1, rows(&table).len());
+      Ok(())
+   }
+
+   #[test]
+   fn test_sans_index() -> ErrStr<()> {
+      let table = index_table(functional_tests::some_rows())?;
+      let tsv = sans_index(&table);
+      assert_eq!(functional_tests::some_rows().len(), tsv.len());
+      Ok(())
+   }
+
+   #[test]
+   fn test_reingest_from_sans_index_ok() -> ErrStr<()> {
+      let table = index_table(functional_tests::some_rows())?;
+      let tsv = sans_index(&table);
+      let table1 = index_table(tsv);
+      assert!(table1.is_ok());
+      Ok(())
+   }
+
+   #[test]
+   fn test_reingest_from_sans_index_same_size() -> ErrStr<()> {
+      let table = index_table(functional_tests::some_rows())?;
+      let tsv = sans_index(&table);
+      let table1 = index_table(tsv)?;
+      assert_eq!(table.data.len(), table1.data.len());
+      Ok(())
+   }
+
+   #[test]
+   fn test_reingest_from_sans_index_same_headers() -> ErrStr<()> {
+      let table = index_table(functional_tests::some_rows())?;
+      let tsv = sans_index(&table);
+      let table1 = index_table(tsv)?;
+      assert_eq!(cols(&table), cols(&table1));
+      Ok(())
+   }
+
+   #[test]
+   fn test_reingest_from_sans_index_same_row() -> ErrStr<()> {
+      let table = index_table(functional_tests::some_rows())?;
+      let tsv = sans_index(&table);
+      let table1 = index_table(tsv)?;
+      assert_eq!(table.data[2], table1.data[2]);
       Ok(())
    }
 }
