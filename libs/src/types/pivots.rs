@@ -34,7 +34,7 @@ pub struct Pivot {
    to: Asset
 }
 
-pub fn is_virtual(p: &Pivot) -> bool { is_virt1(&p.from) }
+pub fn is_virtual(p: &Pivot) -> bool { no_url(&p.header) && is_virt1(&p.from) }
 pub fn committed(p: &Pivot) -> Coin { pivot_amount1(p) }
 
 fn pivot_amount1(p: &Pivot) -> Coin {
@@ -88,8 +88,11 @@ pub fn active(p: &Pivot) -> bool {
 struct Header {
    opened: NaiveDate,
    id: Id,
-   close: Id
+   close: Id,
+   tx_id: String
 }
+
+fn no_url(hdr: &Header) -> bool { !hdr.tx_id.starts_with("https://") }
 
 #[derive(Debug, Clone)]
 struct AggregateHeader {
@@ -110,11 +113,11 @@ fn add_header_info(v: &Vec<Pivot>) -> AggregateHeader {
 impl CsvWriter for Header {
    fn ncols(&self) -> usize { 3 }
    fn as_csv(&self) -> String {
-      format!("{},{},{}", self.opened,self.id,self.close)
+      format!("{},{},{},{}", self.opened,self.id,self.close,self.tx_id)
    }
 }
 impl CsvHeader for Header {
-   fn header(&self) -> String { "opened,id,close_id".to_string() }
+   fn header(&self) -> String { "opened,id,close_id,tx_id".to_string() }
 }
 
 impl CsvHeader for AggregateHeader {
@@ -130,9 +133,9 @@ impl CsvWriter for AggregateHeader {
    }
 }
 
-fn mk_hdr(opend: &str, id: Id, close: Id) -> ErrStr<Header> {
+fn mk_hdr(opend: &str, id: Id, close: Id, tx_id: String) -> ErrStr<Header> {
    let opened = parse_date(opend)?;
-   Ok(Header { opened, id, close })
+   Ok(Header { opened, id, close, tx_id })
 }
 
 fn parse_header(hdrs: &HashMap<String, usize>, row: &Vec<String>)
@@ -143,7 +146,7 @@ fn parse_header(hdrs: &HashMap<String, usize>, row: &Vec<String>)
                  .ok_or("Can't find pivot ix".to_string())?;
    let id = parse_id(&row[*opn])?;
    let closed = parse_id(&row[hdrs["close"]])?;
-   mk_hdr(dt, id, closed)
+   mk_hdr(dt, id, closed, row[hdrs["tx_id"]].clone())
 }
 
 pub fn next_close_id(pivs: &Vec<Pivot>) -> Id {
@@ -534,5 +537,75 @@ fn trade(q: &Quotes, p: &Pivot) -> ErrStr<Option<(PropAsset, PropAsset)>> {
 /// Partitions open-pivots by principal asset
 pub fn partition_on(tok: &str, opens: Vec<Pivot>) -> Partition<Pivot> {
    opens.into_iter().partition(|p: &Pivot| p.from.token == tok)
+}
+
+#[cfg(test)]
+mod tests {
+   use super::*;
+   use book::{string_utils::to_string, table_utils::{Table,cols,enum_headers}};
+   use crate::tables::index_table;
+
+   // this test data contains a closed pivot
+   // an opened pivot
+   // a virtual pivot
+   // and a non-virtual virtual pivot (protocol_issue_010_non_virtual_pivots)
+   fn btc_eth_raw() -> String {
+      "opened	open	close	tx_id	from	from_blockchain	amount1	virtual	10% gain	quote1	val1	to	to_blockchain	quote2	amount computed	amount2	commission	gas token	gas	gas quote	gas $	net	val2	diff	δ	closed/updated
+2025-08-06	1	1	https://snowtrace.io/tx/0x60a2129cf19213def46b4355739cf69e998ed6245fe0ade6563e83c1ba2d83c8	BTC	Avalanche	0.004498	0	0.004948	$113,883.00	$512.30	ETH	Avalanche	$3,588.72	0.14275	0.14203		AVAX	0.0052267	$22.24	$0.12	0.14203	$509.69	-$2.61	-1.197	*hedge
+2025-09-30	28	0	https://snowtrace.io/tx/0xdef66cbfea4687eff8390728557a07b9697dc15927de51d0819e07aa5bc71963	BTC	Avalanche	0.0087	0	0.0096	$113,056.00	$987.15	ETH	Avalanche	$4,162.11	0.2372	0.230543		AVAX	0.0044041	$29.62	$0.13	0.2305	$959.54	-$27.60	0.557	
+2026-02-21	17	0	virtual swap	BTC	Avalanche	0.000000	0.009205	0.0101	$114,701.00	$1,055.78	ETH	Avalanche	$4,810.58	0.21947	0.31773		AVAX	0.0000000	$25.83	$0.00	0.3177	$1,528.45	$0.00	-3.534	2025-08-24
+2026-02-21	41	0	https://snowtrace.io/tx/0x77fe7489ccb408e103e86f12bdfa1fbf0dc4476912a7a0bff6ad4b12b32e55c1	BTC	Avalanche	0	0.0074	0.0081	$107,858.00	$798.78	ETH	Avalanche	$3,715.49	0.2150	0.255891		AVAX	0.0053844	$16.95	$0.09	0.2559	$950.76	$151.98	0.911	2025-11-03".to_string()
+   }
+
+   fn btc_eth() -> ErrStr<(Table<Id,String,String>, HashMap<String, usize>)> {
+      let lines: Vec<String> =
+         btc_eth_raw().split("\n").map(to_string).collect();
+      let table = index_table(lines)?;
+      let ix = enum_headers(cols(&table));
+      Ok((table, ix))
+   }
+
+   #[test]
+   fn test_parse_pivot_ok() -> ErrStr<()> {
+      let (table, ix) = btc_eth()?;
+      let row = table.data.first().unwrap();
+      let ans = parse_pivot(&ix, &row);
+      assert!(ans.is_ok());
+      Ok(())
+   }
+
+   #[test]
+   fn test_parse_virtual_pivot() -> ErrStr<()> {
+      let (table, ix) = btc_eth()?;
+      let mut virt = false;
+      for row in table.data {
+         let piv = parse_pivot(&ix, &row)?;
+         virt = virt || is_virtual(&piv);
+      }
+      assert!(virt);
+      Ok(())
+   }
+
+   #[test]
+   fn test_no_url() -> ErrStr<()> {
+      let (table, ix) = btc_eth()?;
+      let row = table.data.first().unwrap();
+      let piv = parse_pivot(&ix, &row)?;
+      assert!(!no_url(&piv.header));
+      Ok(())
+   }
+
+   #[test]
+   fn test_parse_pivots() -> ErrStr<()> {
+      let (table, ix) = btc_eth()?;
+      let mut virts = 0;
+      for row in &table.data {
+         let piv = parse_pivot(&ix, &row)?;
+         virts += is_virtual(&piv) as i32;
+      }
+      assert_eq!(1, virts);
+      assert_eq!(4, table.data.len());
+      Ok(())
+   }
 }
 
