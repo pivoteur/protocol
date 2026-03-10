@@ -19,7 +19,7 @@ use libs::{
       assets::{Asset,mk_asset},
       comps::{Composition,mk_composition,total},
       pivots::{is_virtual,committed},
-      quotes::{Quotes,lookup},
+      quotes::Quotes,
       util::{Blockchain,Token}
    }
 };
@@ -67,7 +67,7 @@ so, you know: handle those.
                -> impl Fn(&'a Token) -> ErrStr<Asset> {
             move |token| {
                let tok = a.alias(token);
-               let qt = lookup(&q, &tok)?;
+               let qt = q.lookup(&tok)?;
                Ok(mk_asset(&(b.clone(), tok.clone()), 0.0, &mk_usd(qt), dt))
             }
          }

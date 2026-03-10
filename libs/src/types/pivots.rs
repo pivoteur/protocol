@@ -375,52 +375,42 @@ impl CsvHeader for Propose {
 }
 impl CsvWriter for Propose {
    fn ncols(&self) -> usize {
-      if let Some(prince) = self.principal.first() {
-         if let Some(piv) = self.pivot.first() {
-            self.header.ncols() + 2 + prince.ncols() + 1
+      let prince = self.principal.first()
+            .unwrap_or_else(|| panic!("No principal for proposal"));
+      let piv = self.pivot.first()
+            .unwrap_or_else(|| panic!("No pivots for proposal"));
+      self.header.ncols() + 2 + prince.ncols() + 1
             + piv.ncols() + self.propose.ncols() + 2
-         } else {
-            panic!("No pivots for proposal")
-         }
-      } else {
-         panic!("No principal for proposal")
-      }
    }
    fn as_csv(&self) -> String {
-      if let Ok((_, opnd)) = weighted_days(&self) {
-         if let Some(prince) = self.principal.first() {
-            let (amount, ersatz) =
+      let (_, opnd) = weighted_days(&self)
+            .unwrap_or_else(|_| panic!("No open date for proposal"));
+      let prince = self.principal.first()
+            .unwrap_or_else(|| panic!("No principal for proposal"));
+      let (amount, ersatz) =
                self.principal
                    .iter()
                    .fold((0.0, 0.0), |(a,e), x| {
                       let Amount { actual, ersatz } = &x.amount;
                       (a + actual, e + ersatz) });
-            let pri1 = mk_asset(&prince.token, &prince.blockchain,
-                                mk_amt(amount, ersatz),
-                                mk_usd(weight(&self.principal)), &prince.kind);
-            if let Some(piv) = self.pivot.first() {
-               let piv1 = mk_prop_asset(&piv.token, &piv.blockchain,
-                                        weight(&self.pivot),
-                                        size(&self.pivot), &piv.kind);
-               format!("{},{},{},{},{},{},{},{},{},{}", 
-                       opnd,
-                       self.header.as_csv(),
-                       self.close,
-                       self.close_date,
-                       pri1.as_csv(),
-                       gain_10_percent(&pri1.amount),
-                       piv1.as_csv(),
-                       self.propose.as_csv(),
-                       self.roi(), self.apr())
-            } else {
-              panic!("No pivot for proposal")
-            }
-         } else {
-            panic!("No principal for proposal")
-         }
-      } else {
-         panic!("No open date for proposal")
-      }
+      let pri1 = mk_asset(&prince.token, &prince.blockchain,
+                          mk_amt(amount, ersatz),
+                          mk_usd(weight(&self.principal)), &prince.kind);
+      let piv = self.pivot.first()
+            .unwrap_or_else(|| panic!("No pivot for proposal"));
+      let piv1 = mk_prop_asset(&piv.token, &piv.blockchain,
+                               weight(&self.pivot),
+                               size(&self.pivot), &piv.kind);
+      format!("{},{},{},{},{},{},{},{},{},{}", 
+              opnd,
+              self.header.as_csv(),
+              self.close,
+              self.close_date,
+              pri1.as_csv(),
+              gain_10_percent(&pri1.amount),
+              piv1.as_csv(),
+              self.propose.as_csv(),
+              self.roi(), self.apr())
    }
 }
 
@@ -542,8 +532,8 @@ pub fn partition_on(tok: &str, opens: Vec<Pivot>) -> Partition<Pivot> {
 #[cfg(test)]
 mod tests {
    use super::*;
-   use book::{string_utils::to_string, table_utils::{Table,cols,enum_headers}};
-   use crate::tables::index_table;
+   use book::{string_utils::to_string, table_utils::cols};
+   use crate::{ tables::{IxTable,index_table}, types::aliases::aliases };
 
    // this test data contains a closed pivot
    // an opened pivot
@@ -557,11 +547,11 @@ mod tests {
 2026-02-21	41	0	https://snowtrace.io/tx/0x77fe7489ccb408e103e86f12bdfa1fbf0dc4476912a7a0bff6ad4b12b32e55c1	BTC	Avalanche	0	0.0074	0.0081	$107,858.00	$798.78	ETH	Avalanche	$3,715.49	0.2150	0.255891		AVAX	0.0053844	$16.95	$0.09	0.2559	$950.76	$151.98	0.911	2025-11-03".to_string()
    }
 
-   fn btc_eth() -> ErrStr<(Table<Id,String,String>, HashMap<String, usize>)> {
+   fn btc_eth() -> ErrStr<(IxTable, HashMap<String, usize>)> {
       let lines: Vec<String> =
          btc_eth_raw().split("\n").map(to_string).collect();
       let table = index_table(lines)?;
-      let ix = enum_headers(cols(&table));
+      let ix = aliases().enum_headers(cols(&table));
       Ok((table, ix))
    }
 

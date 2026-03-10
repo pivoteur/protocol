@@ -4,6 +4,8 @@ use book::{
    file_utils::lines_from_file
 };
 
-use libs::fetchers::fetch_pivots;
-
+use libs::{
+   fetchers::fetch_pivots,
+   types::util::Token
+};
 
