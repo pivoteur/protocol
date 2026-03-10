@@ -117,7 +117,7 @@ impl CsvWriter for Header {
    }
 }
 impl CsvHeader for Header {
-   fn header(&self) -> String { "opened,id,close_id,tx_id".to_string() }
+   fn header(&self) -> String { "opened,open,close,tx_id".to_string() }
 }
 
 impl CsvHeader for AggregateHeader {
@@ -143,9 +143,11 @@ fn parse_header(hdrs: &HashMap<String, usize>, row: &Vec<String>)
    let dt = &row[hdrs["opened"]];
    let opn = hdrs.get("open")
                  .or(hdrs.get("pivot"))
-                 .ok_or("Can't find pivot ix".to_string())?;
+                 .ok_or("Can't find id for pivot".to_string())?;
    let id = parse_id(&row[*opn])?;
-   let closed = parse_id(&row[hdrs["close"]])?;
+   let cls = hdrs.get("close")
+                 .ok_or("Can't find close (id) for pivot".to_string())?;
+   let closed = parse_id(&row[*cls])?;
    mk_hdr(dt, id, closed, row[hdrs["tx_id"]].clone())
 }
 
@@ -181,10 +183,10 @@ impl CsvWriter for Asset {
 }
 impl CsvHeader for Asset {
    fn header(&self) -> String {
-      let hdrs = kinderize(&self.kind,
-                           &["token", "blockchain", "quote", "total"]);
-      format!("{},{},{},{},{}",
-              hdrs[0],hdrs[1],self.kind.headers(),hdrs[2],hdrs[3]) 
+      let hdrs = kinderize(&self.kind, &["", "_blockchain"]);
+      let idx = self.kind.ix();
+      format!("{},{},{},quote{idx},val{idx}",
+              hdrs[0],hdrs[1],self.kind.headers())
    }
 }
 
@@ -215,16 +217,16 @@ fn parse_asset(a: AssetType, hdrs: &HashMap<String, usize>, row: &Vec<String>)
 
 // ----- ASSETTYPES
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 enum AssetType { FROM, TO }
+use AssetType::*;
 
 impl AssetType {
    fn keys(&self) -> Vec<String> {
       match self {
-         AssetType::FROM =>
+         FROM =>
             slice2vec(&["from","from_blockchain","amount1","virtual","quote1"]),
-         AssetType::TO =>
-            slice2vec(&["to","to_blockchain","net","blah!","quote2"])
+         TO => slice2vec(&["to","to_blockchain","net","blah!","quote2"])
       }
    }
    fn kind(&self) -> String {
@@ -234,9 +236,9 @@ impl AssetType {
       }
    }
    fn headers(&self) -> String {
-      let hdrs = kinderize(&self, &["actual","virtual"]);
-      format!("{},{}", hdrs[0], hdrs[1])
+      (if self == &FROM { "amount1,virtual" } else { "net,ersatz"}).to_string()
    }
+   fn ix(&self) -> usize { if self == &FROM { 1 } else { 2 } }
 }
 
 fn slice2vec(ss: &[&str]) -> Vec<String> {
@@ -248,7 +250,7 @@ fn slice2vec(ss: &[&str]) -> Vec<String> {
 }
 
 fn kinderize(k: &AssetType, s: &[&str]) -> Vec<String> {
-   s.iter().map(|elt| format!("{}_{}", k.kind(), elt)).collect()
+   s.iter().map(|elt| format!("{}{}", k.kind(), elt)).collect()
 }
 
 // ----- AMOUNT

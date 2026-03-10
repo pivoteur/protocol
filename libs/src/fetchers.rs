@@ -1,11 +1,12 @@
 /// fetch data from REST endpoints
 
-use std::collections::HashMap;
+use std::{ collections::HashMap, iter::once };
 
 use chrono::NaiveDate;
 
 use book::{
    currency::usd::USD,
+   csv_utils::CsvHeader,
    date_utils::{parse_date,datef},
    err_utils::{err_or,ErrStr},
    list_utils::tail,
@@ -18,7 +19,7 @@ use book::{
 
 use super::{
    paths::{open_pivot_path,quotes_url,pool_assets_url},
-   tables::index_table,
+   tables::{index_table,c2t,csv2tsv},
    types::{
       aliases::{Aliases,aliases},
       pivots::{Pivot,parse_pivot,active},
@@ -77,10 +78,10 @@ pub async fn fetch_pivots(root_url: &str, primary: &str, pivot: &str,
    let pool = format!("{pri}+{seggs}");
    let url = open_pivot_path(root_url, &pri, &seggs);
    let lines = fetch_lines(&url).await?;
-   parse_pivots(pool, lines, a)
+   parse_pivots(&pool, lines, a)
 }
 
-pub fn parse_pivots(pool: String, lines: Vec<String>, a: &Aliases)
+pub fn parse_pivots(pool: &str, lines: Vec<String>, a: &Aliases)
       -> ErrStr<(Vec<Pivot>, Vec<Pivot>, NaiveDate)> {
    let table = index_table(lines)?;
 
@@ -99,6 +100,18 @@ pub fn parse_pivots(pool: String, lines: Vec<String>, a: &Aliases)
       }
    }
    Ok((acts, pass, max_date.clone()))
+}
+
+pub fn pivots_to_tsv(pool: &str, opns: &Vec<Pivot>, cls: &Vec<Pivot>)
+      -> ErrStr<Vec<String>> {
+   let uno =
+      opns.first().or(cls.first())
+          .unwrap_or_else(|| panic!("{pool} does not have any pivots!"))
+          .header();
+   let hdr = c2t(&uno);
+   let ops0: Vec<String> = opns.into_iter().map(csv2tsv).collect();
+   let cls0: Vec<String> = cls.into_iter().map(csv2tsv).collect();
+   Ok(once(hdr).chain(ops0.into_iter().chain(cls0.into_iter())).collect())
 }
 
 fn enlowerify(primary: &str, pivot: &str) -> (String, String) {
@@ -168,6 +181,12 @@ pub mod functional_tests {
       Ok((root_url, a))
    }
 
+   pub async fn btc_eth_pivots()
+         -> ErrStr<(Vec<Pivot>, Vec<Pivot>, NaiveDate)> {
+      let (root_url, a) = marshall()?;
+      fetch_pivots(&root_url, "btc", "eth", &a).await
+   }
+
    async fn run_fetch_assets() -> ErrStr<usize> {
       println!("fetch_assets functional test\n");
       let (root_url, a) = marshall()?;
@@ -184,8 +203,7 @@ pub mod functional_tests {
 
    async fn run_fetch_pivots() -> ErrStr<usize> {
       println!("fetch_pivots functional test\n");
-      let (root_url, a) = marshall()?;
-      let (opn, cls, mx) = fetch_pivots(&root_url, "btc", "eth", &a).await?;
+      let (opn, cls, mx) = btc_eth_pivots().await?;
       print_rows("Open pivots", &opn);
       print_rows("Close pivots", &cls);
       println!("\nmax_date is {mx}\n");
@@ -201,19 +219,29 @@ pub mod functional_tests {
       Ok(1)
    }
 
+   async fn run_pivots_to_tsv() -> ErrStr<usize> {
+      println!("pivots_to_tsv functional test\n");
+      let (opns, cls, _mx) = btc_eth_pivots().await?;
+      let tabl = pivots_to_tsv("BTC+ETH", &opns, &cls)?;
+      println!("TSV of open pivots are:\n\n{}", tabl.join("\n"));
+      println!("pivots_to_tsv...ok");
+      Ok(1)
+   }
+
    pub async fn runoff() -> ErrStr<usize> {
       println!("\nfetchers functional tests\n");
       let a = run_fetch_assets().await?;
       let p = run_fetch_pivots().await?;
       let q = run_fetch_quotes().await?;
-      Ok(a+p+q)
+      let t = run_pivots_to_tsv().await?;
+      Ok(a+p+q+t)
    }
 }
 
 #[cfg(test)]
 mod tests {
    use super::*;
-   use super::functional_tests::marshall;
+   use super::functional_tests::{marshall,btc_eth_pivots};
    use book::date_utils::{yesterday,tomorrow};
 
    #[tokio::test]
@@ -269,19 +297,38 @@ mod tests {
 
    #[tokio::test]
    async fn test_fetch_pivots_ok() -> ErrStr<()> {
-      let (root_url, a) = marshall()?;
-      let mb_opns = fetch_pivots(&root_url, "btc", "eth", &a).await;
+      let mb_opns = btc_eth_pivots().await;
       assert!(mb_opns.is_ok());
       Ok(())
    }
 
    #[tokio::test]
    async fn test_fetch_pivots() -> ErrStr<()> {
-      let (root_url, a) = marshall()?;
-      let (opns, cls, mx) = fetch_pivots(&root_url, "btc", "eth", &a).await?;
+      let (opns, cls, mx) = btc_eth_pivots().await?;
       assert!(!opns.is_empty());
       assert!(!cls.is_empty());
       assert!(tomorrow() > mx);
+      Ok(())
+   }
+
+   async fn btc_eth_pool_as_tsv() -> ErrStr<Vec<String>> {
+      let (opns, cls, _mx) = btc_eth_pivots().await?;
+      pivots_to_tsv("BTC+ETH", &opns, &cls)
+   }
+
+   #[tokio::test]
+   async fn test_pivots_as_tsv_ok() -> ErrStr<()> {
+      let tsv = btc_eth_pool_as_tsv().await;
+      assert!(tsv.is_ok());
+      Ok(())
+   }
+
+   #[tokio::test]
+   async fn test_reparse_pivots_ok() -> ErrStr<()> {
+      let tsv = btc_eth_pool_as_tsv().await?;
+      let a = aliases();
+      let ans = parse_pivots("BTC+ETH", tsv, &a)?;
+//       assert!(Ok(ans).is_ok());
       Ok(())
    }
 }

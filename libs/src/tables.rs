@@ -1,9 +1,11 @@
 use std::iter::once;
 
 use book::{
+   csv_utils::CsvWriter,
    err_utils::ErrStr,
    list_utils::ht,
    parse_utils::{parse_id,parse_str},
+   string_utils::to_string,
    table_utils::{Table,ingest,cols}
 };
 
@@ -23,12 +25,21 @@ pub fn index_table(lines: Vec<String>) -> ErrStr<IxTable> {
 }
 
 pub fn sans_index(t: &IxTable) -> Vec<String> {
-   let hdrs: &Vec<String> = &cols(t);
-   let hdr = hdrs.join("\t");
-   let ans: Vec<String> =
-      once(hdr).chain(t.data.clone().into_iter().map(|r| r.join("\t")))
-               .collect();
+   let hdr = tabify(&cols(t));
+   let ans: Vec<String> = once(hdr).chain(t.data.iter().map(tabify)).collect();
    ans
+}
+
+pub fn csv2tsv<T:CsvWriter>(row: &T) -> String {
+   c2t(&row.as_csv())
+}
+
+pub fn c2t(row: &str) -> String {
+   tabify(&row.split(",").map(to_string).collect())
+}
+
+fn tabify(row: &Vec<String>) -> String {
+   row.join("\t")
 }
 
 pub mod functional_tests {
