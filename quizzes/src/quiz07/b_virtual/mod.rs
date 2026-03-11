@@ -21,7 +21,7 @@ use libs::{
    }
 };
 
-fn version() -> String { "2.00".to_string() }
+fn version() -> String { "2.01".to_string() }
 fn app_name() -> String { "virtsz".to_string() }
 
 fn partition_virtual_pivots(all_opns: Vec<Pivot>) -> Partition<Pivot> {

@@ -2,9 +2,9 @@
 
 Show assets committed to virtual pivots.
 
-![Virtual pivot assets](../../quizzes/quiz07/b_virtual/imgs/01-virtsz.png)
+![Virtual pivot assets](../../quizzes/src/quiz07/b_virtual/imgs/01-virtsz.png)
 
-* [source](../../quizzes/quiz07/b_virtual/src/main.rs)
+* [source](../../quizzes/src/quiz07/b_virtual/mod.rs)
 
 ## Revisions
 
