@@ -34,6 +34,11 @@ pub struct Pivot {
    to: Asset
 }
 
+impl Measurable for Pivot {
+   fn sz(&self) -> f32 { self.from.sz() }
+   fn aug(&self) -> f32 { self.from.aug() }
+}
+
 pub fn is_virtual(p: &Pivot) -> bool { no_url(&p.header) && is_virt1(&p.from) }
 pub fn committed(p: &Pivot) -> Coin { pivot_amount1(p) }
 
@@ -170,7 +175,7 @@ fn is_virt1(a: &Asset) -> bool { is_virt2(&a.amount) }
 
 impl Measurable for Asset {
    fn sz(&self) -> f32 { amount(&self.amount) }
-   fn aug(&self) -> f32 { self.sz() * self.quote.amount }
+   fn aug(&self) -> f32 { self.quote.amount }
 }
 
 impl CsvWriter for Asset {

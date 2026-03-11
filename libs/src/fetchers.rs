@@ -327,8 +327,20 @@ mod tests {
    async fn test_reparse_pivots_ok() -> ErrStr<()> {
       let tsv = btc_eth_pool_as_tsv().await?;
       let a = aliases();
-      let ans = parse_pivots("BTC+ETH", tsv, &a)?;
-//       assert!(Ok(ans).is_ok());
+      let ans = parse_pivots("BTC+ETH", tsv, &a);
+      assert!(ans.is_ok());
+      Ok(())
+   }
+
+   #[tokio::test]
+   async fn test_reparse_pivots() -> ErrStr<()> {
+      let tsv = btc_eth_pool_as_tsv().await?;
+      let a = aliases();
+      let (o,c,m) = parse_pivots("BTC+ETH", tsv, &a)?;
+      let (opns, cls, mx) = btc_eth_pivots().await?;
+      assert_eq!(opns.len(), o.len());
+      assert_eq!(cls.len(), c.len());
+      assert_eq!(mx, m);
       Ok(())
    }
 }
