@@ -39,8 +39,13 @@ impl Measurable for Pivot {
    fn aug(&self) -> f32 { self.from.aug() }
 }
 
-pub fn is_virtual(p: &Pivot) -> bool { no_url(&p.header) && is_virt1(&p.from) }
-pub fn committed(p: &Pivot) -> Coin { pivot_amount1(p) }
+impl Pivot {
+   pub fn is_virtual(&self) -> bool {
+      no_url(&self.header) && is_virt1(&self.from)
+   }
+   pub fn committed(&self) -> Coin { pivot_amount1(&self) }
+   pub fn blockchain(&self) -> Blockchain { self.to.blockchain.clone() }
+}
 
 fn pivot_amount1(p: &Pivot) -> Coin {
    let date = &p.header.opened;
@@ -577,7 +582,7 @@ mod tests {
       let mut virt = false;
       for row in table.data {
          let piv = parse_pivot(&ix, &row)?;
-         virt = virt || is_virtual(&piv);
+         virt = virt || piv.is_virtual();
       }
       assert!(virt);
       Ok(())
@@ -598,7 +603,7 @@ mod tests {
       let mut virts = 0;
       for row in &table.data {
          let piv = parse_pivot(&ix, &row)?;
-         virts += is_virtual(&piv) as i32;
+         virts += piv.is_virtual() as i32;
       }
       assert_eq!(1, virts);
       assert_eq!(4, table.data.len());

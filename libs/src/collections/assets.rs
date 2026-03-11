@@ -18,8 +18,10 @@ impl Assets {
       self.map.entry(asset.key())
           .and_modify(|a| {
              a.amount += asset.amount;
-             a.quote = asset.quote;
-             a.date = asset.date;
+             if asset.date > a.date {
+                a.quote = asset.quote;
+                a.date = asset.date;
+             }
           })
           .or_insert(asset);
    }
