@@ -22,7 +22,7 @@ use super::{
    tables::{index_table,c2t,csv2tsv},
    types::{
       aliases::{Aliases,aliases},
-      pivots::{Pivot,parse_pivot,active},
+      pivots::{Pivot,parse_pivot},
       quotes::{Quotes,mk_quotes},
       assets::{Asset,mk_asset},
       comps::{Composition,mk_composition},
@@ -93,7 +93,7 @@ pub fn parse_pivots(pool: &str, lines: Vec<String>, a: &Aliases)
 
    for row in table.data {
       let piv = parse_pivot(&hdrs, &row)?;
-      if active(&piv) {
+      if piv.active() {
          acts.push(piv.clone());
       } else {
          pass.push(piv);

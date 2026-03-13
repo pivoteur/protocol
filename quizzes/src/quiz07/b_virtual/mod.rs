@@ -15,13 +15,13 @@ use libs::{
       assets::{Asset,mk_asset},
       comps::{Composition,mk_composition},
       measurable::{Measurable,tvl},
-      pivots::Pivot,
+      pivots::{Pivot,recompute_pivot},
       quotes::Quotes,
       util::{Blockchain,Token,Pool,mk_pool}
    }
 };
 
-fn version() -> String { "2.01".to_string() }
+fn version() -> String { "2.03".to_string() }
 fn app_name() -> String { "virtsz".to_string() }
 
 fn partition_virtual_pivots(all_opns: Vec<Pivot>) -> Partition<Pivot> {
@@ -59,7 +59,7 @@ so, you know: handle those.
 
 fn tvls<T:Measurable>(rows: &[T]) -> USD { rows.iter().map(tvl).sum() }
 
-async fn show_virtual_pivots(protocol: &str, dt: &str, p0: &Token, p1: &Token,
+async fn update_virtual_pivots(protocol: &str, dt: &str, p0: &Token, p1: &Token,
                              debug: bool) -> ErrStr<()> {
    let pri = p0.to_uppercase();
    let piv = p1.to_uppercase();
@@ -70,32 +70,45 @@ async fn show_virtual_pivots(protocol: &str, dt: &str, p0: &Token, p1: &Token,
    let date = parse_date(&dt)?;
    let quotes = fetch_quotes(&date).await?;
    let truz = &quotes.aliases;
-   let (all_opns, _cls, _mx) = fetch_pivots(&root_url, &pri, &piv, truz).await?;
-   let (virts, _opns) = partition_virtual_pivots(all_opns);
+   let (all_opns, cls, _mx) = fetch_pivots(&root_url, &pri, &piv, truz).await?;
+   let (virts, opns) = partition_virtual_pivots(all_opns);
 
-   if !virts.is_empty() {
-      let blk = virts.first().unwrap().blockchain();
-      let asts = aggregate_virtual_pivots(&virts, &blk, &quotes, &pool)?;
-      let abp = assets_by_price(&asts);
+   if debug {
+      if !virts.is_empty() {
+         let blk = virts.first().unwrap().blockchain();
+         let asts = aggregate_virtual_pivots(&virts, &blk, &quotes, &pool)?;
+         let abp = assets_by_price(&asts);
 
-      if let [pr, pv] = abp.as_slice() {
-         let comp = mk_composition(pr.clone(), pv.clone());
-         report_on_assets(&[comp], &virts, debug);
+         if let [pr, pv] = abp.as_slice() {
+            let comp = mk_composition(pr.clone(), pv.clone());
+            report_on_assets(&[comp], &virts);
+         } else {
+            panic!("Not two assets in {pool_name} Assets: {:?}", abp)
+         }
       } else {
-         panic!("Not two assets in {pool_name} Assets: {:?}", abp)
+         println!("Pivot pool {pool_name} has no virtual pivots.");
       }
-   } else {
-      if debug { println!("Pivot pool {pool_name} has no virtual pivots."); }
    }
+
+   let mut new_virts = Vec::new();
+   let computer = recompute_pivot(&quotes, debug);
+   for virt in virts {
+      let new_v = computer(virt)?;
+      new_virts.push(new_v);
+   }
+   let mut new_opens: Vec<Pivot> = 
+      opns.into_iter().chain(cls.into_iter()
+                      .chain(new_virts.into_iter()))
+                      .collect();
+   new_opens.sort_by(|a,b| a.index().cmp(&b.index()));
+   tabl(&format!("{pool_name} pivots"), &new_opens, 3, debug);
    Ok(())
 }
 
-fn report_on_assets(pools: &[Composition], virts: &[Pivot], debug: bool) {
-   if debug {
-      println!("{}, version: {}", app_name(), version());
-      tabl("Virtual Pivot Assets", pools, 3, debug);
-   }
-   tabl("Virtual pivots", virts, 2, debug);
+fn report_on_assets(pools: &[Composition], virts: &[Pivot]) {
+   println!("{}, version: {}", app_name(), version());
+   tabl("Virtual Pivot Assets", pools, 3, true);
+   tabl("Virtual pivots", virts, 3, true);
 }
 
 fn tabl<T:CsvWriter + CsvHeader + Measurable>
@@ -133,7 +146,7 @@ pub mod functional_tests {
             (tail(&args), true)
          } else { (args.clone(), false) };
          if let [protocol, dt, pri, piv] = args1.as_slice() {
-            show_virtual_pivots(&protocol, &dt, pri, piv, debug).await
+            update_virtual_pivots(&protocol, &dt, pri, piv, debug).await
          } else { Err(usage()) }
       } else { Err(usage()) }
    }
@@ -141,7 +154,7 @@ pub mod functional_tests {
    pub async fn runoff() -> ErrStr<usize> {
       let yday = format!("{}", yesterday());
       fn s(t: &str) -> Token { t.to_string() }
-      let _ = show_virtual_pivots("pivot", &yday,
+      let _ = update_virtual_pivots("pivot", &yday,
                      &s("btc"), &s("eth"), true).await?;
       Ok(1)
    }

@@ -34,6 +34,45 @@ pub struct Pivot {
    to: Asset
 }
 
+pub fn recompute_pivot(quotes: &Quotes, debug: bool)
+      -> impl Fn(Pivot) -> ErrStr<Pivot> {
+   move |p| {
+      if !p.is_virtual() { Err("Can only recompute virtual pivots".to_string())
+      } else if p.closed() { Err("Pivot closed; cannot recompute".to_string())
+      } else { recompute1(quotes, p, debug)
+   }
+   }
+}
+
+fn recompute1(quotes: &Quotes, p: Pivot, debug: bool) -> ErrStr<Pivot> {
+   let today = quotes.date.clone();
+   let t2 = &p.to.token;
+   let q2 = quotes.lookup(t2)?;
+   let a2 = amount(&p.to.amount);
+   let t1 = &p.from.token;
+   let blk = &p.to.blockchain;
+   let q1 = quotes.lookup(t1)?;
+   let tvl_now = a2 * q2;
+   let a1 = amount(&p.from.amount);
+   let new_from = tvl_now / q1;
+   if debug { println!("For pivot {p:?}..."); }
+   let new_piv = if new_from < a1 {
+// update to the new position
+      let header = Header { updated: Some(today.clone()), ..p.header };
+      let new_piv1 =
+         Pivot {
+            header,
+            from: mk_asset(t1, blk, mk_amt(0.0, new_from), mk_usd(q1), &FROM),
+            to: mk_asset(t2, blk, p.to.amount.clone(), mk_usd(q2), &TO) };
+      if debug { println!("\tRecomputed to {new_piv1:?}"); }
+      new_piv1
+   } else {
+      if debug { println!("\tNo change"); }
+      p
+   };
+   Ok(new_piv)
+}
+
 impl Measurable for Pivot {
    fn sz(&self) -> f32 { self.from.sz() }
    fn aug(&self) -> f32 { self.from.aug() }
@@ -45,6 +84,13 @@ impl Pivot {
    }
    pub fn committed(&self) -> Coin { pivot_amount1(&self) }
    pub fn blockchain(&self) -> Blockchain { self.to.blockchain.clone() }
+   pub fn closed(&self) -> bool { self.header.close > 0 }
+   pub fn active(&self) -> bool { !self.closed() }
+   pub fn is_updated(&self) -> bool {
+      self.header.updated.and_then(|d| Some(d > self.header.opened))
+                 .unwrap_or(false)
+   }
+   pub fn index(&self) -> usize { self.header.id }
 }
 
 fn pivot_amount1(p: &Pivot) -> Coin {
@@ -85,13 +131,6 @@ fn gain_10_percent(a: &Amount) -> f32 {
    amount(a) * 1.1
 }
 
-pub fn closed(p: &Pivot) -> bool {
-   p.header.close > 0
-}
-pub fn active(p: &Pivot) -> bool {
-   !closed(p)
-}
-
 // ----- HEADER
 
 #[derive(Debug, Clone)]
@@ -99,7 +138,8 @@ struct Header {
    opened: NaiveDate,
    id: Id,
    close: Id,
-   tx_id: String
+   tx_id: String,
+   updated: Option<NaiveDate>
 }
 
 fn no_url(hdr: &Header) -> bool { !hdr.tx_id.starts_with("https://") }
@@ -121,13 +161,20 @@ fn add_header_info(v: &Vec<Pivot>) -> AggregateHeader {
 }
 
 impl CsvWriter for Header {
-   fn ncols(&self) -> usize { 3 }
+   fn ncols(&self) -> usize { 5 }
    fn as_csv(&self) -> String {
-      format!("{},{},{},{}", self.opened,self.id,self.close,self.tx_id)
+      fn write_updated(h: &Header) -> String {
+         match h.updated {
+            None => "n/a".to_string(),
+            Some(x) => format!("{x}")
+         }
+      }
+      format!("{},{},{},{},{}", self.opened,self.id,self.close,self.tx_id,
+              write_updated(&self))
    }
 }
 impl CsvHeader for Header {
-   fn header(&self) -> String { "opened,open,close,tx_id".to_string() }
+   fn header(&self) -> String { "opened,open,close,tx_id,updated".to_string() }
 }
 
 impl CsvHeader for AggregateHeader {
@@ -143,9 +190,10 @@ impl CsvWriter for AggregateHeader {
    }
 }
 
-fn mk_hdr(opend: &str, id: Id, close: Id, tx_id: String) -> ErrStr<Header> {
+fn mk_hdr(opend: &str, id: Id, close: Id, tx_id: String,
+          updated: Option<NaiveDate>) -> ErrStr<Header> {
    let opened = parse_date(opend)?;
-   Ok(Header { opened, id, close, tx_id })
+   Ok(Header { opened, id, close, tx_id, updated })
 }
 
 fn parse_header(hdrs: &HashMap<String, usize>, row: &Vec<String>)
@@ -158,7 +206,8 @@ fn parse_header(hdrs: &HashMap<String, usize>, row: &Vec<String>)
    let cls = hdrs.get("close")
                  .ok_or("Can't find close (id) for pivot".to_string())?;
    let closed = parse_id(&row[*cls])?;
-   mk_hdr(dt, id, closed, row[hdrs["tx_id"]].clone())
+   let updated = hdrs.get("updated").and_then(|ix| parse_date(&row[*ix]).ok());
+   mk_hdr(dt, id, closed, row[hdrs["tx_id"]].clone(),updated)
 }
 
 pub fn next_close_id(pivs: &Vec<Pivot>) -> Id {
@@ -266,7 +315,7 @@ fn kinderize(k: &AssetType, s: &[&str]) -> Vec<String> {
 // ----- AMOUNT
 
 #[derive(Debug, Clone)]
-struct Amount {
+pub struct Amount {
    actual: f32,
    ersatz: f32      // 'ersatz' meaning 'virtual' as 'virtual' is reserved
 }
@@ -541,11 +590,70 @@ pub fn partition_on(tok: &str, opens: Vec<Pivot>) -> Partition<Pivot> {
    opens.into_iter().partition(|p: &Pivot| p.from.token == tok)
 }
 
+// ----- FUNCTIONAL TEST ------------------------------------------------
+
+pub mod functional_tests {
+   use super::*;
+   use book::date_utils::yesterday;
+   use crate::types::quotes::mk_quotes;
+
+   pub fn mk_hbar_usdc_piv(q: f32, a: Amount, c: usize, tx: &str)
+         -> ErrStr<Pivot> {
+      let qt = mk_usd(q);
+      let to = mk_asset("USDC", "Hedera", mk_amt(100.0, 0.0), mk_usd(1.0), &TO);
+      let header = mk_hdr("2026-03-10",1,c, tx.to_string(), None)?;
+      Ok(Pivot { header, from: mk_asset("HBAR", "Hedera", a, qt, &FROM), to })
+   }
+
+   pub fn test_mk_quotes(hbar: f32) -> Quotes {
+      mk_quotes(yesterday(),
+                HashMap::from([("USDC".to_string(), 1.0),
+                               ("HBAR".to_string(), hbar)]))
+   }
+
+   fn run_recompute_pivot() -> ErrStr<usize> {
+      println!("\ntypes::pivot::recompute_pivot functional test\n");
+      let piv = mk_hbar_usdc_piv(0.2, mk_amt(0.0,500.0), 0, "virtual pivot")?;
+      let quotes = test_mk_quotes(0.25);
+      let _new_piv = recompute_pivot(&quotes, true)(piv)?;
+      println!("\ntypes::pivot::recompute_pivot...ok\n");
+      Ok(1)
+   }
+
+   fn run_propose() -> ErrStr<usize> {
+      println!("\ntypes::pivot::propose functional test\n");
+      let piv = mk_hbar_usdc_piv(0.2, mk_amt(0.0,500.0), 0, "virtual pivot")?;
+      let quotes = test_mk_quotes(0.15);
+      let proposer = propose(&quotes);
+      if let Some((call, next_id)) = proposer((vec![piv], 1))? {
+         println!("call: {call:?}\nnext_id: {next_id}");
+      } else {
+         println!("No call for pivots!");
+      }
+      println!("\ntypes::pivot::propose...ok\n");
+      Ok(1)
+   }
+
+   pub fn runoff() -> ErrStr<usize> {
+      println!("\ntypes::pivots functional tests\n");
+      let a = run_recompute_pivot()?;
+      let b = run_propose()?;
+      Ok(a+b)
+   }
+}
+
 #[cfg(test)]
 mod tests {
    use super::*;
-   use book::{string_utils::to_string, table_utils::cols};
-   use crate::{ tables::{IxTable,index_table}, types::aliases::aliases };
+   use super::functional_tests::{mk_hbar_usdc_piv,test_mk_quotes};
+   use book::{
+      string_utils::to_string,
+      table_utils::cols
+   };
+   use crate::{
+      tables::{IxTable,index_table},
+      types::aliases::aliases
+   };
 
    // this test data contains a closed pivot
    // an opened pivot
@@ -556,6 +664,7 @@ mod tests {
 2025-08-06	1	1	https://snowtrace.io/tx/0x60a2129cf19213def46b4355739cf69e998ed6245fe0ade6563e83c1ba2d83c8	BTC	Avalanche	0.004498	0	0.004948	$113,883.00	$512.30	ETH	Avalanche	$3,588.72	0.14275	0.14203		AVAX	0.0052267	$22.24	$0.12	0.14203	$509.69	-$2.61	-1.197	*hedge
 2025-09-30	28	0	https://snowtrace.io/tx/0xdef66cbfea4687eff8390728557a07b9697dc15927de51d0819e07aa5bc71963	BTC	Avalanche	0.0087	0	0.0096	$113,056.00	$987.15	ETH	Avalanche	$4,162.11	0.2372	0.230543		AVAX	0.0044041	$29.62	$0.13	0.2305	$959.54	-$27.60	0.557	
 2026-02-21	17	0	virtual swap	BTC	Avalanche	0.000000	0.009205	0.0101	$114,701.00	$1,055.78	ETH	Avalanche	$4,810.58	0.21947	0.31773		AVAX	0.0000000	$25.83	$0.00	0.3177	$1,528.45	$0.00	-3.534	2025-08-24
+2026-02-21	52	0	https://snowtrace.io/tx/0x267ed024578621a51aabc47b9b0d7f4791c6624863130ad0dcab4c1328fd8a90	ETH	Avalanche	5.046	0	5.5506	$1,987.48	$10,028.82	BTC	Avalanche	$68,429.00	0.14656	0.14587		AVAX	0.0009835	$9.36	$0.01	0.14587	$9,981.75	-$47.07	0.754	*hedge
 2026-02-21	41	0	https://snowtrace.io/tx/0x77fe7489ccb408e103e86f12bdfa1fbf0dc4476912a7a0bff6ad4b12b32e55c1	BTC	Avalanche	0	0.0074	0.0081	$107,858.00	$798.78	ETH	Avalanche	$3,715.49	0.2150	0.255891		AVAX	0.0053844	$16.95	$0.09	0.2559	$950.76	$151.98	0.911	2025-11-03".to_string()
    }
 
@@ -565,6 +674,19 @@ mod tests {
       let table = index_table(lines)?;
       let ix = aliases().enum_headers(cols(&table));
       Ok((table, ix))
+   }
+
+   #[test]
+   fn test_partition_on_btc() -> ErrStr<()> {
+      let (tabl, ix) = btc_eth()?;
+      let pivs: Vec<Pivot> =
+         tabl.data.into_iter()
+                  .filter_map(|row| parse_pivot(&ix, &row).ok())
+                  .collect();
+      let (btcs, eths) = partition_on("BTC", pivs);
+      assert_eq!(4, btcs.len());
+      assert_eq!(1, eths.len());
+      Ok(())
    }
 
    #[test]
@@ -606,8 +728,97 @@ mod tests {
          virts += piv.is_virtual() as i32;
       }
       assert_eq!(1, virts);
-      assert_eq!(4, table.data.len());
+      assert_eq!(5, table.data.len());
       Ok(())
+   }
+
+   #[test]
+   fn fail_recompute_non_virtual_amt_pivot() -> ErrStr<()> {
+      let piv = mk_hbar_usdc_piv(0.2, mk_amt(500.0, 0.0), 0, "https://yo")?;
+      let reckt = recompute_pivot(&test_mk_quotes(0.22), false)(piv);
+      assert!(reckt.is_err());
+      if let Err(x) = reckt {
+         assert!(x.contains("virtual"));
+         Ok(())
+      } else { 
+         Err(format!("reckt ({reckt:?}) succeeds (???) unfortunately."))
+      }
+   }
+
+   #[test]
+   fn fail_recompute_non_virtual_tx_pivot() -> ErrStr<()> {
+      let piv = mk_hbar_usdc_piv(0.2, mk_amt(0.0, 500.0), 0, "https://yo")?;
+      let reckt = recompute_pivot(&test_mk_quotes(0.22), false)(piv);
+      assert!(reckt.is_err());
+      if let Err(x) = reckt {
+         assert!(x.contains("virtual"));
+         Ok(())
+      } else { 
+         Err(format!("reckt ({reckt:?}) succeeds (???) unfortunately."))
+      }
+   }
+
+   #[test]
+   fn fail_recompute_closed_pivot() -> ErrStr<()> {
+      let piv = mk_hbar_usdc_piv(0.2, mk_amt(0.0, 500.0), 1, "virtual pivot")?;
+      let reckt = recompute_pivot(&test_mk_quotes(0.22), false)(piv);
+      assert!(reckt.is_err());
+      if let Err(x) = reckt {
+         assert!(x.contains("close"));
+         Ok(())
+      } else { 
+         let cls = "closed pivot recompute";
+         Err(format!("{cls} {reckt:?} succeeds (???) unfortunately."))
+      }
+   }
+
+   #[test]
+   fn test_no_recompute_virtual_pivot_ok() -> ErrStr<()> {
+      let piv = mk_hbar_usdc_piv(0.2, mk_amt(0.0, 500.0), 0, "virtual_pivot")?;
+      assert!(!piv.is_updated());
+      let neiner = recompute_pivot(&test_mk_quotes(0.15), false)(piv);
+      assert!(neiner.is_ok());
+      assert!(!neiner.unwrap().is_updated());
+      Ok(())
+   }
+
+   #[test]
+   fn test_recompute_virtual_pivot_ok() -> ErrStr<()> {
+      let piv = mk_hbar_usdc_piv(0.2, mk_amt(0.0, 500.0), 0, "virtual_pivot")?;
+      assert!(!piv.is_updated());
+      let neiner = recompute_pivot(&test_mk_quotes(0.25), false)(piv);
+      assert!(neiner.is_ok());
+      assert!(neiner.unwrap().is_updated());
+      Ok(())
+   }
+
+   #[test]
+   fn test_propose_ok_no_call() -> ErrStr<()> {
+      let piv = mk_hbar_usdc_piv(0.2, mk_amt(0.0, 500.0), 0, "virtual_pivot")?;
+      let quotes = test_mk_quotes(0.25);
+      let proposer = propose(&quotes);
+      let max_id = 1;
+      let ans = proposer((vec![piv], max_id));
+      assert!(ans.is_ok());
+      let call = ans?;
+      assert!(call.is_none());
+      Ok(())
+   }
+
+   #[test]
+   fn test_propose_ok_with_call() -> ErrStr<()> {
+      let piv = mk_hbar_usdc_piv(0.2, mk_amt(0.0, 500.0), 0, "virtual_pivot")?;
+      let quotes = test_mk_quotes(0.15);
+      let max_id = 1;
+      let proposer = propose(&quotes);
+      let ans = proposer((vec![piv], max_id));
+      assert!(ans.is_ok());
+      if let Some((_call, next_id)) = ans? {
+         assert_eq!(2, next_id);
+         Ok(())
+      } else {
+         Err(format!("Should have been a call"))
+      }
    }
 }
 
