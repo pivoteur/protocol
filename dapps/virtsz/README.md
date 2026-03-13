@@ -8,6 +8,7 @@ Show assets committed to virtual pivots.
 
 ## Revisions
 
+* 2.03, 2026-03-13: Automatically updating open virtual pivots
 * 2.02, 2026-03-12: Recomputes virtual pivots with today's quotes
 * 2.01, 2026-03-11: `--debug`-flag shows context
 * 2.00, 2026-03-10: dapp addresses one pool only; shows all virtual pivots
