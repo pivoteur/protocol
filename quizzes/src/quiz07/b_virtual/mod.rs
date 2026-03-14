@@ -10,7 +10,7 @@ use book::{
 use libs::{
    collections::assets::{Assets,mk_assets,assets_by_price},
    fetchers::{fetch_quotes,fetch_pivots},
-   reports::{header,total_line,print_table_d},
+   reports::{header,total_line,print_tsv_table_d},
    types::{
       assets::{Asset,mk_asset},
       comps::{Composition,mk_composition},
@@ -116,7 +116,7 @@ fn tabl<T:CsvWriter + CsvHeader + Measurable>
    let skip = if let Some(a_row) = rows.first() { a_row.ncols() } else {
       panic!("Portfolio has no pivot pools!")
    } - offset;
-   print_table_d(title, rows, debug);
+   print_tsv_table_d(title, rows, debug);
    if debug { total_line(skip, " ,total", &tvls(rows)); }
 }
 

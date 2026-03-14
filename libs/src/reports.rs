@@ -6,10 +6,13 @@ use book::{
    types::indexed::mk_idx_offset
 };
 
-use crate::types::{
-   pivots::Propose,
-   measurable::Measurable,
-   util::Pool
+use super::{
+   tables::{c2t,csv2tsv},
+   types::{
+      pivots::Propose,
+      measurable::Measurable,
+      util::Pool
+   }
 };
 
 pub fn header(prim: &str, piv: &str) -> String {
@@ -28,6 +31,15 @@ fn print_row<T:CsvWriter + CsvHeader>(printer: impl Fn(&String) -> (),
       *first_time = false;
    }
    printer(&row.as_csv());
+}
+
+fn print_tsv_row<T:CsvWriter + CsvHeader>(printer: impl Fn(&String) -> (),
+                                          first_time: &mut bool, row: &T) {
+   if *first_time {
+      printer(&c2t(&row.header()));
+      *first_time = false;
+   }
+   printer(&csv2tsv(row));
 }
 
 #[derive(Debug, Clone)]
@@ -78,6 +90,16 @@ pub fn print_table_d<T: CsvHeader + CsvWriter>
    if debug { println!("\n{header}\n"); }
    for row in v {
       print_row(printer, &mut first_time, row);
+   }
+}
+
+pub fn print_tsv_table_d<T: CsvHeader + CsvWriter>
+       (header: &str, v: &[T], debug: bool) {
+   fn printer(s: &String) { println!("{s}"); }
+   let mut first_time = true;
+   if debug { println!("\n{}\n", c2t(header)); }
+   for row in v {
+      print_tsv_row(printer, &mut first_time, row);
    }
 }
 
