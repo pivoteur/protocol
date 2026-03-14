@@ -655,17 +655,18 @@ mod tests {
       types::aliases::aliases
    };
 
-   // this test data contains a closed pivot
+   // this test data contains 
+   // a closed pivot
    // an opened pivot
    // a virtual pivot
    // and a non-virtual virtual pivot (protocol_issue_010_non_virtual_pivots)
    fn btc_eth_raw() -> String {
-      "opened	open	close	tx_id	from	from_blockchain	amount1	virtual	10% gain	quote1	val1	to	to_blockchain	quote2	amount computed	amount2	commission	gas token	gas	gas quote	gas $	net	val2	diff	δ	closed/updated
-2025-08-06	1	1	https://snowtrace.io/tx/0x60a2129cf19213def46b4355739cf69e998ed6245fe0ade6563e83c1ba2d83c8	BTC	Avalanche	0.004498	0	0.004948	$113,883.00	$512.30	ETH	Avalanche	$3,588.72	0.14275	0.14203		AVAX	0.0052267	$22.24	$0.12	0.14203	$509.69	-$2.61	-1.197	*hedge
-2025-09-30	28	0	https://snowtrace.io/tx/0xdef66cbfea4687eff8390728557a07b9697dc15927de51d0819e07aa5bc71963	BTC	Avalanche	0.0087	0	0.0096	$113,056.00	$987.15	ETH	Avalanche	$4,162.11	0.2372	0.230543		AVAX	0.0044041	$29.62	$0.13	0.2305	$959.54	-$27.60	0.557	
-2026-02-21	17	0	virtual swap	BTC	Avalanche	0.000000	0.009205	0.0101	$114,701.00	$1,055.78	ETH	Avalanche	$4,810.58	0.21947	0.31773		AVAX	0.0000000	$25.83	$0.00	0.3177	$1,528.45	$0.00	-3.534	2025-08-24
-2026-02-21	52	0	https://snowtrace.io/tx/0x267ed024578621a51aabc47b9b0d7f4791c6624863130ad0dcab4c1328fd8a90	ETH	Avalanche	5.046	0	5.5506	$1,987.48	$10,028.82	BTC	Avalanche	$68,429.00	0.14656	0.14587		AVAX	0.0009835	$9.36	$0.01	0.14587	$9,981.75	-$47.07	0.754	*hedge
-2026-02-21	41	0	https://snowtrace.io/tx/0x77fe7489ccb408e103e86f12bdfa1fbf0dc4476912a7a0bff6ad4b12b32e55c1	BTC	Avalanche	0	0.0074	0.0081	$107,858.00	$798.78	ETH	Avalanche	$3,715.49	0.2150	0.255891		AVAX	0.0053844	$16.95	$0.09	0.2559	$950.76	$151.98	0.911	2025-11-03".to_string()
+"opened	open	close	tx_id	updated	from	from_blockchain	amount1	virtual	quote1	val1	gain_10_percent	to	to_blockchain	net	ersatz	quote2	val2
+2025-08-06	1	1	https://snowtrace.io/tx/0x60a2129cf19213def46b4355739cf69e998ed6245fe0ade6563e83c1ba2d83c8	n/a	BTC	Avalanche	0.004498	0	$113883.00	$512.25	0.0049477997	ETH	Avalanche	0.14203	0	$3588.72	$509.71
+2025-09-30	28	0	https://snowtrace.io/tx/0xdef66cbfea4687eff8390728557a07b9697dc15927de51d0819e07aa5bc71963	n/a	BTC	Avalanche	0.0087	0	$113056.00	$983.59	0.009570001	ETH	Avalanche	0.2305	0	$4162.11	$959.37
+2026-02-21	17	0	virtual swap	n/a	BTC	Avalanche	0	0.009205	$114701.00	$1055.82	0.0101255	ETH	Avalanche	0.3177	0	$4810.58	$1528.32
+2026-02-21	52	0	https://snowtrace.io/tx/0x267ed024578621a51aabc47b9b0d7f4791c6624863130ad0dcab4c1328fd8a90	n/a	ETH	Avalanche	5.046	0	$1987.48	$10028.82	5.5506	BTC	Avalanche	0.14587	0	$68429.00	$9981.74
+2026-02-21	41	0	https://snowtrace.io/tx/0x77fe7489ccb408e103e86f12bdfa1fbf0dc4476912a7a0bff6ad4b12b32e55c1	n/a	BTC	Avalanche	0	0.0074	$107858.00	$798.15	0.0081400005	ETH	Avalanche	0.2559	0	$3715.49	$950.79".to_string()
    }
 
    fn btc_eth() -> ErrStr<(IxTable, HashMap<String, usize>)> {

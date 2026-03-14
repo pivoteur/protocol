@@ -19,7 +19,7 @@ impl Assets {
           .and_modify(|a| {
              a.amount += asset.amount;
              if asset.date > a.date {
-                a.quote = asset.quote;
+                a.quote.amount = asset.quote.amount;
                 a.date = asset.date;
              }
           })
