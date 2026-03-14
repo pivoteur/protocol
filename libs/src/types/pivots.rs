@@ -647,6 +647,7 @@ mod tests {
    use super::*;
    use super::functional_tests::{mk_hbar_usdc_piv,test_mk_quotes};
    use book::{
+      num::estimate::mk_estimate,
       string_utils::to_string,
       table_utils::cols
    };
@@ -687,6 +688,33 @@ mod tests {
       let (btcs, eths) = partition_on("BTC", pivs);
       assert_eq!(4, btcs.len());
       assert_eq!(1, eths.len());
+      Ok(())
+   }
+
+   fn assert_price(a: &Asset, est: f32) {
+      let q1 = &a.quote;
+      let qe1 = mk_estimate(q1.amount);
+      let tok = &a.token;
+      assert!(qe1.approximates(est * 1e03), "{tok} price ({q1}) isn't ${est}K");
+   }
+
+   fn assert_prices(p: &Pivot, a: f32, b: f32) {
+      assert_price(&p.from, a);
+      assert_price(&p.to, b);
+   }
+
+   #[test]
+   fn test_asset_quotes() -> ErrStr<()> {
+      let (tabl, ix) = btc_eth()?;
+      let pivs: Vec<Pivot> =
+         tabl.data.into_iter()
+                  .filter_map(|row| parse_pivot(&ix, &row).ok())
+                  .collect();
+      assert_prices(&pivs[0], 113.9, 3.6);
+      assert_prices(&pivs[1], 113.1, 4.1);
+      assert_prices(&pivs[2], 114.7, 4.8);
+      assert_prices(&pivs[3], 2.0, 68.4);
+      assert_prices(&pivs[4], 107.9, 3.7);
       Ok(())
    }
 
