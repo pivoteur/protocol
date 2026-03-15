@@ -9,7 +9,7 @@ use book::{
 use crate::{
    types::{
       measurable::sort_descending,
-      pivots::pivots::{Pivot,next_close_id,partition_on},
+      pivots::{Pivot,next_close_id,partition_on},
       proposals::proposes::{Propose,propose as propose_f},
       util::{Token,Pool}
    },

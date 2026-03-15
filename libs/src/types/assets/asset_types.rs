@@ -49,7 +49,7 @@ fn slice2vec(ss: &[&str]) -> Vec<String> {
    vec
 }
 
-fn kinderize(k: &AssetType, s: &[&str]) -> Vec<String> {
+pub fn kinderize(k: &AssetType, s: &[&str]) -> Vec<String> {
    s.iter().map(|elt| format!("{}{}", k.kind(), elt)).collect()
 }
 

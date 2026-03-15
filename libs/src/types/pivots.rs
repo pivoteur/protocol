@@ -7,14 +7,13 @@ use book::{
    tuple_utils::Partition
 };
 
-use super::headers::{Header, next_close_id as closer, parse_header, no_url};
-
-use crate::types::{
+use super::{
    assets::{
       assets::{Asset,mk_asset,parse_asset,is_virt},
       asset_types::AssetType::{FROM,TO},
       amounts::{Amount,mk_amt,amount}
    },
+   headers::headers::{Header, next_close_id as closer, parse_header, no_url},
    coins::{Coin,mk_coin},
    measurable::Measurable,
    quotes::Quotes,
@@ -146,7 +145,7 @@ pub mod functional_tests {
    use super::*;
    use crate::types::{
       quotes::functional_tests::test_mk_quotes,
-      pivots::headers::mk_hdr
+      headers::headers::mk_hdr
    };
 
    pub fn mk_hbar_usdc_piv(q: f32, a: Amount, c: usize, tx: &str)

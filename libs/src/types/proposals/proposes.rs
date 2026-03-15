@@ -22,7 +22,8 @@ use crate::types::{
    util::{Token,Blockchain,Id,Pool},
    measurable::{Measurable,weight,size},
    coins::{Coin,mk_coin},
-   gains::Gains
+   gains::Gains,
+   headers::AggregateHeader
 };
 
 // ----- CLOSE PIVOTS -------------------------------------------------------
@@ -231,7 +232,7 @@ pub mod functional_tests {
    use super::*;
    use crate::types::{
       quotes::functional_tests::test_mk_quotes,
-      pivots::pivots::functional_tests::mk_hbar_usdc_piv
+      pivots::functional_tests::mk_hbar_usdc_piv
    };
 
    fn run_propose() -> ErrStr<usize> {

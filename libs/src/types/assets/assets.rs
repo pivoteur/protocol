@@ -12,7 +12,7 @@ use book::{
    utils::pred
 };
 
-use super::{ amounts::Amount, asset_types::AssetType };
+use super::{ amounts::{Amount,mk_amt}, asset_types::{AssetType,kinderize} };
 
 use crate::types::{
    quotes::Quotes,
@@ -31,19 +31,22 @@ pub struct Asset {
    kind: AssetType
 }
 
-pub fn is_virt(a: &Asset) -> bool { is_virt2(&a.amount) }
+impl Asset {
+   pub fn is_virt(&self) -> bool { self.amount.is_virt() }
+}
 
 impl Measurable for Asset {
-   fn sz(&self) -> f32 { amount(&self.amount) }
+   fn sz(&self) -> f32 { self.amount.amount() }
    fn aug(&self) -> f32 { self.quote.amount }
 }
 
 impl CsvWriter for Asset {
    fn ncols(&self) -> usize { 1 + 1 + self.amount.ncols() + 1 + 1}
    fn as_csv(&self) -> String {
-      let total = mk_usd(self.quote.amount * amount(&self.amount));
+      let qt = self.quote;
+      let total = mk_usd(qt.amount * self.amount.amount());
       format!("{},{},{},{},{}",
-              self.token,self.blockchain,self.amount.as_csv(),self.quote,total)
+              self.token,self.blockchain,self.amount.as_csv(),wt,total)
    }
 }
 impl CsvHeader for Asset {
