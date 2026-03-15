@@ -6,6 +6,7 @@ use book::{
    currency::usd::mk_usd,
    csv_utils::{CsvHeader,CsvWriter},
    err_utils::ErrStr,
+   table_utils::{Table,from_map}
 };
 
 use super::{
@@ -51,18 +52,32 @@ impl Quotes {
               .ok_or(format!("Unable to find quote for {key}"))
               .copied()
    }
+   pub fn as_table(&self) -> Table<usize,Token,f32> {
+      from_map(&1, &self.quotes)
+   }
+}
+
+pub mod functional_tests {
+   use super::*;
+   use std::iter::once;
+   use book::date_utils::yesterday;
+
+   pub fn test_mk_quotes(q: &[(&str, f32)]) -> Quotes {
+      let quotes: Vec<(String, f32)> =
+         once(&("USDC", 1.0)).chain(q.into_iter())
+                             .map(|(a,b)| (a.to_string(), *b))
+                             .collect();
+      mk_quotes(yesterday(), quotes.into_iter().collect())
+   }
 }
 
 #[cfg(test)]
 mod tests {
    use super::*;
-   use book::date_utils::yesterday;
+   use super::functional_tests::test_mk_quotes;
 
-   fn test_mk_quotes() -> Quotes {
-      mk_quotes(yesterday(),HashMap::from([("USDC".to_string(), 1.0)]))
-   }
    fn looking(token: &str) -> ErrStr<f32> {
-      test_mk_quotes().lookup(&token.to_string())
+      test_mk_quotes(&[("BTC", 68732.0)]).lookup(&token.to_string())
    }
 
    #[test]

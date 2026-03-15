@@ -201,7 +201,7 @@ pub mod functional_tests {
    async fn run_fetch_quotes() -> ErrStr<usize> {
       println!("fetch_quotes functional test\n");
       let qts = fetch_quotes(&yesterday()).await?;
-      println!("Quotes are:\n\n{qts:?}");
+      println!("Quotes are:\n{}", qts.as_table().as_csv());
       println!("fetch_quotes...ok");
       Ok(1)
    }
@@ -243,14 +243,14 @@ mod tests {
    }
 
    #[tokio::test]
-   async fn test_quotes_ok() {
+   async fn test_fetch_quotes_ok() {
       let yday = yesterday();
       let ans = fetch_quotes(&yday).await;
       assert!(ans.is_ok());
    }
 
    #[tokio::test]
-   async fn test_quotes() -> ErrStr<()> {
+   async fn test_fetch_quotes() -> ErrStr<()> {
       let yday = yesterday();
       let ans = fetch_quotes(&yday).await?;
       assert!(ans.lookup(&"BTC".to_string())? > 0.0);

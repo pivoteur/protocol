@@ -55,7 +55,7 @@ fn recompute1(quotes: &Quotes, p: Pivot, debug: bool) -> ErrStr<Pivot> {
    let tvl_now = a2 * q2;
    let a1 = amount(&p.from.amount);
    let new_from = tvl_now / q1;
-   if debug { println!("For pivot {p:?}..."); }
+   if debug { println!("For pivot:\n{}\n{}", p.header(), p.as_csv()); }
    let new_piv = if new_from < a1 {
 // update to the new position
       let header = Header { updated: Some(today.clone()), ..p.header };
@@ -64,7 +64,7 @@ fn recompute1(quotes: &Quotes, p: Pivot, debug: bool) -> ErrStr<Pivot> {
             header,
             from: mk_asset(t1, blk, mk_amt(0.0, new_from), mk_usd(q1), &FROM),
             to: mk_asset(t2, blk, p.to.amount.clone(), mk_usd(q2), &TO) };
-      if debug { println!("\tRecomputed to {new_piv1:?}"); }
+      if debug { println!("\tRecomputed to:\n{}", new_piv1.as_csv()); }
       new_piv1
    } else {
       if debug { println!("\tNo change"); }
@@ -594,8 +594,7 @@ pub fn partition_on(tok: &str, opens: Vec<Pivot>) -> Partition<Pivot> {
 
 pub mod functional_tests {
    use super::*;
-   use book::date_utils::yesterday;
-   use crate::types::quotes::mk_quotes;
+   use crate::types::quotes::functional_tests::test_mk_quotes;
 
    pub fn mk_hbar_usdc_piv(q: f32, a: Amount, c: usize, tx: &str)
          -> ErrStr<Pivot> {
@@ -605,16 +604,10 @@ pub mod functional_tests {
       Ok(Pivot { header, from: mk_asset("HBAR", "Hedera", a, qt, &FROM), to })
    }
 
-   pub fn test_mk_quotes(hbar: f32) -> Quotes {
-      mk_quotes(yesterday(),
-                HashMap::from([("USDC".to_string(), 1.0),
-                               ("HBAR".to_string(), hbar)]))
-   }
-
    fn run_recompute_pivot() -> ErrStr<usize> {
       println!("\ntypes::pivot::recompute_pivot functional test\n");
       let piv = mk_hbar_usdc_piv(0.2, mk_amt(0.0,500.0), 0, "virtual pivot")?;
-      let quotes = test_mk_quotes(0.25);
+      let quotes = test_mk_quotes(&[("HBAR", 0.25)]);
       let _new_piv = recompute_pivot(&quotes, true)(piv)?;
       println!("\ntypes::pivot::recompute_pivot...ok\n");
       Ok(1)
@@ -623,10 +616,11 @@ pub mod functional_tests {
    fn run_propose() -> ErrStr<usize> {
       println!("\ntypes::pivot::propose functional test\n");
       let piv = mk_hbar_usdc_piv(0.2, mk_amt(0.0,500.0), 0, "virtual pivot")?;
-      let quotes = test_mk_quotes(0.15);
+      let quotes = test_mk_quotes(&[("HBAR", 0.15)]);
       let proposer = propose(&quotes);
       if let Some((call, next_id)) = proposer((vec![piv], 1))? {
-         println!("call: {call:?}\nnext_id: {next_id}");
+         println!("call:\n{}\n{}\n\nnext_id: {next_id}",
+                  call.header(), call.as_csv());
       } else {
          println!("No call for pivots!");
       }
@@ -645,7 +639,7 @@ pub mod functional_tests {
 #[cfg(test)]
 mod tests {
    use super::*;
-   use super::functional_tests::{mk_hbar_usdc_piv,test_mk_quotes};
+   use super::functional_tests::mk_hbar_usdc_piv;
    use book::{
       num::estimate::mk_estimate,
       string_utils::to_string,
@@ -653,7 +647,10 @@ mod tests {
    };
    use crate::{
       tables::{IxTable,index_table},
-      types::aliases::aliases
+      types::{
+         aliases::aliases,
+         quotes::functional_tests::test_mk_quotes
+      }
    };
 
    // this test data contains 
@@ -678,13 +675,16 @@ mod tests {
       Ok((table, ix))
    }
 
+   fn btc_eth_pivots() -> ErrStr<Vec<Pivot>> {
+      let (tabl, ix) = btc_eth()?;
+      Ok(tabl.data.into_iter()
+               .filter_map(|row| parse_pivot(&ix, &row).ok())
+               .collect())
+   }
+
    #[test]
    fn test_partition_on_btc() -> ErrStr<()> {
-      let (tabl, ix) = btc_eth()?;
-      let pivs: Vec<Pivot> =
-         tabl.data.into_iter()
-                  .filter_map(|row| parse_pivot(&ix, &row).ok())
-                  .collect();
+      let pivs = btc_eth_pivots()?;
       let (btcs, eths) = partition_on("BTC", pivs);
       assert_eq!(4, btcs.len());
       assert_eq!(1, eths.len());
@@ -705,11 +705,7 @@ mod tests {
 
    #[test]
    fn test_asset_quotes() -> ErrStr<()> {
-      let (tabl, ix) = btc_eth()?;
-      let pivs: Vec<Pivot> =
-         tabl.data.into_iter()
-                  .filter_map(|row| parse_pivot(&ix, &row).ok())
-                  .collect();
+      let pivs = btc_eth_pivots()?;
       assert_prices(&pivs[0], 113.9, 3.6);
       assert_prices(&pivs[1], 113.1, 4.1);
       assert_prices(&pivs[2], 114.7, 4.8);
@@ -764,7 +760,8 @@ mod tests {
    #[test]
    fn fail_recompute_non_virtual_amt_pivot() -> ErrStr<()> {
       let piv = mk_hbar_usdc_piv(0.2, mk_amt(500.0, 0.0), 0, "https://yo")?;
-      let reckt = recompute_pivot(&test_mk_quotes(0.22), false)(piv);
+      let reckt =
+         recompute_pivot(&test_mk_quotes(&[("HBAR", 0.22)]), false)(piv);
       assert!(reckt.is_err());
       if let Err(x) = reckt {
          assert!(x.contains("virtual"));
@@ -777,7 +774,8 @@ mod tests {
    #[test]
    fn fail_recompute_non_virtual_tx_pivot() -> ErrStr<()> {
       let piv = mk_hbar_usdc_piv(0.2, mk_amt(0.0, 500.0), 0, "https://yo")?;
-      let reckt = recompute_pivot(&test_mk_quotes(0.22), false)(piv);
+      let reckt =
+         recompute_pivot(&test_mk_quotes(&[("HBAR",0.22)]), false)(piv);
       assert!(reckt.is_err());
       if let Err(x) = reckt {
          assert!(x.contains("virtual"));
@@ -790,7 +788,8 @@ mod tests {
    #[test]
    fn fail_recompute_closed_pivot() -> ErrStr<()> {
       let piv = mk_hbar_usdc_piv(0.2, mk_amt(0.0, 500.0), 1, "virtual pivot")?;
-      let reckt = recompute_pivot(&test_mk_quotes(0.22), false)(piv);
+      let reckt =
+         recompute_pivot(&test_mk_quotes(&[("HBAR",0.22)]), false)(piv);
       assert!(reckt.is_err());
       if let Err(x) = reckt {
          assert!(x.contains("close"));
@@ -805,7 +804,8 @@ mod tests {
    fn test_no_recompute_virtual_pivot_ok() -> ErrStr<()> {
       let piv = mk_hbar_usdc_piv(0.2, mk_amt(0.0, 500.0), 0, "virtual_pivot")?;
       assert!(!piv.is_updated());
-      let neiner = recompute_pivot(&test_mk_quotes(0.15), false)(piv);
+      let neiner =
+         recompute_pivot(&test_mk_quotes(&[("HBAR",0.15)]), false)(piv);
       assert!(neiner.is_ok());
       assert!(!neiner.unwrap().is_updated());
       Ok(())
@@ -815,7 +815,8 @@ mod tests {
    fn test_recompute_virtual_pivot_ok() -> ErrStr<()> {
       let piv = mk_hbar_usdc_piv(0.2, mk_amt(0.0, 500.0), 0, "virtual_pivot")?;
       assert!(!piv.is_updated());
-      let neiner = recompute_pivot(&test_mk_quotes(0.25), false)(piv);
+      let neiner =
+         recompute_pivot(&test_mk_quotes(&[("HBAR",0.25)]), false)(piv);
       assert!(neiner.is_ok());
       assert!(neiner.unwrap().is_updated());
       Ok(())
@@ -824,7 +825,7 @@ mod tests {
    #[test]
    fn test_propose_ok_no_call() -> ErrStr<()> {
       let piv = mk_hbar_usdc_piv(0.2, mk_amt(0.0, 500.0), 0, "virtual_pivot")?;
-      let quotes = test_mk_quotes(0.25);
+      let quotes = test_mk_quotes(&[("HBAR",0.25)]);
       let proposer = propose(&quotes);
       let max_id = 1;
       let ans = proposer((vec![piv], max_id));
@@ -837,7 +838,7 @@ mod tests {
    #[test]
    fn test_propose_ok_with_call() -> ErrStr<()> {
       let piv = mk_hbar_usdc_piv(0.2, mk_amt(0.0, 500.0), 0, "virtual_pivot")?;
-      let quotes = test_mk_quotes(0.15);
+      let quotes = test_mk_quotes(&[("HBAR",0.15)]);
       let max_id = 1;
       let proposer = propose(&quotes);
       let ans = proposer((vec![piv], max_id));
@@ -848,6 +849,13 @@ mod tests {
       } else {
          Err(format!("Should have been a call"))
       }
+   }
+
+   #[test]
+   fn test_next_close_id() -> ErrStr<()> {
+      let pivs = btc_eth_pivots()?;
+      assert_eq!(2, next_close_id(&pivs));
+      Ok(())
    }
 }
 
