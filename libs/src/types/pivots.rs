@@ -21,7 +21,7 @@ use super::{
    quotes::Quotes,
    util::{Token,Blockchain,Id,Pool},
    measurable::{Measurable,weight,size},
-   assets::{Asset as Coin,mk_asset as mk_coin}
+   coins::{Coin,mk_coin}
 };
 
 // ----- PIVOT types -------------------------------------------------------
@@ -122,8 +122,8 @@ impl CsvHeader for Pivot {
 pub fn parse_pivot(hdrs: &HashMap<String, usize>, row: &Vec<String>)
       -> ErrStr<Pivot> {
    let header = parse_header(hdrs, row)?;
-   let from = parse_asset(AssetType::FROM, hdrs, row)?;
-   let to = parse_asset(AssetType::TO, hdrs, row)?;
+   let from = parse_asset(FROM, hdrs, row)?;
+   let to = parse_asset(TO, hdrs, row)?;
    Ok( Pivot { header, from, to } )
 }
 
