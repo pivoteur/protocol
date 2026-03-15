@@ -23,7 +23,7 @@ use super::{
       aliases::{Aliases,aliases},
       pivots::{Pivot,parse_pivot},
       quotes::{Quotes,mk_quotes},
-      assets::{Asset,mk_asset},
+      coins::{Coin,mk_coin},
       comps::{Composition,mk_composition},
       util::{Token,Blockchain}
    }
@@ -63,10 +63,10 @@ fn qt_f<'a>(v: &'a Vec<String>, hdrs: &'a HashMap<String, usize>)
    
 fn buidl_asset<'a>(amount: &str, q: impl Fn(&'a Token) -> ErrStr<USD>, 
                    blk: &Blockchain, t: &'a Token, dt: &NaiveDate)
-      -> ErrStr<Asset> {
+      -> ErrStr<Coin> {
    let amt = parse_commaless(amount)?;
    let quote = q(t)?;
-   Ok(mk_asset(&(blk.clone(), t.clone()), amt, &quote, dt))
+   Ok(mk_coin(&(blk.clone(), t.clone()), amt, &quote, dt))
 }
 
 /// Fetch the pivots for pivot pool A+B; open pivots are reposed in git

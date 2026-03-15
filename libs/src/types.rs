@@ -1,3 +1,5 @@
+/// Representation of tokens, blockchains, and their amounts
+pub mod coins;
 
 /// A composition of two assets: a pivot pool
 pub mod comps;

@@ -6,18 +6,18 @@ use book::{
 };
 
 use super::{
-   assets::{Asset,PivotAsset,mk_pivot_asset},
+   coins::{Coin,PivotCoin,mk_pivot_coin},
    measurable::{Measurable,size,tvl}
 };
 
 #[derive(Debug,Clone)]
 pub struct Composition {
-   primary: Asset,
-   pivot: PivotAsset
+   primary: Coin,
+   pivot: PivotCoin
 }
 
-pub fn mk_composition(primary: Asset, pivot: Asset) -> Composition {
-   Composition { primary, pivot: mk_pivot_asset(pivot) }
+pub fn mk_composition(primary: Coin, pivot: Coin) -> Composition {
+   Composition { primary, pivot: mk_pivot_coin(pivot) }
 }
 
 impl Composition {
@@ -64,10 +64,10 @@ impl CsvHeader for Composition {
    }
 }
 
-enum PoolAsset { PRIMARY, PIVOT }
-use PoolAsset::*;
+enum PoolCoin { PRIMARY, PIVOT }
+use PoolCoin::*;
 
-impl PoolAsset {
+impl PoolCoin {
    fn kind(&self) -> String {
       match self {
          PRIMARY => "primary",
@@ -76,7 +76,7 @@ impl PoolAsset {
    }
 }
 
-fn contextualize(p: PoolAsset, hdr: &str) -> String {
+fn contextualize(p: PoolCoin, hdr: &str) -> String {
    hdr.split(",").map(|s| format!("{}_{}", p.kind(), s))
       .collect::<Vec<_>>()
       .join(",")
