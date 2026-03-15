@@ -1,6 +1,3 @@
-/// Represents the Asset-type (blockchain and token with amount and quote at
-/// some date)
-pub mod assets;
 
 /// A composition of two assets: a pivot pool
 pub mod comps;
@@ -19,3 +16,7 @@ pub mod measurable;
 
 /// types used across the systems, like Id, Token, Blochcain
 pub mod util;
+
+/// trait to define gains (ROI and APR)
+pub mod gains;
+
