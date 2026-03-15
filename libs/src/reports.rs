@@ -9,7 +9,7 @@ use book::{
 use super::{
    tables::{c2t,csv2tsv},
    types::{
-      pivots::Propose,
+      proposals::proposes::Propose,
       measurable::Measurable,
       util::Pool
    }

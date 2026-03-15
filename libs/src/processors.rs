@@ -9,7 +9,8 @@ use book::{
 use crate::{
    types::{
       measurable::sort_descending,
-      pivots::{Pivot,Propose,propose as propose_f,next_close_id,partition_on},
+      pivots::pivots::{Pivot,next_close_id,partition_on},
+      proposals::proposes::{Propose,propose as propose_f},
       util::{Token,Pool}
    },
    fetchers::{fetch_pivots,fetch_quotes},

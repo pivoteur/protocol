@@ -21,7 +21,7 @@ use super::{
    tables::index_table,
    types::{
       aliases::{Aliases,aliases},
-      pivots::{Pivot,parse_pivot},
+      pivots::pivots::{Pivot,parse_pivot},
       quotes::{Quotes,mk_quotes},
       coins::{Coin,mk_coin},
       comps::{Composition,mk_composition},

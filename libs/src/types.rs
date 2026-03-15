@@ -7,8 +7,14 @@ pub mod comps;
 /// The historical-data of quotes of all the assets in the portfolio
 pub mod quotes;
 
-/// Represents a pivot (from -> to swap) and also recommends a proposal
+/// Represents a pivot (from -> to swap)
 pub mod pivots;
+
+/// Assets used across pivots and proposals
+pub mod assets;
+
+/// recommends proposals
+pub mod proposals;
 
 /// Alias one wrapped or synthetic token-name to the base asset
 pub mod aliases;
