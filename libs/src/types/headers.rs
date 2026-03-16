@@ -30,6 +30,10 @@ impl Header {
    pub fn is_updated(&self) -> bool {
       self.updated.and_then(|d| Some(d > self.opened)).unwrap_or(false)
    }
+   pub fn update_to(&self, today: NaiveDate) -> Header {
+      Header { updated: Some(today), ..self.clone() }
+   }
+
 }
 
 impl CsvWriter for Header {

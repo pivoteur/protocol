@@ -22,10 +22,13 @@ pub struct PropAsset {
 }
 
 impl PropAsset {
-   pub fn clone_with(&self, amount: f32, kind: AssetType) {
-      mk_prop_asset(&self.token, &self.blockchain, &self.close_price,
+   pub fn clone_with(&self, close: f32, amount: f32,
+                     kind: AssetType) -> PropAsset {
+      mk_prop_asset(&self.token, &self.blockchain, &mk_usd(close),
                     amount, kind)
    }
+   pub fn blockchain(&self) -> Blockchain { self.blockchain.clone() }
+   pub fn token(&self) -> Token { self.token.clone() }
 }
 
 impl CsvHeader for PropAsset {
@@ -51,7 +54,7 @@ impl CsvWriter for PropAsset {
 
 impl Measurable for PropAsset {
    fn sz(&self) -> f32 { self.amount }
-   fn aug(&self) -> f32 { self.sz() * self.close_price.amount }
+   fn aug(&self) -> f32 { self.close_price.amount }
 }
 
 pub fn mk_prop_asset(t: &str, b: &str, c: &USD, amount: f32, kind: AssetType)

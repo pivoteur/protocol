@@ -1,17 +1,26 @@
 use std::collections::HashMap;
 
+use chrono::NaiveDate;
+
 use book::{
    csv_utils::{CsvHeader,CsvWriter},
    currency::usd::{USD,mk_usd},
    err_utils::ErrStr,
-   num_utils::parse_commaless
+   num_utils::parse_commaless,
+   utils::pred
 };
 
-use super::{ amounts::{Amount,mk_amt}, asset_types::{AssetType,kinderize} };
+use super::{
+   amounts::{Amount,mk_amt},
+   asset_types::{AssetType,AssetType::*,kinderize}
+};
 
 use crate::types::{
-   util::{Token,Blockchain},
-   measurable::Measurable
+   measurable::{Measurable,weight},
+   coins::Coin,
+   quotes::Quotes,
+   proposals::prop_assets::{PropAsset,mk_prop_asset},
+   util::{Token,Blockchain}
 };
 
 // ----- ASSETS
@@ -42,8 +51,8 @@ impl Measurable for Asset {
 impl CsvWriter for Asset {
    fn ncols(&self) -> usize { 1 + 1 + self.amount.ncols() + 1 + 1}
    fn as_csv(&self) -> String {
-      let qt = self.quote;
-      let total = mk_usd(qt.amount * self.amount.amount());
+      let qt = &self.quote;
+      let total = mk_usd(qt.amount * self.sz());
       format!("{},{},{},{},{}",
               self.token,self.blockchain,self.amount.as_csv(),qt,total)
    }
@@ -82,22 +91,61 @@ pub fn parse_asset(a: AssetType, hdrs: &HashMap<String, usize>,
    }
 }
 
-pub fn recompute_assets(quotes: &Quotes, from: &Asset, to: &Asset, debug: bool)
+// ---- Worker methods -------------------------------------------------------
+
+// for recomputing virtual pivots
+
+pub fn recompute_assets(quotes: &Quotes, from: &Asset, to: &Asset)
       -> ErrStr<Option<(Asset, Asset)>> {
-   let t2 = to.token;
+   let t2 = &to.token;
    let q2 = quotes.lookup(t2)?;
    let a2 = to.amount.amount();
-   let t1 = from.token;
-   let blk = to.blockchain;
+   let t1 = &from.token;
+   let blk = &to.blockchain;
    let q1 = quotes.lookup(t1)?;
    let tvl_now = a2 * q2;
    let a1 = from.amount.amount();
    let new_from = tvl_now / q1;
    let new_assets = if new_from < a1 {
       Some((mk_asset(t1, blk, mk_amt(0.0, new_from), mk_usd(q1), &FROM),
-            mk_asset(t2, blk, p.to.amount.clone(), mk_usd(q2), &TO)));
+            mk_asset(t2, blk, to.amount.clone(), mk_usd(q2), &TO)))
    } else {
       None
    };
    Ok(new_assets)
 }
+
+// condensces a set of assets to one representative (summed) asset
+
+pub fn coalesce(v: &Vec<Asset>) -> ErrStr<Asset> {
+   if v.is_empty() { Err("No principal for proposal".to_string())
+   } else { Ok(condense(v)) }
+}
+
+fn condense(v: &Vec<Asset>) -> Asset {
+   let amts: Vec<Amount> = v.into_iter().map(|a| a.amount.clone()).collect();
+   let prince = v.first().unwrap();
+   let new_quote = mk_usd(weight(&amts));
+   let amount = amts.into_iter().sum();
+   mk_asset(&prince.token, &prince.blockchain, amount, new_quote, &FROM)
+}
+
+pub fn trade(q: &Quotes, from: &Asset, to: &Asset)
+      -> ErrStr<Option<(PropAsset, PropAsset)>> {
+   // with the quotes for the assets, ...
+   let prim = &from.token;
+   let prim_blk = &from.blockchain;
+   let piv = &to.token;
+   let piv_blk = &to.blockchain;
+   let prim_qt = q.lookup(prim)?;
+   let piv_qt = q.lookup(piv)?;
+   let to_trade = to.sz();
+   let target = gain_10_percent(from.sz());
+   let computed_amount = to_trade * piv_qt / prim_qt;
+   Ok(pred(computed_amount > target,
+       (mk_prop_asset(piv, piv_blk, &mk_usd(piv_qt), to_trade, FROM),
+        mk_prop_asset(prim, prim_blk, &mk_usd(prim_qt), computed_amount, TO))))
+}
+
+pub fn gain_10_percent(a: f32) -> f32 { a * 1.1 }
+

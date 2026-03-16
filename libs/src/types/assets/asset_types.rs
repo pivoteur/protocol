@@ -1,6 +1,6 @@
 use chrono::NaiveDate;
-use book::err_utils::ErrStr;
-use crate::types::Coin::{Coin,mk_coin};
+use book::{ currency::usd::mk_usd, err_utils::ErrStr };
+use crate::types::{ coins::{Coin,mk_coin}, measurable::Measurable };
 use super::assets::Asset;
 
 #[derive(Debug, Clone, PartialEq)]

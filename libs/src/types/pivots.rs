@@ -9,13 +9,16 @@ use book::{
 
 use super::{
    assets::{
-      assets::{Asset,mk_asset,parse_asset,recompute_assets},
+      assets::{
+         Asset,mk_asset,parse_asset,recompute_assets,gain_10_percent,trade
+      },
       asset_types::AssetType::{FROM,TO},
       amounts::{Amount,mk_amt}
    },
-   headers::{Header, next_close_id as closer, parse_header, no_url},
-   coins::{Coin,mk_coin},
+   headers::{Header, next_close_id as closer, parse_header},
+   coins::Coin,
    measurable::Measurable,
+   proposals::prop_assets::PropAsset,
    quotes::Quotes,
    util::{Blockchain,Id}
 };
@@ -28,34 +31,6 @@ pub struct Pivot {
    header: Header,
    from: Asset,
    to: Asset
-}
-
-pub fn recompute_pivot(quotes: &Quotes, debug: bool)
-      -> impl Fn(Pivot) -> ErrStr<Pivot> {
-   move |p| {
-      if !p.is_virtual() { Err("Can only recompute virtual pivots".to_string())
-      } else if p.closed() { Err("Pivot closed; cannot recompute".to_string())
-      } else { recompute1(quotes, p, debug)
-      }
-   }
-}
-
-fn recompute1(quotes: &Quotes, p: Pivot, debug: bool) -> ErrStr<Pivot> {
-   if debug { println!("For pivot:\n{}\n{}", p.header(), p.as_csv()); }
-   let mb_new_assets = recompute_assets(quotes, &p.from, &p.to)?;
-   Ok(match mb_new_assets {
-      Some((from, to)) => {
-         let today = quotes.date.clone();
-         let header = Header { updated: Some(today), ..p.header };
-         let new_piv1 = Pivot { header, from, to };
-         if debug { println!("\tRecomputed to:\n{}", new_piv1.as_csv()); }
-         new_piv1
-      },
-      None => {
-         if debug { println!("\tNo change"); }
-         p
-      }
-   })
 }
 
 impl Measurable for Pivot {
@@ -75,6 +50,9 @@ impl Pivot {
    pub fn active(&self) -> bool { !self.closed() }
    pub fn is_updated(&self) -> bool { self.header.is_updated() }
    pub fn index(&self) -> usize { self.header.ix() }
+   pub fn trade(&self, qts: &Quotes) -> ErrStr<Option<(PropAsset, PropAsset)>> {
+      trade(qts, &self.from, &self.to)
+   }
 }
 
 impl CsvWriter for Pivot {
@@ -82,7 +60,7 @@ impl CsvWriter for Pivot {
       self.header.ncols() + self.from.ncols() + self.to.ncols() + 1
    }
    fn as_csv(&self) -> String {
-      let gain = gain_10_percent(&self.from.sz());
+      let gain = gain_10_percent(self.from.sz());
       format!("{},{},{},{}", 
               self.header.as_csv(),
               self.from.as_csv(), gain,
@@ -104,20 +82,55 @@ pub fn parse_pivot(hdrs: &HashMap<String, usize>, row: &Vec<String>)
    Ok( Pivot { header, from, to } )
 }
 
-pub fn gain_10_percent(a: &Amount) -> f32 {
-   a.amount() * 1.1
-}
+// ----- COLLECTIONS OPERATIONS ------------------------------------------
 
 pub fn next_close_id(pivs: &Vec<Pivot>) -> Id {
-   let hdrs: Vec<&Header> = pivs.iter().map(Pivot::header).collect();
-   closer(&hdrs)
+   closer(&headers(pivs))
+}
+
+pub fn headers(pivs: &Vec<Pivot>) -> Vec<Header> {
+   pivs.into_iter().map(|p| p.header.clone()).collect()
+}
+
+pub fn froms(pivs: &Vec<Pivot>) -> Vec<Asset> {
+   pivs.into_iter().map(|p| p.from.clone()).collect()
+}
+
+// ----- RECOMPUTING VIRTUAL PIVOTS --------------------------------------
+
+pub fn recompute_pivot(quotes: &Quotes, debug: bool)
+      -> impl Fn(Pivot) -> ErrStr<Pivot> {
+   move |p| {
+      if !p.is_virtual() { Err("Can only recompute virtual pivots".to_string())
+      } else if p.closed() { Err("Pivot closed; cannot recompute".to_string())
+      } else { recompute1(quotes, p, debug)
+      }
+   }
+}
+
+fn recompute1(quotes: &Quotes, p: Pivot, debug: bool) -> ErrStr<Pivot> {
+   if debug { println!("For pivot:\n{}\n{}", p.header(), p.as_csv()); }
+   let mb_new_assets = recompute_assets(quotes, &p.from, &p.to)?;
+   Ok(match mb_new_assets {
+      Some((from, to)) => {
+         let today = quotes.date.clone();
+         let header = p.header.update_to(today);
+         let new_piv1 = Pivot { header, from, to };
+         if debug { println!("\tRecomputed to:\n{}", new_piv1.as_csv()); }
+         new_piv1
+      },
+      None => {
+         if debug { println!("\tNo change"); }
+         p
+      }
+   })
 }
 
 // ----- GROUPING  -------------------------------------------------------
 
 /// Partitions open-pivots by principal asset
 pub fn partition_on(tok: &str, opens: Vec<Pivot>) -> Partition<Pivot> {
-   opens.into_iter().partition(|p: &Pivot| p.from.token == tok)
+   opens.into_iter().partition(|p: &Pivot| &p.from.token() == tok)
 }
 
 // ----- FUNCTIONAL TEST ------------------------------------------------
@@ -257,7 +270,9 @@ mod tests {
       let (table, ix) = btc_eth()?;
       let row = table.data.first().unwrap();
       let piv = parse_pivot(&ix, &row)?;
-      assert!(!no_url(&piv.header));
+      assert!(!piv.header.no_url());
+      assert!(!piv.closed());
+      assert!(!piv.is_virtual());
       Ok(())
    }
 
