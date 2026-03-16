@@ -149,3 +149,15 @@ pub fn trade(q: &Quotes, from: &Asset, to: &Asset)
 
 pub fn gain_10_percent(a: f32) -> f32 { a * 1.1 }
 
+pub mod functional_tests {
+   use super::*;
+   use book::num::estimate::mk_estimate;
+
+   pub fn assert_price(a: &Asset, est: f32) {
+      let q1 = &a.quote;
+      let qe1 = mk_estimate(q1.amount);
+      let tok = &a.token;
+      assert!(qe1.approximates(est * 1e03), "{tok} price ({q1}) isn't ${est}K");
+   }
+}
+

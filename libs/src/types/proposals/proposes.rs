@@ -224,40 +224,8 @@ mod tests {
    use super::*;
    use crate::types::{
       quotes::functional_tests::test_mk_quotes,
-      pivots::pivots::functional_tests::mk_hbar_usdc_piv
+      pivots::functional_tests::mk_hbar_usdc_piv
    };
-   use book::{
-      num::estimate::mk_estimate,
-      string_utils::to_string,
-      table_utils::cols
-   };
-   use crate::{
-      tables::{IxTable,index_table},
-      types::aliases::aliases
-   };
-
-   fn assert_price(a: &Asset, est: f32) {
-      let q1 = &a.quote;
-      let qe1 = mk_estimate(q1.amount);
-      let tok = &a.token;
-      assert!(qe1.approximates(est * 1e03), "{tok} price ({q1}) isn't ${est}K");
-   }
-
-   fn assert_prices(p: &Propose, a: f32, b: f32) {
-      assert_price(&p.from, a);
-      assert_price(&p.to, b);
-   }
-
-   #[test]
-   fn test_asset_quotes() -> ErrStr<()> {
-      let pivs = btc_eth_pivots()?;
-      assert_prices(&pivs[0], 113.9, 3.6);
-      assert_prices(&pivs[1], 113.1, 4.1);
-      assert_prices(&pivs[2], 114.7, 4.8);
-      assert_prices(&pivs[3], 2.0, 68.4);
-      assert_prices(&pivs[4], 107.9, 3.7);
-      Ok(())
-   }
 
    #[test]
    fn test_propose_ok_no_call() -> ErrStr<()> {

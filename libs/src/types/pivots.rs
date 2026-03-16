@@ -137,9 +137,14 @@ pub fn partition_on(tok: &str, opens: Vec<Pivot>) -> Partition<Pivot> {
 
 pub mod functional_tests {
    use super::*;
-   use crate::types::{
-      quotes::functional_tests::test_mk_quotes,
-      headers::mk_hdr
+   use book::{ string_utils::to_string, table_utils::cols };
+   use crate::{
+      tables::{IxTable,index_table},
+      types::{
+         aliases::aliases,
+         quotes::functional_tests::test_mk_quotes,
+         headers::mk_hdr
+      }
    };
 
    pub fn mk_hbar_usdc_piv(q: f32, a: Amount, c: usize, tx: &str)
@@ -148,6 +153,35 @@ pub mod functional_tests {
       let to = mk_asset("USDC", "Hedera", mk_amt(100.0, 0.0), mk_usd(1.0), &TO);
       let header = mk_hdr("2026-03-10",1,c, tx.to_string(), None)?;
       Ok(Pivot { header, from: mk_asset("HBAR", "Hedera", a, qt, &FROM), to })
+   }
+
+   // this test data contains 
+   // a closed pivot
+   // an opened pivot
+   // a virtual pivot
+   // and a non-virtual virtual pivot (protocol_issue_010_non_virtual_pivots)
+   fn btc_eth_raw() -> String {
+"opened	open	close	tx_id	updated	from	from_blockchain	amount1	virtual	quote1	val1	gain_10_percent	to	to_blockchain	net	ersatz	quote2	val2
+2025-08-06	1	1	https://snowtrace.io/tx/0x60a2129cf19213def46b4355739cf69e998ed6245fe0ade6563e83c1ba2d83c8	n/a	BTC	Avalanche	0.004498	0	$113883.00	$512.25	0.0049477997	ETH	Avalanche	0.14203	0	$3588.72	$509.71
+2025-09-30	28	0	https://snowtrace.io/tx/0xdef66cbfea4687eff8390728557a07b9697dc15927de51d0819e07aa5bc71963	n/a	BTC	Avalanche	0.0087	0	$113056.00	$983.59	0.009570001	ETH	Avalanche	0.2305	0	$4162.11	$959.37
+2026-02-21	17	0	virtual swap	n/a	BTC	Avalanche	0	0.009205	$114701.00	$1055.82	0.0101255	ETH	Avalanche	0.3177	0	$4810.58	$1528.32
+2026-02-21	52	0	https://snowtrace.io/tx/0x267ed024578621a51aabc47b9b0d7f4791c6624863130ad0dcab4c1328fd8a90	n/a	ETH	Avalanche	5.046	0	$1987.48	$10028.82	5.5506	BTC	Avalanche	0.14587	0	$68429.00	$9981.74
+2026-02-21	41	0	https://snowtrace.io/tx/0x77fe7489ccb408e103e86f12bdfa1fbf0dc4476912a7a0bff6ad4b12b32e55c1	n/a	BTC	Avalanche	0	0.0074	$107858.00	$798.15	0.0081400005	ETH	Avalanche	0.2559	0	$3715.49	$950.79".to_string()
+   }
+
+   pub fn btc_eth() -> ErrStr<(IxTable, HashMap<String, usize>)> {
+      let lines: Vec<String> =
+         btc_eth_raw().split("\n").map(to_string).collect();
+      let table = index_table(lines)?;
+      let ix = aliases().enum_headers(cols(&table));
+      Ok((table, ix))
+   }
+
+   pub fn btc_eth_pivots() -> ErrStr<Vec<Pivot>> {
+      let (tabl, ix) = btc_eth()?;
+      Ok(tabl.data.into_iter()
+               .filter_map(|row| parse_pivot(&ix, &row).ok())
+               .collect())
    }
 
    fn run_recompute_pivot() -> ErrStr<usize> {
@@ -169,48 +203,13 @@ pub mod functional_tests {
 #[cfg(test)]
 mod tests {
    use super::*;
-   use super::functional_tests::mk_hbar_usdc_piv;
-   use book::{
-      num::estimate::mk_estimate,
-      string_utils::to_string,
-      table_utils::cols
-   };
+   use super::functional_tests::{btc_eth,btc_eth_pivots,mk_hbar_usdc_piv};
    use crate::{
-      tables::{IxTable,index_table},
       types::{
-         aliases::aliases,
+         assets::assets::functional_tests::assert_price,
          quotes::functional_tests::test_mk_quotes
       }
    };
-
-   // this test data contains 
-   // a closed pivot
-   // an opened pivot
-   // a virtual pivot
-   // and a non-virtual virtual pivot (protocol_issue_010_non_virtual_pivots)
-   fn btc_eth_raw() -> String {
-"opened	open	close	tx_id	updated	from	from_blockchain	amount1	virtual	quote1	val1	gain_10_percent	to	to_blockchain	net	ersatz	quote2	val2
-2025-08-06	1	1	https://snowtrace.io/tx/0x60a2129cf19213def46b4355739cf69e998ed6245fe0ade6563e83c1ba2d83c8	n/a	BTC	Avalanche	0.004498	0	$113883.00	$512.25	0.0049477997	ETH	Avalanche	0.14203	0	$3588.72	$509.71
-2025-09-30	28	0	https://snowtrace.io/tx/0xdef66cbfea4687eff8390728557a07b9697dc15927de51d0819e07aa5bc71963	n/a	BTC	Avalanche	0.0087	0	$113056.00	$983.59	0.009570001	ETH	Avalanche	0.2305	0	$4162.11	$959.37
-2026-02-21	17	0	virtual swap	n/a	BTC	Avalanche	0	0.009205	$114701.00	$1055.82	0.0101255	ETH	Avalanche	0.3177	0	$4810.58	$1528.32
-2026-02-21	52	0	https://snowtrace.io/tx/0x267ed024578621a51aabc47b9b0d7f4791c6624863130ad0dcab4c1328fd8a90	n/a	ETH	Avalanche	5.046	0	$1987.48	$10028.82	5.5506	BTC	Avalanche	0.14587	0	$68429.00	$9981.74
-2026-02-21	41	0	https://snowtrace.io/tx/0x77fe7489ccb408e103e86f12bdfa1fbf0dc4476912a7a0bff6ad4b12b32e55c1	n/a	BTC	Avalanche	0	0.0074	$107858.00	$798.15	0.0081400005	ETH	Avalanche	0.2559	0	$3715.49	$950.79".to_string()
-   }
-
-   fn btc_eth() -> ErrStr<(IxTable, HashMap<String, usize>)> {
-      let lines: Vec<String> =
-         btc_eth_raw().split("\n").map(to_string).collect();
-      let table = index_table(lines)?;
-      let ix = aliases().enum_headers(cols(&table));
-      Ok((table, ix))
-   }
-
-   fn btc_eth_pivots() -> ErrStr<Vec<Pivot>> {
-      let (tabl, ix) = btc_eth()?;
-      Ok(tabl.data.into_iter()
-               .filter_map(|row| parse_pivot(&ix, &row).ok())
-               .collect())
-   }
 
    #[test]
    fn test_partition_on_btc() -> ErrStr<()> {
@@ -219,13 +218,6 @@ mod tests {
       assert_eq!(4, btcs.len());
       assert_eq!(1, eths.len());
       Ok(())
-   }
-
-   fn assert_price(a: &Asset, est: f32) {
-      let q1 = &a.quote;
-      let qe1 = mk_estimate(q1.amount);
-      let tok = &a.token;
-      assert!(qe1.approximates(est * 1e03), "{tok} price ({q1}) isn't ${est}K");
    }
 
    fn assert_prices(p: &Pivot, a: f32, b: f32) {
@@ -271,7 +263,7 @@ mod tests {
       let row = table.data.first().unwrap();
       let piv = parse_pivot(&ix, &row)?;
       assert!(!piv.header.no_url());
-      assert!(!piv.closed());
+      assert!(piv.closed());
       assert!(!piv.is_virtual());
       Ok(())
    }
