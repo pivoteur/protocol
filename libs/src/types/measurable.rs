@@ -15,8 +15,8 @@ pub fn size<T: Measurable>(v: &Vec<T>) -> f32 {
 
 pub fn weight<T: Measurable>(v: &Vec<T>) -> f32 {
    let (au, s) =
-      v.iter()
-       .fold((0.0, 0.0), |(a,b), x| (a + x.aug(), b + x.sz()));
+      v.iter().fold((0.0,0.0),
+                    |(acc, base), x| (acc + x.sz() * x.aug(), base + x.sz()));
    au / s
 }
 

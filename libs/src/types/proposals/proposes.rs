@@ -38,14 +38,14 @@ pub struct Propose {
 }
 
 impl Measurable for Propose {
-   fn sz(&self) -> f32 { self.propose.sz() }
-   fn aug(&self) -> f32 { self.propose.aug() }
+   fn sz(&self) -> f32 { size(&self.pivot) }
+   fn aug(&self) -> f32 { weight(&self.pivot) }
 }
 
 impl Gains for Propose {
    fn roi(&self) -> Percentage {
       let base = size(&self.principal);
-      mk_percentage((self.sz() - base) / base)
+      mk_percentage((self.propose.sz() - base) / base)
    }
    fn apr(&self) -> Percentage {
       if let Ok((wt, _)) = self.weighted_days() {
@@ -101,19 +101,13 @@ impl Propose {
 
 impl CsvHeader for Propose {
    fn header(&self) -> String {
-      if let Some(prince) = self.principal.first() {
-         if let Some(piv) = self.pivot.first() {
-            format!("{},close_id,close_date,{},gain_10_percent,{},{},roi,apr",
-                    self.header.header(),
-                    prince.header(),
-                    piv.header(),
-                    self.propose.header())
-         } else {
-            panic!("No pivots for proposal")
-         }
-      } else {
-         panic!("No principal assets for proposal")
-      }
+      let prince = self.principal.first()
+            .unwrap_or_else(|| panic!("No principal assets for proposal"));
+      let piv = self.pivot.first()
+            .unwrap_or_else(|| panic!("No pivots for proposal"));
+      format!("{},close_id,close_date,{},gain_10_percent,{},{},roi,apr",
+              self.header.header(), prince.header(),
+              piv.header(), self.propose.header())
    }
 }
 
