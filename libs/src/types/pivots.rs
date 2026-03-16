@@ -9,11 +9,11 @@ use book::{
 
 use super::{
    assets::{
-      assets::{Asset,mk_asset,parse_asset,is_virt},
+      assets::{Asset,mk_asset,parse_asset,recompute_assets},
       asset_types::AssetType::{FROM,TO},
-      amounts::{Amount,mk_amt,amount}
+      amounts::{Amount,mk_amt}
    },
-   headers::headers::{Header, next_close_id as closer, parse_header, no_url},
+   headers::{Header, next_close_id as closer, parse_header, no_url},
    coins::{Coin,mk_coin},
    measurable::Measurable,
    quotes::Quotes,
@@ -41,32 +41,21 @@ pub fn recompute_pivot(quotes: &Quotes, debug: bool)
 }
 
 fn recompute1(quotes: &Quotes, p: Pivot, debug: bool) -> ErrStr<Pivot> {
-   let today = quotes.date.clone();
-   let t2 = &p.to.token;
-   let q2 = quotes.lookup(t2)?;
-   let a2 = amount(&p.to.amount);
-   let t1 = &p.from.token;
-   let blk = &p.to.blockchain;
-   let q1 = quotes.lookup(t1)?;
-   let tvl_now = a2 * q2;
-   let a1 = amount(&p.from.amount);
-   let new_from = tvl_now / q1;
    if debug { println!("For pivot:\n{}\n{}", p.header(), p.as_csv()); }
-   let new_piv = if new_from < a1 {
-// update to the new position
-      let header = Header { updated: Some(today.clone()), ..p.header };
-      let new_piv1 =
-         Pivot {
-            header,
-            from: mk_asset(t1, blk, mk_amt(0.0, new_from), mk_usd(q1), &FROM),
-            to: mk_asset(t2, blk, p.to.amount.clone(), mk_usd(q2), &TO) };
-      if debug { println!("\tRecomputed to:\n{}", new_piv1.as_csv()); }
-      new_piv1
-   } else {
-      if debug { println!("\tNo change"); }
-      p
-   };
-   Ok(new_piv)
+   let mb_new_assets = recompute_assets(quotes, &p.from, &p.to)?;
+   Ok(match mb_new_assets {
+      Some((from, to)) => {
+         let today = quotes.date.clone();
+         let header = Header { updated: Some(today), ..p.header };
+         let new_piv1 = Pivot { header, from, to };
+         if debug { println!("\tRecomputed to:\n{}", new_piv1.as_csv()); }
+         new_piv1
+      },
+      None => {
+         if debug { println!("\tNo change"); }
+         p
+      }
+   })
 }
 
 impl Measurable for Pivot {
@@ -76,24 +65,16 @@ impl Measurable for Pivot {
 
 impl Pivot {
    pub fn is_virtual(&self) -> bool {
-      no_url(&self.header) && is_virt(&self.from)
+      self.header.no_url() && self.from.is_virt()
    }
-   pub fn committed(&self) -> Coin { pivot_amount1(&self) }
-   pub fn blockchain(&self) -> Blockchain { self.to.blockchain.clone() }
-   pub fn closed(&self) -> bool { self.header.close > 0 }
+   pub fn committed(&self) -> ErrStr<Coin> {
+      self.to.committed(&self.header.opened())
+   }
+   pub fn blockchain(&self) -> Blockchain { self.to.blockchain() }
+   pub fn closed(&self) -> bool { self.header.closed() }
    pub fn active(&self) -> bool { !self.closed() }
-   pub fn is_updated(&self) -> bool {
-      self.header.updated.and_then(|d| Some(d > self.header.opened))
-                 .unwrap_or(false)
-   }
-   pub fn index(&self) -> usize { self.header.id }
-}
-
-fn pivot_amount1(p: &Pivot) -> Coin {
-   let date = &p.header.opened;
-   let blockchain = p.to.blockchain.clone();
-   let piv = p.to.token.clone();
-   mk_coin(&(blockchain, piv), p.to.sz(), &mk_usd(p.to.aug()), date)
+   pub fn is_updated(&self) -> bool { self.header.is_updated() }
+   pub fn index(&self) -> usize { self.header.ix() }
 }
 
 impl CsvWriter for Pivot {
@@ -101,7 +82,7 @@ impl CsvWriter for Pivot {
       self.header.ncols() + self.from.ncols() + self.to.ncols() + 1
    }
    fn as_csv(&self) -> String {
-      let gain = gain_10_percent(&self.from.amount);
+      let gain = gain_10_percent(&self.from.sz());
       format!("{},{},{},{}", 
               self.header.as_csv(),
               self.from.as_csv(), gain,
@@ -123,8 +104,8 @@ pub fn parse_pivot(hdrs: &HashMap<String, usize>, row: &Vec<String>)
    Ok( Pivot { header, from, to } )
 }
 
-fn gain_10_percent(a: &Amount) -> f32 {
-   amount(a) * 1.1
+pub fn gain_10_percent(a: &Amount) -> f32 {
+   a.amount() * 1.1
 }
 
 pub fn next_close_id(pivs: &Vec<Pivot>) -> Id {
@@ -145,7 +126,7 @@ pub mod functional_tests {
    use super::*;
    use crate::types::{
       quotes::functional_tests::test_mk_quotes,
-      headers::headers::mk_hdr
+      headers::mk_hdr
    };
 
    pub fn mk_hbar_usdc_piv(q: f32, a: Amount, c: usize, tx: &str)

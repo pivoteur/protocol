@@ -1,44 +1,43 @@
-use chrono::{Days,NaiveDate};
-
-use book::{
-   csv_utils::{CsvHeader,CsvWriter},
-   currency::usd::{USD,mk_usd},
-   err_utils::ErrStr,
-   num::percentage::{Percentage,mk_percentage},
-   tuple_utils::Partition,
-   utils::pred
-};
-
-use crate::types::{
-   quotes::Quotes,
-   util::{Token,Blockchain,Id,Pool},
-   measurable::{Measurable,weight,size}
-};
-
-// ----- ASSETTYPES
+use chrono::NaiveDate;
+use book::err_utils::ErrStr;
+use crate::types::Coin::{Coin,mk_coin};
+use super::assets::Asset;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum AssetType { FROM, TO }
 use AssetType::*;
 
 impl AssetType {
-   fn keys(&self) -> Vec<String> {
+   pub fn keys(&self) -> Vec<String> {
       match self {
          FROM =>
             slice2vec(&["from","from_blockchain","amount1","virtual","quote1"]),
          TO => slice2vec(&["to","to_blockchain","net","blah!","quote2"])
       }
    }
-   fn kind(&self) -> String {
+   pub fn kind(&self) -> String {
       match self {
          AssetType::FROM => "from".to_string(),
          AssetType::TO => "to".to_string()
       }
    }
-   fn headers(&self) -> String {
+   pub fn headers(&self) -> String {
       (if self == &FROM { "amount1,virtual" } else { "net,ersatz"}).to_string()
    }
-   fn ix(&self) -> usize { if self == &FROM { 1 } else { 2 } }
+   pub fn ix(&self) -> usize { if self == &FROM { 1 } else { 2 } }
+
+   pub fn committed(&self, asset: &Asset, dt: &NaiveDate) -> ErrStr<Coin> {
+      match &self {
+         &FROM =>
+            Err("Computing committed amount from a FROM asset!".to_string()),
+         &TO => {
+            let blockchain = asset.blockchain();
+            let token = asset.token();
+            let src = &(blockchain, token);
+            Ok(mk_coin(src, asset.sz(), &mk_usd(asset.aug()), dt))
+         }
+      }
+   }
 }
 
 fn slice2vec(ss: &[&str]) -> Vec<String> {

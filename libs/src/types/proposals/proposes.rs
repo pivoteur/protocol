@@ -1,29 +1,30 @@
-use std::{
-   collections::HashMap,
-   fmt::Display
-};
-
 use chrono::{Days,NaiveDate};
 
 use book::{
    csv_utils::{CsvHeader,CsvWriter},
-   currency::usd::{USD,mk_usd},
-   date_utils::parse_date,
+   currency::usd::mk_usd,
    err_utils::ErrStr,
    num::percentage::{Percentage,mk_percentage},
-   num_utils::parse_commaless,
-   parse_utils::parse_id,
-   tuple_utils::Partition,
    utils::pred
 };
 
+use super::{
+   aggregate_headers::{AggregateHeader,add_header_info},
+   prop_assets::{PropAsset,mk_prop_asset,pivot_amount0}
+};
+
 use crate::types::{
+   assets::{
+      assets::{Asset,mk_asset},
+      amounts::{Amount,mk_amt},
+      asset_types::AssetType::*
+   },
    quotes::Quotes,
-   util::{Token,Blockchain,Id,Pool},
+   util::{Blockchain,Id,Pool},
    measurable::{Measurable,weight,size},
-   coins::{Coin,mk_coin},
+   coins::Coin,
    gains::Gains,
-   headers::AggregateHeader
+   pivots::{Pivot,gain_10_percent}
 };
 
 // ----- CLOSE PIVOTS -------------------------------------------------------
@@ -49,7 +50,7 @@ impl Gains for Propose {
       mk_percentage((self.propose.amount - base) / base)
    }
    fn apr(&self) -> Percentage {
-      if let Ok((wt, _)) = weighted_days(&self) {
+      if let Ok((wt, _)) = self.weighted_days() {
          mk_percentage(self.roi().of(365.0 / wt))
       } else {
          panic!("Can't get an APR for proposal")
@@ -58,20 +59,20 @@ impl Gains for Propose {
 }
 
 impl Propose {
-   pub fn blockchain(p: &Propose) -> Blockchain {
+   pub fn blockchain(&self) -> Blockchain {
       if let Some(blk) =
-            p.pivot.first().and_then(|q| Some(q.blockchain.to_string())) {
+            self.pivot.first().and_then(|q| Some(q.blockchain.to_string())) {
          blk
       } else {
          panic!("No blockchain for proposal!")
       }
    }
 
-   pub fn pool(p: &Propose) -> Pool {
-      if let Some(pool) = p.principal
+   pub fn pool(&self) -> Pool {
+      if let Some(pool) = self.principal
           .first()
           .and_then(|q| 
-             p.pivot
+             self.pivot
               .first()
               .and_then(|r| Some((q.token.to_string(), r.token.to_string())))) {
          pool
@@ -79,26 +80,26 @@ impl Propose {
          panic!("Missing principal or pivot (or both) asset from proposal")
       }
    }
-      
-   pub fn pivot_amount(p: &Propose) -> Coin {
-      pivot_amount0(blockchain(p), pool(p), &p.close_date, &p.pivot)
+   pub fn pivot_amount(&self) -> Coin {
+      pivot_amount0(self.blockchain(), self.pool(),
+                    &self.close_date, &self.pivot)
    }
 
-   pub fn weighted_days(p: &Propose) -> ErrStr<(f32, NaiveDate)> {
-      if let Some(start_date) = p.header.opened.first().cloned() {
+   pub fn weighted_days(&self) -> ErrStr<(f32, NaiveDate)> {
+      if let Some(start_date) = self.header.opened.first().cloned() {
          let days: Vec<f32> =
-            p.header.opened.iter()
+            self.header.opened.iter()
                            .map(|&d| ((d-start_date).num_days() + 1) as f32)
                            .collect();
          let weights: Vec<f32> =
             days.iter()
-                .zip(p.principal.iter().map(Measurable::sz))
+                .zip(self.principal.iter().map(Measurable::sz))
                 .map(|(&a, b)| a * b)
                 .collect();
          let wt: f32 = weights.iter().sum();
-         let wt_days = wt / size(&p.principal);
+         let wt_days = wt / size(&self.principal);
          let ave_dt = start_date + Days::new((wt_days - 1.0) as u64);
-         let duration = (p.close_date - ave_dt).num_days() as f32;
+         let duration = (self.close_date - ave_dt).num_days() as f32;
          Ok((duration, ave_dt))
       } else {
          Err("No start date for proposal".to_string())
@@ -134,7 +135,7 @@ impl CsvWriter for Propose {
             + piv.ncols() + self.propose.ncols() + 2
    }
    fn as_csv(&self) -> String {
-      let (_, opnd) = weighted_days(&self)
+      let (_, opnd) = self.weighted_days()
             .unwrap_or_else(|_| panic!("No open date for proposal"));
       let prince = self.principal.first()
             .unwrap_or_else(|| panic!("No principal for proposal"));
@@ -200,7 +201,7 @@ pub fn propose(q: &Quotes)
          if let Some(result) = res.first() {
             let proposed = mk_prop_asset(&result.token, &result.blockchain,
                                          result.close_price.amount,
-                                         size(&res), &AssetType::TO);
+                                         size(&res), &TO);
             Ok(Some(mk_prop(princes, c, &q.date, pivs, proposed)))
          } else {
             Err("No proposal to accumulate on flagged principal".to_string())
@@ -217,13 +218,12 @@ fn trade(q: &Quotes, p: &Pivot) -> ErrStr<Option<(PropAsset, PropAsset)>> {
    let piv_blk = &p.to.blockchain;
    let prim_qt = q.lookup(prim)?;
    let piv_qt = q.lookup(piv)?;
-   let to_trade = amount(&p.to.amount);
+   let to_trade = p.to.amount.amount();
    let target = gain_10_percent(&p.from.amount);
    let computed_amount = to_trade * piv_qt / prim_qt;
    Ok(pred(computed_amount > target,
-           (mk_prop_asset(piv, piv_blk, piv_qt, to_trade, &AssetType::FROM),
-            mk_prop_asset(prim, prim_blk, prim_qt,
-                          computed_amount, &AssetType::TO))))
+           (mk_prop_asset(piv, piv_blk, piv_qt, to_trade, &FROM),
+            mk_prop_asset(prim, prim_blk, prim_qt, computed_amount, &TO))))
 }
 
 // ----- FUNCTIONAL TEST ------------------------------------------------

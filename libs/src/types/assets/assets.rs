@@ -1,23 +1,17 @@
 use std::collections::HashMap;
 
-use chrono::{Days,NaiveDate};
-
 use book::{
    csv_utils::{CsvHeader,CsvWriter},
    currency::usd::{USD,mk_usd},
    err_utils::ErrStr,
-   num::percentage::{Percentage,mk_percentage},
-   num_utils::parse_commaless,
-   tuple_utils::Partition,
-   utils::pred
+   num_utils::parse_commaless
 };
 
 use super::{ amounts::{Amount,mk_amt}, asset_types::{AssetType,kinderize} };
 
 use crate::types::{
-   quotes::Quotes,
-   util::{Token,Blockchain,Id,Pool},
-   measurable::{Measurable,weight,size},
+   util::{Token,Blockchain},
+   measurable::Measurable
 };
 
 // ----- ASSETS
@@ -33,6 +27,11 @@ pub struct Asset {
 
 impl Asset {
    pub fn is_virt(&self) -> bool { self.amount.is_virt() }
+   pub fn blockchain(&self) -> Blockchain { self.blockchain.clone() }
+   pub fn token(&self) -> Token { self.token.clone() }
+   pub fn committed(&self, date: &NaiveDate) -> ErrStr<Coin> {
+      self.kind.committed(&self, date)
+   }
 }
 
 impl Measurable for Asset {
@@ -46,7 +45,7 @@ impl CsvWriter for Asset {
       let qt = self.quote;
       let total = mk_usd(qt.amount * self.amount.amount());
       format!("{},{},{},{},{}",
-              self.token,self.blockchain,self.amount.as_csv(),wt,total)
+              self.token,self.blockchain,self.amount.as_csv(),qt,total)
    }
 }
 impl CsvHeader for Asset {
@@ -83,3 +82,22 @@ pub fn parse_asset(a: AssetType, hdrs: &HashMap<String, usize>,
    }
 }
 
+pub fn recompute_assets(quotes: &Quotes, from: &Asset, to: &Asset, debug: bool)
+      -> ErrStr<Option<(Asset, Asset)>> {
+   let t2 = to.token;
+   let q2 = quotes.lookup(t2)?;
+   let a2 = to.amount.amount();
+   let t1 = from.token;
+   let blk = to.blockchain;
+   let q1 = quotes.lookup(t1)?;
+   let tvl_now = a2 * q2;
+   let a1 = from.amount.amount();
+   let new_from = tvl_now / q1;
+   let new_assets = if new_from < a1 {
+      Some((mk_asset(t1, blk, mk_amt(0.0, new_from), mk_usd(q1), &FROM),
+            mk_asset(t2, blk, p.to.amount.clone(), mk_usd(q2), &TO)));
+   } else {
+      None
+   };
+   Ok(new_assets)
+}

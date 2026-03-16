@@ -1,6 +1,6 @@
 use book::num::percentage::Percentage;
 
-trait Gains {
+pub trait Gains {
    fn roi(&self) -> Percentage;
    fn apr(&self) -> Percentage;
 }

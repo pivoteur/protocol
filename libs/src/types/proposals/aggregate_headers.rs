@@ -4,9 +4,7 @@ use chrono::NaiveDate;
 
 use book::csv_utils::{CsvHeader,CsvWriter};
 
-use crate::types::util::Id;
-
-use super::headers::Header;
+use crate::types::{ headers::Header, util::Id };
 
 #[derive(Debug, Clone)]
 pub struct AggregateHeader {
@@ -14,7 +12,7 @@ pub struct AggregateHeader {
    ids: Vec<Id>,
 }
 
-fn add_header_info(v: &Vec<Header>) -> AggregateHeader {
+pub fn add_header_info(v: &Vec<Header>) -> AggregateHeader {
    let mut opened = Vec::new();
    let mut ids = Vec::new();
    for h in v {

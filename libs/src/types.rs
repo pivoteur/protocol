@@ -28,3 +28,6 @@ pub mod util;
 /// trait to define gains (ROI and APR)
 pub mod gains;
 
+/// header information for pivots and aggregate headers for proposals
+pub mod headers;
+
