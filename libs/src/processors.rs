@@ -50,9 +50,10 @@ async fn process_pools0(root_url: &str, pools: &Vec<Pool>, date: NaiveDate)
    Ok((proposals, no_closes))
 }
 
-type IxPivots = (Vec<Pivot>, usize);
+type Ixs<A> = (Vec<A>, usize);
+type Ix<A> = (A, usize);
 
-fn propose(proposer: impl Fn(IxPivots) -> ErrStr<Option<(Propose, usize)>>,
+fn propose(proposer: impl Fn(Ixs<Pivot>) -> ErrStr<Option<Ix<Propose>>>,
            pool: &Pool, prim: &Token, opens: Vec<Pivot>, closes: Vec<Pivot>,
            max_date: NaiveDate) -> ErrStr<Vec<Proposal>> {
    let next_close = next_close_id(&closes);

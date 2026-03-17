@@ -130,6 +130,8 @@ fn condense(v: &Vec<Asset>) -> Asset {
    mk_asset(&prince.token, &prince.blockchain, amount, new_quote, &FROM)
 }
 
+// makes a proposed trade from asset b to asset a
+
 pub fn trade(q: &Quotes, from: &Asset, to: &Asset)
       -> ErrStr<Option<(PropAsset, PropAsset)>> {
    // with the quotes for the assets, ...
@@ -153,11 +155,65 @@ pub mod functional_tests {
    use super::*;
    use book::num::estimate::mk_estimate;
 
+   pub fn hbar_asset(amt: f32, qt: f32) -> Asset {
+      mk_asset("HBAR", "Hedera", mk_amt(0.0, amt), mk_usd(qt), &FROM)
+   }
+
    pub fn assert_price(a: &Asset, est: f32) {
       let q1 = &a.quote;
       let qe1 = mk_estimate(q1.amount);
       let tok = &a.token;
       assert!(qe1.approximates(est * 1e03), "{tok} price ({q1}) isn't ${est}K");
+   }
+
+   fn run_coalesce() -> ErrStr<usize> {
+      println!("\ntypes::assets::assets::coalesce fuctional test\n");
+      let h1 = hbar_asset(500.0, 0.2);
+      let h2 = hbar_asset(300.0, 0.25);
+      let assets = vec![h1.clone(), h2.clone()];
+      let ans = coalesce(&assets)?;
+      println!("{}\n{}\n{}\n", h1.header(), h1.as_csv(), h2.as_csv());
+      println!("...coalesces to:\n{}\n", ans.as_csv());
+      println!("\ntypes::assets::assets::coalesce...ok");
+      Ok(1)
+   }
+
+   pub fn runoff() -> ErrStr<usize> {
+      println!("\ntypes::assets::assets functional tests\n");
+      let a = run_coalesce()?;
+      Ok(a)
+   }
+}
+
+#[cfg(test)]
+mod tests {
+   use super::*;
+   use super::functional_tests::{assert_price,hbar_asset};
+
+   #[test]
+   fn fail_coalesce() {
+      let ans = coalesce(&Vec::new());
+      assert!(ans.is_err());
+   }
+
+   #[test]
+   fn test_coalesce_ok() {
+      let ans = coalesce(&vec![hbar_asset(500.0, 0.2)]);
+      assert!(ans.is_ok());
+   }
+
+   #[test]
+   fn test_coalesce_quote() -> ErrStr<()> {
+      let ans = coalesce(&vec![hbar_asset(500.0, 0.2)])?;
+      assert_price(&ans, 0.2);
+      Ok(())
+   }
+
+   #[test]
+   fn test_coalesce_amt() -> ErrStr<()> {
+      let ans = coalesce(&vec![hbar_asset(500.0, 0.2)])?;
+      assert_eq!(500.0, ans.sz());
+      Ok(())
    }
 }
 
