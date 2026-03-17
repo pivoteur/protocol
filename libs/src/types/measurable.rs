@@ -14,10 +14,10 @@ pub fn size<T: Measurable>(v: &Vec<T>) -> f32 {
 }
 
 pub fn weight<T: Measurable>(v: &Vec<T>) -> f32 {
-   let (au, s) =
+   let (total, s) =
       v.iter().fold((0.0,0.0),
                     |(acc, base), x| (acc + x.sz() * x.aug(), base + x.sz()));
-   au / s
+   total / s
 }
 
 pub fn sort_by_weight<M: Measurable>(a: &M, b: &M) -> Ordering {

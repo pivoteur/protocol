@@ -206,7 +206,7 @@ mod tests {
    use super::functional_tests::{btc_eth,btc_eth_pivots,mk_hbar_usdc_piv};
    use crate::{
       types::{
-         assets::assets::functional_tests::assert_price,
+         assets::assets::functional_tests::assert_price_k,
          quotes::functional_tests::test_mk_quotes
       }
    };
@@ -220,19 +220,19 @@ mod tests {
       Ok(())
    }
 
-   fn assert_prices(p: &Pivot, a: f32, b: f32) {
-      assert_price(&p.from, a);
-      assert_price(&p.to, b);
+   fn assert_prices_k(p: &Pivot, a: f32, b: f32) {
+      assert_price_k(&p.from, a);
+      assert_price_k(&p.to, b);
    }
 
    #[test]
    fn test_asset_quotes() -> ErrStr<()> {
       let pivs = btc_eth_pivots()?;
-      assert_prices(&pivs[0], 113.9, 3.6);
-      assert_prices(&pivs[1], 113.1, 4.1);
-      assert_prices(&pivs[2], 114.7, 4.8);
-      assert_prices(&pivs[3], 2.0, 68.4);
-      assert_prices(&pivs[4], 107.9, 3.7);
+      assert_prices_k(&pivs[0], 113.9, 3.6);
+      assert_prices_k(&pivs[1], 113.1, 4.1);
+      assert_prices_k(&pivs[2], 114.7, 4.8);
+      assert_prices_k(&pivs[3], 2.0, 68.4);
+      assert_prices_k(&pivs[4], 107.9, 3.7);
       Ok(())
    }
 

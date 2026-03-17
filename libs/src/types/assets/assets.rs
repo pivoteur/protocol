@@ -125,7 +125,7 @@ pub fn coalesce(v: &Vec<Asset>) -> ErrStr<Asset> {
 fn condense(v: &Vec<Asset>) -> Asset {
    let amts: Vec<Amount> = v.into_iter().map(|a| a.amount.clone()).collect();
    let prince = v.first().unwrap();
-   let new_quote = mk_usd(weight(&amts));
+   let new_quote = mk_usd(weight(&v));
    let amount = amts.into_iter().sum();
    mk_asset(&prince.token, &prince.blockchain, amount, new_quote, &FROM)
 }
@@ -159,11 +159,15 @@ pub mod functional_tests {
       mk_asset("HBAR", "Hedera", mk_amt(0.0, amt), mk_usd(qt), &FROM)
    }
 
+   pub fn assert_price_k(a: &Asset, est: f32) {
+      assert_price(a, est * 1000.0);
+   }
+
    pub fn assert_price(a: &Asset, est: f32) {
       let q1 = &a.quote;
       let qe1 = mk_estimate(q1.amount);
       let tok = &a.token;
-      assert!(qe1.approximates(est * 1e03), "{tok} price ({q1}) isn't ${est}K");
+      assert!(qe1.approximates(est), "{tok} price ({q1}) isn't ${est}");
    }
 
    fn run_coalesce() -> ErrStr<usize> {
@@ -211,8 +215,8 @@ mod tests {
 
    #[test]
    fn test_coalesce_amt() -> ErrStr<()> {
-      let ans = coalesce(&vec![hbar_asset(500.0, 0.2)])?;
-      assert_eq!(500.0, ans.sz());
+      let ans = coalesce(&vec![hbar_asset(500.0, 0.2),hbar_asset(300.0, 0.1)])?;
+      assert_eq!(800.0, ans.sz());
       Ok(())
    }
 }
