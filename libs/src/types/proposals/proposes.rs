@@ -38,8 +38,8 @@ pub struct Propose {
 }
 
 impl Measurable for Propose {
-   fn sz(&self) -> f32 { size(&self.pivot) }
-   fn aug(&self) -> f32 { weight(&self.pivot) }
+   fn sz(&self) -> f32 { size(&self.principal) }
+   fn aug(&self) -> f32 { weight(&self.principal) }
 }
 
 impl Gains for Propose {

@@ -12,7 +12,7 @@ use libs::{
    fetchers::{fetch_quotes,fetch_pivots},
    reports::{header,total_line,print_tsv_table_d},
    types::{
-      assets::{Asset,mk_asset},
+      coins::{Coin,mk_coin},
       comps::{Composition,mk_composition},
       measurable::{Measurable,tvl},
       pivots::{Pivot,recompute_pivot},
@@ -32,7 +32,12 @@ fn aggregate_virtual_pivots(virts: &[Pivot], blk: &Blockchain,
                             quotes: &Quotes, pool: &Pool) -> ErrStr<Assets> {
    let (pri, piv) = pool;
    let mut asts = mk_assets();
-   virts.iter().for_each(|v| asts.add(v.committed()));
+   virts.iter().for_each(|v| {
+      let asset = v.committed()
+          .unwrap_or_else(|err|
+              panic!("unable to process pivot {}, err: {err:?}", v.as_csv()));
+      asts.add(asset);
+   });
 
 /* 4 scenarii: 
 
@@ -45,10 +50,10 @@ so, you know: handle those.
 */
 
    fn nonce<'a>(b: &'a Blockchain, q: &'a Quotes)
-         -> impl Fn(&'a Token) -> ErrStr<Asset> {
+         -> impl Fn(&'a Token) -> ErrStr<Coin> {
       move |tok| {
          let qt = q.lookup(tok)?;
-         Ok(mk_asset(&(b.clone(), tok.clone()), 0.0, &mk_usd(qt), &q.date))
+         Ok(mk_coin(&(b.clone(), tok.clone()), 0.0, &mk_usd(qt), &q.date))
       }
    }
    let zed = nonce(&blk, &quotes);

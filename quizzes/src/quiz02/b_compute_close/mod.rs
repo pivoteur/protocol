@@ -8,7 +8,7 @@ use book::{
 
 use libs::{
    fetchers::{fetch_pivots,fetch_quotes},
-   types::pivots::{next_close_id,propose,Propose}
+   types::{ pivots::next_close_id, proposals::proposes::{propose,Propose} }
 };
 
 struct Report {

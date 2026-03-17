@@ -3,8 +3,7 @@ use book::err_utils::ErrStr;
 use libs::{
    collections::assets::{mk_assets,assets_by_tvl},
    processors::process_pools,
-   reports::{report_proposes,proposal,print_table,Proposal},
-   types::pivots::pivot_amount
+   reports::{report_proposes,proposal,print_table,Proposal}
 };
 
 fn version() -> String { "1.10".to_string() }
@@ -33,11 +32,13 @@ async fn propose(auth: &str, dt: &str) -> ErrStr<usize> {
 fn tokens_to_pivot(proposals: Vec<Proposal>) {
    let mut tokens = mk_assets();
    proposals.iter().for_each(|p| {
-         let asset = pivot_amount(&proposal(p));
+         let asset = proposal(p).pivot_amount();
          tokens.add(asset);
    });
    print_table("Assets to pivot", &assets_by_tvl(&tokens));
 }
+
+// ----- FUNCTIONAL TESTS -----------------------------------------------------
 
 pub mod functional_tests {
    use super::*;
