@@ -1,6 +1,5 @@
-/// Represents the Asset-type (blockchain and token with amount and quote at
-/// some date)
-pub mod assets;
+/// Representation of tokens, blockchains, and their amounts
+pub mod coins;
 
 /// A composition of two assets: a pivot pool
 pub mod comps;
@@ -8,8 +7,14 @@ pub mod comps;
 /// The historical-data of quotes of all the assets in the portfolio
 pub mod quotes;
 
-/// Represents a pivot (from -> to swap) and also recommends a proposal
+/// Represents a pivot (from -> to swap)
 pub mod pivots;
+
+/// Assets used across pivots and proposals
+pub mod assets;
+
+/// recommends proposals
+pub mod proposals;
 
 /// Alias one wrapped or synthetic token-name to the base asset
 pub mod aliases;
@@ -19,3 +24,10 @@ pub mod measurable;
 
 /// types used across the systems, like Id, Token, Blochcain
 pub mod util;
+
+/// trait to define gains (ROI and APR)
+pub mod gains;
+
+/// header information for pivots and aggregate headers for proposals
+pub mod headers;
+

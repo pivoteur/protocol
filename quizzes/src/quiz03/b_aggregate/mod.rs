@@ -8,7 +8,7 @@ use book::{
 use libs::{
    fetchers::{fetch_pivots,fetch_quotes},
    reports::print_table,
-   types::pivots::{partition_on,next_close_id,propose}
+   types::{ pivots::{partition_on,next_close_id}, proposals::proposes::propose }
 };
 
 async fn aggregate(root_url: &str, prim: &str, piv: &str, date: NaiveDate)

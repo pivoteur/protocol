@@ -5,7 +5,7 @@ edition = "2024"
 
 [[bin]]
 name = "dusk"
-path = "../../quizzes/quiz05/a_assets/src/main.rs"
+path = "../../quizzes/src/quiz05/a_assets/src/main.rs"
 
 [dependencies]
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
@@ -14,3 +14,4 @@ libs = { path = "../../libs" }
 
 book = { path = "../../../crypto-n-rust/src/libs/book" }
 
+quizzes = { path = "../../quizzes" }

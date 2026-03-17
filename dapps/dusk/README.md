@@ -3,9 +3,10 @@
 Computes which pivots to close, then shows assets to pivot, aggregated by
 blockchain.
 
-![Assets to pivot by blockchain](../../quizzes/quiz05/a_assets/imgs/01-assets.png)
+![Assets to pivot by 
+blockchain](../../quizzes/src/quiz05/a_assets/imgs/01-assets.png)
 
-[Source](../../quizzes/quiz05/a_assets/src/main.rs)
+[Source](../../quizzes/src/quiz05/a_assets/mod.rs)
 
 ## Usage
 
@@ -17,6 +18,7 @@ where:
 
 ## Revisions
 
+* 1.10, 2026-03-14: Brought into the functional-testing framework
 * 1.09, 2026-01-25: close pivot calls are now indexed
 * 1.08, 2025-12-28: Token-aliases handle synthetics and wrapped tokens;
 compacted no-close-calls pivot-pools sections.

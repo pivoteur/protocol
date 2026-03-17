@@ -1,12 +1,11 @@
 /// fetch data from REST endpoints
 
-use std::{ collections::HashMap, iter::once };
+use std::collections::HashMap;
 
 use chrono::NaiveDate;
 
 use book::{
    currency::usd::USD,
-   csv_utils::CsvHeader,
    date_utils::{parse_date,datef},
    err_utils::{err_or,ErrStr},
    list_utils::tail,
@@ -19,12 +18,12 @@ use book::{
 
 use super::{
    paths::{open_pivot_path,quotes_url,pool_assets_url},
-   tables::{index_table,c2t,csv2tsv},
+   tables::index_table,
    types::{
       aliases::{Aliases,aliases},
       pivots::{Pivot,parse_pivot},
       quotes::{Quotes,mk_quotes},
-      assets::{Asset,mk_asset},
+      coins::{Coin,mk_coin},
       comps::{Composition,mk_composition},
       util::{Token,Blockchain}
    }
@@ -64,10 +63,10 @@ fn qt_f<'a>(v: &'a Vec<String>, hdrs: &'a HashMap<String, usize>)
    
 fn buidl_asset<'a>(amount: &str, q: impl Fn(&'a Token) -> ErrStr<USD>, 
                    blk: &Blockchain, t: &'a Token, dt: &NaiveDate)
-      -> ErrStr<Asset> {
+      -> ErrStr<Coin> {
    let amt = parse_commaless(amount)?;
    let quote = q(t)?;
-   Ok(mk_asset(&(blk.clone(), t.clone()), amt, &quote, dt))
+   Ok(mk_coin(&(blk.clone(), t.clone()), amt, &quote, dt))
 }
 
 /// Fetch the pivots for pivot pool A+B; open pivots are reposed in git
@@ -100,18 +99,6 @@ pub fn parse_pivots(pool: &str, lines: Vec<String>, a: &Aliases)
       }
    }
    Ok((acts, pass, max_date.clone()))
-}
-
-pub fn pivots_to_tsv(pool: &str, opns: &Vec<Pivot>, cls: &Vec<Pivot>)
-      -> ErrStr<Vec<String>> {
-   let uno =
-      opns.first().or(cls.first())
-          .unwrap_or_else(|| panic!("{pool} does not have any pivots!"))
-          .header();
-   let hdr = c2t(&uno);
-   let ops0: Vec<String> = opns.into_iter().map(csv2tsv).collect();
-   let cls0: Vec<String> = cls.into_iter().map(csv2tsv).collect();
-   Ok(once(hdr).chain(ops0.into_iter().chain(cls0.into_iter())).collect())
 }
 
 fn enlowerify(primary: &str, pivot: &str) -> (String, String) {
@@ -214,17 +201,8 @@ pub mod functional_tests {
    async fn run_fetch_quotes() -> ErrStr<usize> {
       println!("fetch_quotes functional test\n");
       let qts = fetch_quotes(&yesterday()).await?;
-      println!("Quotes are:\n\n{qts:?}");
+      println!("Quotes are:\n{}", qts.as_table().as_csv());
       println!("fetch_quotes...ok");
-      Ok(1)
-   }
-
-   async fn run_pivots_to_tsv() -> ErrStr<usize> {
-      println!("pivots_to_tsv functional test\n");
-      let (opns, cls, _mx) = btc_eth_pivots().await?;
-      let tabl = pivots_to_tsv("BTC+ETH", &opns, &cls)?;
-      println!("TSV of open pivots are:\n\n{}", tabl.join("\n"));
-      println!("pivots_to_tsv...ok");
       Ok(1)
    }
 
@@ -233,16 +211,17 @@ pub mod functional_tests {
       let a = run_fetch_assets().await?;
       let p = run_fetch_pivots().await?;
       let q = run_fetch_quotes().await?;
-      let t = run_pivots_to_tsv().await?;
-      Ok(a+p+q+t)
+      Ok(a+p+q)
    }
 }
 
 #[cfg(test)]
 mod tests {
+   use std::iter::once;
    use super::*;
    use super::functional_tests::{marshall,btc_eth_pivots};
-   use book::date_utils::{yesterday,tomorrow};
+   use crate::tables::{c2t,csv2tsv};
+   use book::{ csv_utils::CsvHeader, date_utils::{yesterday,tomorrow} };
 
    #[tokio::test]
    async fn test_fetch_lines_ok() {
@@ -264,14 +243,14 @@ mod tests {
    }
 
    #[tokio::test]
-   async fn test_quotes_ok() {
+   async fn test_fetch_quotes_ok() {
       let yday = yesterday();
       let ans = fetch_quotes(&yday).await;
       assert!(ans.is_ok());
    }
 
    #[tokio::test]
-   async fn test_quotes() -> ErrStr<()> {
+   async fn test_fetch_quotes() -> ErrStr<()> {
       let yday = yesterday();
       let ans = fetch_quotes(&yday).await?;
       assert!(ans.lookup(&"BTC".to_string())? > 0.0);
@@ -309,6 +288,18 @@ mod tests {
       assert!(!cls.is_empty());
       assert!(tomorrow() > mx);
       Ok(())
+   }
+
+   fn pivots_to_tsv(pool: &str, opns: &Vec<Pivot>, cls: &Vec<Pivot>)
+         -> ErrStr<Vec<String>> {
+      let uno =
+         opns.first().or(cls.first())
+             .unwrap_or_else(|| panic!("{pool} does not have any pivots!"))
+             .header();
+      let hdr = c2t(&uno);
+      let ops0: Vec<String> = opns.into_iter().map(csv2tsv).collect();
+      let cls0: Vec<String> = cls.into_iter().map(csv2tsv).collect();
+      Ok(once(hdr).chain(ops0.into_iter().chain(cls0.into_iter())).collect())
    }
 
    async fn btc_eth_pool_as_tsv() -> ErrStr<Vec<String>> {
