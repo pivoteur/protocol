@@ -11,6 +11,7 @@ use quizzes::{
    quiz03::functional_tests::runoff as c,
    quiz05::functional_tests::runoff as e,
    quiz06::functional_tests::runoff as f,
+   quiz07::functional_tests::runoff as g,
    quiz09::functional_tests::runoff as i,
    quiz10::functional_tests::runoff as j
 };
@@ -20,7 +21,8 @@ fn two_digits(n: usize) -> String {
 }
 
 fn test_names() -> Vec<String> {
-   [1,2,3,5,6,9,10].iter().map(|n| format!("quiz{}", two_digits(*n))).collect()
+   [1,2,3,5,6,7,9,10].iter()
+                     .map(|n| format!("quiz{}", two_digits(*n))).collect()
 }
 
 async fn run_testa<F: Future<Output = ErrStr<usize>>>(name: &str, test: F)
@@ -35,6 +37,7 @@ async fn tests() -> Vec<ErrStr<usize>> {
         run_testa("quiz03",c()).await,
         run_testa("quiz05",e()).await,
         run_testa("quiz06",f()).await,
+        run_testa("quiz07",g()).await,
         test_result("quiz09",i()),
         run_testa("quiz10", j()).await]
 }
