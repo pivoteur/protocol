@@ -11,5 +11,5 @@ This project is more complicated that reading and parsing a file, as there
 is a REST-endpoint involved and some data-structuring, so, let's break this
 problem down into a set of stepping-stones to the solution.
 
-* [Read](src/a_read) the open pivots from a REST endpoint
-* [Parse](src/b_table) the pivots into a table
+* [Read](a_read) the open pivots from a REST endpoint
+* [Parse](b_table) the pivots into a table
