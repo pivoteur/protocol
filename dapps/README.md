@@ -15,7 +15,7 @@ stateDiagram-v2
    class Tarp inUse
    class Run inUse
    class itr inUse
-   class bae inUse
+   class gecko inUse
    class dusk inUse
    class virtsz inUse
    class pools inUse
@@ -28,8 +28,8 @@ stateDiagram-v2
    class report manual
    class ReportwithoutUpdatingDatabase manual
    class UpdateDb manual
-   class UpdateDbwithoutReporting manual
    class UpdateDbwithoutReporting1 manual
+   class UpdateDbwithoutReporting2 inUse
 
    [*] --> Workflow
    Workflow --> Finalize
@@ -100,11 +100,11 @@ stateDiagram-v2
       state Quotes {
             direction LR
 
-         [*] --> bae
-         bae --> UpdateDbwithoutReporting
-         UpdateDbwithoutReporting --> [*]
+         [*] --> gecko
+         gecko --> UpdateDbwithoutReporting2
+         UpdateDbwithoutReporting2 --> [*]
 
-         UpdateDbwithoutReporting: Update database
+         UpdateDbwithoutReporting2: Update database
       }
 
       Pools: Scan active pivot pools
