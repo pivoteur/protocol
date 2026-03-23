@@ -3,6 +3,7 @@ use book::{
    csv_utils::{CsvWriter,CsvHeader},
    date_utils::parse_date,
    err_utils::ErrStr,
+   file_utils::dir_file,
    tuple_utils::Partition,
    utils::get_env
 };
@@ -26,6 +27,21 @@ fn app_name() -> String { "virtsz".to_string() }
 
 fn partition_virtual_pivots(all_opns: Vec<Pivot>) -> Partition<Pivot> {
    all_opns.into_iter().partition(Pivot::is_virtual)
+}
+
+fn pivot_pool_from_file(path: &str) -> ErrStr<Pool> {
+   let (_dir, file) = dir_file(&path)
+         .ok_or_else(|| format!("Cannot dir_file({path})"))?;
+   if file.ends_with(".tsv") && file.contains("-") {
+      let split1: Vec<&str> = file.split(".").collect();
+      let name = split1.first().unwrap();
+      let split2: Vec<&str> = name.split("-").collect();
+      let prim = split2.first().unwrap();
+      let proper = split2.last().unwrap();
+      Ok(mk_pool(prim, proper))
+   } else {
+      Err(format!("Cannot parse pool from {file}"))
+   }
 }
 
 fn aggregate_virtual_pivots(virts: &[Pivot], blk: &Blockchain,
@@ -64,8 +80,9 @@ so, you know: handle those.
 
 fn tvls<T:Measurable>(rows: &[T]) -> USD { rows.iter().map(tvl).sum() }
 
-async fn update_virtual_pivots(protocol: &str, dt: &str, p0: &Token, p1: &Token,
+async fn update_virtual_pivots(protocol: &str, dt: &str, path: &str,
                              debug: bool) -> ErrStr<()> {
+   let (p0, p1) = pivot_pool_from_file(path)?;
    let pri = p0.to_uppercase();
    let piv = p1.to_uppercase();
    let pool_name = header(&pri, &piv);
@@ -132,10 +149,15 @@ Computes assets committed to virtual pivots.
 
 where
 * -d or --debug, if present, means print debug information
-* <protocol> is the protocol, e.g. PIVOT
-* <date> to check availability, e.g.: $LE_DATE
-* <prim> primary asset, e.g.: BTC
-* <piv> pivot asset, e.g.: ETH
+
+* <protocol> is the protocol,
+         e.g. PIVOT
+
+* <date> to check availability,
+         e.g.: $LE_DATE
+
+* <path> to the pivot pool file to process,
+         e.g. protocol/data/pivots/open/raw/btc-eth.tsv
 ", app_name());
    "Needs arguments <protocol> <date> <prim> <piv>".to_string()
 }
@@ -150,38 +172,58 @@ pub mod functional_tests {
          let (args1, debug) = if arg == "--debug" || arg == "-d" {
             (tail(&args), true)
          } else { (args.clone(), false) };
-         if let [protocol, dt, pri, piv] = args1.as_slice() {
-            update_virtual_pivots(&protocol, &dt, pri, piv, debug).await
+         if let [protocol, dt, path] = args1.as_slice() {
+            update_virtual_pivots(&protocol, &dt, path, debug).await
          } else { Err(usage()) }
       } else { Err(usage()) }
    }
 
+   pub fn path_to_btc_eth_pivot_pool() -> String {
+      let parent = "protocol/data/pivots/open/raw";
+      let filename = "btc-eth.tsv";
+      let path = format!("{parent}/{filename}");
+      path
+   }
+
    pub async fn runoff() -> ErrStr<usize> {
       let yday = format!("{}", yesterday());
-      fn s(t: &str) -> Token { t.to_string() }
       let _ = update_virtual_pivots("pivot", &yday,
-                     &s("btc"), &s("eth"), true).await?;
+                     &path_to_btc_eth_pivot_pool(), true).await?;
       Ok(1)
    }
 }
 
 #[cfg(test)]
 mod tests {
-   use chrono::NaiveDate;
    use super::*;
-   use book::{ date_utils::yesterday, utils::get_env };
-   use libs::types::aliases::aliases;
-
-   async fn btc_eth_pivots() -> ErrStr<(Vec<Pivot>, Vec<Pivot>, NaiveDate)> {
-      let a = aliases();
-      let root_url = get_env("PIVOT_URL")?;
-      fetch_pivots(&root_url, "btc", "eth", &a).await
-   }
+   use super::functional_tests::path_to_btc_eth_pivot_pool;
+   use book::date_utils::yesterday;
+   use libs::fetchers::functional_tests::btc_eth_pivots;
 
    async fn virts_n_opns() -> ErrStr<(Vec<Pivot>, Partition<Pivot>)> {
       let (all_opns, _cls, _mx) = btc_eth_pivots().await?;
       let (virts, opns) = partition_virtual_pivots(all_opns.clone());
       Ok((all_opns, (virts, opns)))
+   }
+
+   #[test]
+   fn test_pivot_pool_from_file_ok() {
+      let ans = pivot_pool_from_file(&path_to_btc_eth_pivot_pool());
+      assert!(ans.is_ok());
+   }
+
+   #[test]
+   fn fail_pivot_pool_from_file() {
+      let ans = pivot_pool_from_file("ble-blah-blah-bleh");
+      assert!(ans.is_err());
+   }
+
+   #[test]
+   fn test_btc_eth_pivot_pool_from_file() -> ErrStr<()> {
+      let (btc,eth) = pivot_pool_from_file(&path_to_btc_eth_pivot_pool())?;
+      assert_eq!("btc", &btc);
+      assert_eq!("eth", &eth);
+      Ok(())
    }
 
    #[tokio::test]
