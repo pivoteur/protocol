@@ -143,7 +143,7 @@ fn tabl<T:CsvWriter + CsvHeader + Measurable>
 }
 
 fn usage() -> String {
-   println!("\n$ ./{} [--debug|-d] <protocol> <date> <prim> <piv>
+   println!("\n$ ./{} [--debug|-d] <protocol> <date> <path>
 
 Computes assets committed to virtual pivots.
 
