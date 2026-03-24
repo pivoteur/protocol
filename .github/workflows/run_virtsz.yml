@@ -1,0 +1,43 @@
+name: Run virtsz
+
+on:
+  workflow_dispatch:
+
+jobs:
+  run-virtsz:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout protocol # Repository A
+        uses: actions/checkout@v4
+
+      - name: Set up rust
+        uses: actions-rs/toolchain@v1
+        with: 
+          toolchain: stable
+          
+      - name: Build virtsz
+        run: cargo build ../../dapps/virtsz --bin virtsz
+
+      - name: Checkout pivoteur.github.io # Repository B
+        uses: actions/checkout@v4
+        with:
+          repository: program/pivoteur.github.io
+          token: ${{ secrets.API_KEY }}
+          path: ../../../pivoteur.github.io/data/pivots/open/raw   # virtsz will read/write here
+
+      - name: Run virtsz
+        run: |
+          LE_DATE=$(date +'%Y-%m-%d')
+          ./target/release/virtsz pivot $LE_DATE ../../../pivoteur.github.io/data/pivots/open/raw/btc-eth.tsv
+
+      - name: Commit and push results to pivoteur.github.io
+        env: 
+          USER1_NAME: ${{ vars.USER1_NAME }}
+          USER1_EMAIL: ${{ secrets.USER1_EMAIL }}
+        run: |
+          git config user.name "$USER1_NAME"
+          git config user.email "$USER1_EMAIL"
+          git add dapps/virtsz
+          git diff --staged --quiet || git commit -m git commit -m "virtsz update [$(TZ='America/New_York' date +'%Y-%m-%d %H:%M %Z')]"
+          git push
+
