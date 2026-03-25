@@ -19,6 +19,6 @@ for file in "$DIRECTORY"/*; do
     echo "processing file $file"
     virtsz pivot $LE_DATE $file > $file
     # Example: run a data processing command on the file
-    # your_command "$file"
+    # virtsz <protocol> <date> <path or "$file">
   fi
 done

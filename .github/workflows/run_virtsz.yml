@@ -1,0 +1,49 @@
+name: Run virtsz
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  run-virtsz:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout protocol # Repository A
+        uses: actions/checkout@v4
+        with:
+          path: protocol
+
+      - name: Set up rust
+        uses: dtolnay/rust-toolchain@stable
+          
+      - name: Build virtsz 
+        run: cargo build --manifest-path protocol/dapps/virtsz/Cargo.toml --bin virtsz 
+
+      - name: Checkout pivoteur.github.io # Repository B
+        uses: actions/checkout@v4
+        with:
+          repository: program/pivoteur.github.io
+          token: ${{ secrets.PIVOTEUR_TOKEN }}
+          path: pivoteur.github.io # virtsz will read/write here
+
+      - name: Run The Echo and Display The Date
+        run: echo "LE_DATE=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
+
+      - name: Run virtsz
+        run: |
+          ./protocol/auto-virtsz.sh pivot $LE_DATE pivoteur.github.io/data/pivots/open/raw/*.tsv
+
+      - name: Commit and push results to pivoteur.github.io
+        env: 
+          USER1_NAME: ${{ vars.USER1_NAME }}
+          USER1_EMAIL: ${{ secrets.USER1_EMAIL }}
+        run: |
+          cd pivoteur.github.io
+          git config user.name "$USER1_NAME"
+          git config user.email "$USER1_EMAIL"
+          git add data/pivots/open/raw/*.tsv
+          git commit -m "virtsz $LE_DATE"
+          git push
+
