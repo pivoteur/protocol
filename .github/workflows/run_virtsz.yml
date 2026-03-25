@@ -47,7 +47,7 @@ jobs:
       - name: Putting date into the env
         run: |
           echo "LE_DATE=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
-          echo "PATH=." >> $GITHUB_ENV
+          echo "PATH=.:$PATH" >> $GITHUB_ENV
 
       - name: Run virtsz
         run: |
