@@ -2,6 +2,9 @@ name: Run virtsz
 
 on:
   workflow_dispatch:
+  schedule:
+    # test the cron ("Min Hour Day Month DayofWeek" in UTC) at scheduled time 
+    - cron: "05 08 * * *" # in our time zone, this is 4:05 AM Eastern Time
 
 permissions:
   contents: write
@@ -12,38 +15,51 @@ jobs:
     steps:
       - name: Checkout protocol # Repository A
         uses: actions/checkout@v4
-        with:
+        with: 
           path: protocol
 
       - name: Set up rust
         uses: dtolnay/rust-toolchain@stable
           
+      - name: Checkout crypto-n-rust # Repository B
+        uses: actions/checkout@v4
+        with:
+          repository: logicalgraphs/crypto-n-rust
+          token: ${{ secrets.PIVOT_GIT_TOKEN }}
+          path: crypto-n-rust  # Repository C for `book` dependancies
+
       - name: Build virtsz 
         run: cargo build --manifest-path protocol/dapps/virtsz/Cargo.toml --bin virtsz 
 
       - name: Checkout pivoteur.github.io # Repository B
         uses: actions/checkout@v4
         with:
-          repository: program/pivoteur.github.io
+          repository: pivoteur/pivoteur.github.io
           token: ${{ secrets.PIVOTEUR_TOKEN }}
           path: pivoteur.github.io # virtsz will read/write here
 
-      - name: Run The Echo and Display The Date
-        run: echo "LE_DATE=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
+      - name: Putting date into the env
+        run: |
+          echo "LE_DATE=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
+          echo "PATH=protocol/dapps/virtsz/target/debug:$PATH" >> $GITHUB_ENV
+          echo "PIVOT_URL=https://raw.githubusercontent.com/pivoteur/pivoteur.github.io" >> $GITHUB_ENV
 
       - name: Run virtsz
         run: |
-          ./protocol/auto-virtsz.sh pivot $LE_DATE pivoteur.github.io/data/pivots/open/raw/*.tsv
+          echo "current dir has the following"
+          ls -l
+          find . -name virtsz
+          sh ./protocol/scripts/auto-virtsz.sh pivoteur.github.io/data/pivots/open/raw
 
       - name: Commit and push results to pivoteur.github.io
         env: 
-          USER1_NAME: ${{ vars.USER1_NAME }}
-          USER1_EMAIL: ${{ secrets.USER1_EMAIL }}
+          USER0_NAME: ${{ vars.USER0_NAME }}
+          USER0_EMAIL: ${{ secrets.USER0_EMAIL }}
         run: |
           cd pivoteur.github.io
-          git config user.name "$USER1_NAME"
-          git config user.email "$USER1_EMAIL"
+          git config --local user.name "$USER0_NAME"
+          git config --local user.email "$USER0_EMAIL"
           git add data/pivots/open/raw/*.tsv
+          git diff --staged --quiet && echo "Nothing to commit, skipping push" && exit 0
           git commit -m "virtsz $LE_DATE"
           git push
-
