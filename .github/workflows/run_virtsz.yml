@@ -45,7 +45,9 @@ jobs:
           path: pivoteur.github.io # virtsz will read/write here
 
       - name: Putting date into the env
-        run: echo "LE_DATE=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
+        run: |
+          echo "LE_DATE=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
+          echo "PATH=." >> $GITHUB_ENV
 
       - name: Run virtsz
         run: |
