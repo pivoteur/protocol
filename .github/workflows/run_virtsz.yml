@@ -12,8 +12,6 @@ jobs:
     steps:
       - name: Checkout protocol # Repository A
         uses: actions/checkout@v4
-        with:
-          path: protocol
 
       - name: Set up rust
         uses: dtolnay/rust-toolchain@stable
@@ -24,7 +22,7 @@ jobs:
           path: crypto-n-rust  # Repository C for `book` dependancies
 
       - name: Build virtsz 
-        run: cargo build --manifest-path protocol/dapps/virtsz/Cargo.toml --bin virtsz 
+        run: cargo build --manifest-path dapps/virtsz/Cargo.toml --bin virtsz 
 
       - name: Checkout pivoteur.github.io # Repository B
         uses: actions/checkout@v4
