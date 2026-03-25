@@ -29,3 +29,6 @@ effort, as well.
 
 * [b_pools](b_pools): read the pool-names from git
 
+* [c_assets](c_assets): computes today's assets from the wallets and today's
+quotes
+

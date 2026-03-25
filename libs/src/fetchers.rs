@@ -17,8 +17,8 @@ use book::{
 };
 
 use super::{
-   paths::{open_pivot_path,quotes_url,pool_assets_url},
-   tables::index_table,
+   paths::{open_pivot_path,quotes_url,pool_assets_url,tsv_url},
+   tables::{IxTable,index_table},
    types::{
       aliases::{Aliases,aliases},
       pivots::{Pivot,parse_pivot},
@@ -28,6 +28,22 @@ use super::{
       util::{Token,Blockchain}
    }
 };
+
+pub async fn fetch_wallets(root_url: &str) -> ErrStr<IxTable> {
+   let url = tsv_url(root_url, "wallets");
+   let lines = fetch_lines(&url).await?;
+   index_table(lines)
+}
+
+pub async fn fetch_asset_table(root_url: &str)
+      -> ErrStr<Table<NaiveDate,String,USD>> {
+   let url = tsv_url(root_url, "assets");
+   let lines = fetch_lines(&url).await?;
+   fn parse_usd(&str) -> ErrStr<USD> {
+      err_or(s.parse(), "Cannot parse USD from {s}")
+   }
+   ingest(parse_date, parse_str, parse_usd, &lines, "\t")
+}
 
 pub async fn fetch_assets(root_url: &str, primary: &str, pivot: &str,
                           aliases: &Aliases) -> ErrStr<Composition> {
@@ -174,12 +190,30 @@ pub mod functional_tests {
       fetch_pivots(&root_url, "btc", "eth", &a).await
    }
 
+   async fn run_fetch_wallets() -> ErrStr<usize> {
+      println!("fetchers::fetch_wallets functional test\n");
+      let (root_url, _aliases) = marshall()?;
+      let wallets = fetch_wallets(&root_url).await?;
+      println!("The wallets for {root_url} are:\n\n{}\n", wallets.as_csv());
+      println!("fetchers::fetch_wallets...ok");
+      Ok(1)
+   }
+
+   async fn run_fetch_asset_table() -> ErrStr<usize> {
+      println!("fetchers::fetch_asset_table functional test\n");
+      let (root_url, _aliases) = marshall()?;
+      let wallets = fetch_wallets(&root_url).await?;
+      println!("The wallets for {root_url} are:\n\n{}\n", wallets.as_csv());
+      println!("fetchers::fetch_wallets...ok");
+      Ok(1)
+   }
+
    async fn run_fetch_assets() -> ErrStr<usize> {
-      println!("fetch_assets functional test\n");
+      println!("fetchers::fetch_assets functional test\n");
       let (root_url, a) = marshall()?;
       let assets = fetch_assets(&root_url, "btc", "eth", &a).await?;
       println!("The assets for BTC+ETH are:\n\n{}\n", assets.as_csv());
-      println!("fetch_assets...ok");
+      println!("fetchers::fetch_assets...ok");
       Ok(1)
    }
 
@@ -211,7 +245,8 @@ pub mod functional_tests {
       let a = run_fetch_assets().await?;
       let p = run_fetch_pivots().await?;
       let q = run_fetch_quotes().await?;
-      Ok(a+p+q)
+      let w = run_fetch_wallets().await?;
+      Ok(a+p+q+w)
    }
 }
 
@@ -222,6 +257,22 @@ mod tests {
    use super::functional_tests::{marshall,btc_eth_pivots};
    use crate::tables::{c2t,csv2tsv};
    use book::{ csv_utils::CsvHeader, date_utils::{yesterday,tomorrow} };
+
+   #[tokio::test]
+   async fn test_fetch_wallets_ok() -> ErrStr<()> {
+      let (root_url, _aliases) = marshall()?;
+      let ans = fetch_wallets(&root_url).await;
+      assert!(ans.is_ok());
+      Ok(())
+   }
+
+   #[tokio::test]
+   async fn test_fetch_wallets_table_is_full() -> ErrStr<()> {
+      let (root_url, _aliases) = marshall()?;
+      let ans = fetch_wallets(&root_url).await?;
+      assert!(!ans.data.is_empty());
+      Ok(())
+   }
 
    #[tokio::test]
    async fn test_fetch_lines_ok() {
