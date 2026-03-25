@@ -57,7 +57,7 @@ jobs:
           cd pivoteur.github.io
           git config user.name "$USER1_NAME"
           git config user.email "$USER1_EMAIL"
-          git remote set-url origin https://x-access-token:$PAT@github.com/pivoteur/pivoteur.github.io.git
+          git remote set-url origin https://x-access-token:$PAT@github.com/pivoteur/pivoteur.github.io
           git add data/pivots/open/raw/*.tsv
           git status
           ls -l data/pivots/open/raw/*.tsv
