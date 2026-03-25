@@ -35,7 +35,7 @@ jobs:
           find crypto-n-rust -name "Cargo.toml"
 
       - name: Build virtsz 
-        run: cargo build --manifest-path protocol/dapps/virtsz/Cargo.toml --bin virtsz 
+        run: cargo build --manifest-path protocol/dapps/virtsz/Cargo.toml --bin /home/runner/.local/bin/virtsz 
 
       - name: Checkout pivoteur.github.io # Repository B
         uses: actions/checkout@v4
