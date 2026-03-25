@@ -19,12 +19,10 @@ jobs:
           path: protocol
 
       - name: Set up rust
-        uses: actions-rs/toolchain@v1
-        with: 
-          toolchain: stable
+        uses: dtolnay/rust-toolchain@stable
           
       - name: Build virtsz 
-        run: cargo build protocol/dapps/virtsz --bin virtsz 
+        run: cargo build --manifest-path protocol/dapps/virtsz/Cargo.toml --bin virtsz 
 
       - name: Checkout pivoteur.github.io # Repository B
         uses: actions/checkout@v4
@@ -38,16 +36,17 @@ jobs:
 
       - name: Run virtsz
         run: |
-         /auto-virtsz.sh pivot $LE_DATE ../../../pivoteur.github.io/data/pivots/open/raw/*.tsv
+          ./protocol/auto-virtsz.sh pivot $LE_DATE pivoteur.github.io/data/pivots/open/raw/*.tsv
 
       - name: Commit and push results to pivoteur.github.io
         env: 
           USER1_NAME: ${{ vars.USER1_NAME }}
           USER1_EMAIL: ${{ secrets.USER1_EMAIL }}
         run: |
+          cd pivoteur.github.io
           git config user.name "$USER1_NAME"
           git config user.email "$USER1_EMAIL"
           git add data/pivots/open/raw/*.tsv
-          git commit -m "virtsz updated $LE_DATE"
+          git commit -m "virtsz $LE_DATE"
           git push
 
