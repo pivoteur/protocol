@@ -12,6 +12,8 @@ jobs:
     steps:
       - name: Checkout protocol # Repository A
         uses: actions/checkout@v4
+        with: 
+          path: protocol
 
       - name: Set up rust
         uses: dtolnay/rust-toolchain@stable
@@ -26,14 +28,14 @@ jobs:
       - name: Debug crypto-n-rust structure
         run: |
           echo "=== top-level ==="
-          ls crypto-n-rust/
+          ls -l crypto-n-rust/
           echo "=== src/ (if exists) ==="
-          ls crypto-n-rust/src/ 2>/dev/null || echo "no src/ dir"
+          ls -l crypto-n-rust/src/ 2>/dev/null || echo "no src/ dir"
           echo "=== all Cargo.toml files in crypto-n-rust ==="
           find crypto-n-rust -name "Cargo.toml"
 
       - name: Build virtsz 
-        run: cargo build --manifest-path dapps/virtsz/Cargo.toml --bin virtsz 
+        run: cargo build --manifest-path protocol/dapps/virtsz/Cargo.toml --bin virtsz 
 
       - name: Checkout pivoteur.github.io # Repository B
         uses: actions/checkout@v4
@@ -42,12 +44,12 @@ jobs:
           token: ${{ secrets.PIVOTEUR_TOKEN }}
           path: pivoteur.github.io # virtsz will read/write here
 
-      - name: Run The Echo and Display The Date
+      - name: Putting date into the env
         run: echo "LE_DATE=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
 
       - name: Run virtsz
         run: |
-          ./protocol/auto-virtsz.sh pivot $LE_DATE pivoteur.github.io/data/pivots/open/raw/*.tsv
+          ./protocol/scripts/auto-virtsz.sh pivot $LE_DATE pivoteur.github.io/data/pivots/open/raw/*.tsv
 
       - name: Commit and push results to pivoteur.github.io
         env: 
