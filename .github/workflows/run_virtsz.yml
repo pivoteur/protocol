@@ -16,9 +16,11 @@ jobs:
       - name: Set up rust
         uses: dtolnay/rust-toolchain@stable
           
-      - name: Checkout crypto-n-rust
+      - name: Checkout crypto-n-rust # Repository B
         uses: actions/checkout@v4
         with:
+          repository: logicalgraphs/crypto-n-rust
+          token: ${{ secrets.PIVOT_GIT_TOKEN }}
           path: crypto-n-rust  # Repository C for `book` dependancies
 
       - name: Debug crypto-n-rust structure
@@ -36,7 +38,7 @@ jobs:
       - name: Checkout pivoteur.github.io # Repository B
         uses: actions/checkout@v4
         with:
-          repository: program/pivoteur.github.io
+          repository: pivoteur/pivoteur.github.io
           token: ${{ secrets.PIVOTEUR_TOKEN }}
           path: pivoteur.github.io # virtsz will read/write here
 
