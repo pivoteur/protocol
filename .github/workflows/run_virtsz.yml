@@ -60,4 +60,3 @@ jobs:
           git add data/pivots/open/raw/*.tsv
           git commit -m "virtsz $LE_DATE"
           git push
-
