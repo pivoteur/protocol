@@ -50,14 +50,12 @@ jobs:
 
       - name: Commit and push results to pivoteur.github.io
         env: 
-          USER1_NAME: ${{ vars.USER1_NAME }}
-          USER1_EMAIL: ${{ secrets.USER1_EMAIL }}
-          PAT: ${{ secrets.PIVOTEUR_TOKEN }}
+          USER0_NAME: ${{ vars.USER0_NAME }}
+          USER0_EMAIL: ${{ secrets.USER0_EMAIL }}
         run: |
           cd pivoteur.github.io
-          git config user.name "$USER1_NAME"
-          git config user.email "$USER1_EMAIL"
-          git remote set-url origin https://x-access-token:$PAT@github.com/pivoteur/pivoteur.github.io
+          git config --local user.name "$USER0_NAME"
+          git config --local user.email "$USER0_EMAIL"
           git add data/pivots/open/raw/*.tsv
           git status
           ls -l data/pivots/open/raw/*.tsv
