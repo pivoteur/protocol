@@ -49,7 +49,7 @@ jobs:
 
       - name: Run virtsz
         run: |
-          sh ./protocol/scripts/auto-virtsz.sh pivot $LE_DATE pivoteur.github.io/data/pivots/open/raw
+          sh ./protocol/scripts/auto-virtsz.sh pivoteur.github.io/data/pivots/open/raw
 
       - name: Commit and push results to pivoteur.github.io
         env: 
