@@ -21,7 +21,7 @@ jobs:
       - name: Checkout crypto-n-rust # Repository C for `book` dependancy
         uses: actions/checkout@v4
         with:
-          path: crypto-n-rust
+          path: protocol/crypto-n-rust
 
       - name: Build virtsz 
         run: cargo build --manifest-path protocol/dapps/virtsz/Cargo.toml --bin virtsz 
