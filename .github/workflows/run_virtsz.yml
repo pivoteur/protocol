@@ -57,5 +57,7 @@ jobs:
           git config user.name "$USER1_NAME"
           git config user.email "$USER1_EMAIL"
           git add data/pivots/open/raw/*.tsv
+          git status
+          ls -l data/pivots/open/raw/*.tsv
           git commit -m "virtsz $LE_DATE"
           git push
