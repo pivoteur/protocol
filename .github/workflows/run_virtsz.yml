@@ -60,7 +60,6 @@ jobs:
           git config --local user.name "$USER0_NAME"
           git config --local user.email "$USER0_EMAIL"
           git add data/pivots/open/raw/*.tsv
-          git status
-          ls -l data/pivots/open/raw/*.tsv
+          git diff --staged --quiet && echo "Nothing to commit, skipping push" && exit 0
           git commit -m "virtsz $LE_DATE"
           git push
