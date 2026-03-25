@@ -42,6 +42,9 @@ jobs:
 
       - name: Run virtsz
         run: |
+          echo "current dir has the following"
+          ls -l
+          find . -name virtsz
           sh ./protocol/scripts/auto-virtsz.sh pivoteur.github.io/data/pivots/open/raw
 
       - name: Commit and push results to pivoteur.github.io
