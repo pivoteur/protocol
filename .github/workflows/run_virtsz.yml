@@ -18,10 +18,11 @@ jobs:
       - name: Set up rust
         uses: dtolnay/rust-toolchain@stable
           
-      - name: Checkout crypto-n-rust # Repository C for `book` dependancy
+      - name: Checkout crypto-n-rust
         uses: actions/checkout@v4
         with:
-          path: protocol/crypto-n-rust
+          repository: pivoteur/crypto-n-rust
+          path: crypto-n-rust  # Repository C for `book` dependancies
 
       - name: Build virtsz 
         run: cargo build --manifest-path protocol/dapps/virtsz/Cargo.toml --bin virtsz 
