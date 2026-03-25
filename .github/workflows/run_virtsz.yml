@@ -21,7 +21,6 @@ jobs:
       - name: Checkout crypto-n-rust
         uses: actions/checkout@v4
         with:
-          repository: pivoteur/crypto-n-rust
           path: crypto-n-rust  # Repository C for `book` dependancies
 
       - name: Build virtsz 
