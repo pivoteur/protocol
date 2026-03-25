@@ -25,17 +25,8 @@ jobs:
           token: ${{ secrets.PIVOT_GIT_TOKEN }}
           path: crypto-n-rust  # Repository C for `book` dependancies
 
-      - name: Debug crypto-n-rust structure
-        run: |
-          echo "=== top-level ==="
-          ls -l crypto-n-rust/
-          echo "=== src/ (if exists) ==="
-          ls -l crypto-n-rust/src/ 2>/dev/null || echo "no src/ dir"
-          echo "=== all Cargo.toml files in crypto-n-rust ==="
-          find crypto-n-rust -name "Cargo.toml"
-
       - name: Build virtsz 
-        run: cargo build --manifest-path protocol/dapps/virtsz/Cargo.toml --bin /home/runner/.local/bin/virtsz 
+        run: cargo build --manifest-path protocol/dapps/virtsz/Cargo.toml --bin virtsz 
 
       - name: Checkout pivoteur.github.io # Repository B
         uses: actions/checkout@v4
