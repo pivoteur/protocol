@@ -151,6 +151,9 @@ pub fn trade(q: &Quotes, from: &Asset, to: &Asset)
 
 pub fn gain_10_percent(a: f32) -> f32 { a * 1.1 }
 
+// ---- TESTS -------------------------------------------------------
+
+#[cfg(not(tarpaulin_include))]
 pub mod functional_tests {
    use super::*;
    use book::num::estimate::mk_estimate;

@@ -176,6 +176,7 @@ pub async fn fetch_quotes(date: &NaiveDate) -> ErrStr<Quotes> {
 
 // ----- TESTS -------------------------------------------------------
 
+#[cfg(not(tarpaulin_include))]
 pub mod functional_tests {
    use super::*;
    use book::{

@@ -87,6 +87,9 @@ Open pivots are stored as raw-CSV files in git at protocol <root URL>.
    Err("Needs <root URL> <primary> <pivot> <date> arguments".to_string())
 }
 
+// ----- TESTS -------------------------------------------------------
+
+#[cfg(not(tarpaulin_include))]
 pub mod functional_tests {
 
    use super::*;

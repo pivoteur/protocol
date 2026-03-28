@@ -34,6 +34,9 @@ Given <auth> access and <date>, {} prints a Javascript object of pool assets.
    Err("Need <auth> and <date> arguments".to_string())
 }
 
+// ----- TESTS -------------------------------------------------------
+
+#[cfg(not(tarpaulin_include))]
 pub mod functional_tests {
    use super::*;
 

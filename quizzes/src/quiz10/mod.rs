@@ -2,6 +2,7 @@
 pub mod a_files;
 pub mod b_pools;
 
+#[cfg(not(tarpaulin_include))]
 pub mod functional_tests {
    use super::{
       a_files::functional_tests::runoff as a,

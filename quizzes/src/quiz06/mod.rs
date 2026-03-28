@@ -2,6 +2,7 @@ pub mod a_pool_table;
 pub mod b_pools;
 pub mod c_assets;
 
+#[cfg(not(tarpaulin_include))]
 pub mod functional_tests {
 
    use super::{

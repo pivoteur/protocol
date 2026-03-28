@@ -162,6 +162,9 @@ where
    "Needs arguments <protocol> <date> <prim> <piv>".to_string()
 }
 
+// ----- TESTS -------------------------------------------------------
+
+#[cfg(not(tarpaulin_include))]
 pub mod functional_tests {
    use super::*;
    use book::{ date_utils::yesterday, list_utils::tail, utils::get_args };

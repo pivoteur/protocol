@@ -14,6 +14,7 @@ use libs::{
    types::assets::assets::functional_tests::runoff as taa
 };
 
+#[cfg(not(tarpaulin_include))]
 #[tokio::main]
 async fn main() -> ErrStr<()> {
    let tests = vec![mk_async(f()), mk_async(g()), mk_sync(t),

@@ -38,8 +38,9 @@ fn tokens_to_pivot(proposals: Vec<Proposal>) {
    print_table("Assets to pivot", &assets_by_tvl(&tokens));
 }
 
-// ----- FUNCTIONAL TESTS -----------------------------------------------------
+// ----- TESTS -----------------------------------------------------
 
+#[cfg(not(tarpaulin_include))]
 pub mod functional_tests {
    use super::*;
    use book::{ date_utils::yesterday, utils::get_args };

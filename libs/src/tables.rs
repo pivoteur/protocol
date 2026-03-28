@@ -42,6 +42,9 @@ fn tabify(row: &Vec<String>) -> String {
    row.join("\t")
 }
 
+// ----- TESTS -------------------------------------------------------
+
+#[cfg(not(tarpaulin_include))]
 pub mod functional_tests {
 
    use super::*;

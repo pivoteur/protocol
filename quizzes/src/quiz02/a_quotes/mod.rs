@@ -45,6 +45,9 @@ async fn parse_quotes() -> ErrStr<(HashMap<String, f32>, NaiveDate)> {
    Ok((quotes, max_date.clone()))
 }
 
+// ----- TESTS -------------------------------------------------------
+
+#[cfg(not(tarpaulin_include))]
 pub mod functional_tests {
 
    use super::*;

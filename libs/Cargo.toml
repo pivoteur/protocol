@@ -16,3 +16,9 @@ serde = { version = "1.0", features = ["derive"] }
 
 book = { path = "../../crypto-n-rust/src/libs/book" }
 
+[lints.rust.unexpected_cfgs]
+level = "warn"
+check-cfg = [
+    'cfg(tarpaulin_include)'
+]
+

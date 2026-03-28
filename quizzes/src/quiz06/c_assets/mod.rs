@@ -92,6 +92,7 @@ fn output_line(dt: &NaiveDate, row: &Vec<USD>) -> String {
 
 // ----- TESTS -------------------------------------------------------
 
+#[cfg(not(tarpaulin_include))]
 pub mod functional_tests {
 
    use super::*;
@@ -124,11 +125,83 @@ pub mod functional_tests {
    }
 }
 
-/*
 #[cfg(test)]
 mod tests {
    use super::*;
 
-   
+   use book::{
+      date_utils::yesterday,
+      string_utils::{to_string,words}
+   };
+   use libs::{ tables::index_table, types::quotes::mk_quotes };
+
+   #[tokio::test]
+   async fn test_compute_assets_ok() {
+      let yday = yesterday();
+      let ans = compute_assets("pivot", &yday).await;
+      assert!(ans.is_ok());
+   }
+
+   #[tokio::test]
+   async fn fail_compute_assets() {
+      let yday = yesterday();
+      let ans = compute_assets("adsff", &yday).await;
+      assert!(ans.is_err());
+   }
+
+   fn wallets() -> ErrStr<IxTable> {
+      let minimi = 
+"pool	BTC	ETH	UNDEAD
+BTC+ETH	1.0	34.0	0.0
+BTC+UNDEAD	0.1	0.0	6250000
+ETH+UNDEAD	0.0	5	6250000";
+      let lines: Vec<String> =
+         minimi.split("\n").into_iter().map(to_string).collect();
+      index_table(lines)
+   }
+
+   fn hdrs() -> Vec<String> { words("BTC ETH UNDEAD") }
+   fn assets() -> TVLs {
+      let amts: Vec<USD> =
+         vec![110000.0, 20075.0, 78823.29].into_iter().map(mk_usd).collect();
+      hdrs().into_iter().zip(amts.into_iter()).collect()
+   }
+
+   fn prices() -> Vec<f32> { vec![67123.74, 0.001542, 2030.83] }
+   fn quotes() -> Quotes {
+      let qts: HashMap<Token, f32> =
+         hdrs().into_iter().zip(prices().into_iter()).collect();
+      let yday = yesterday();
+      mk_quotes(yday, qts)
+   }
+
+   fn amts() -> Vec<f32> { vec![1.1, 39.0, 12500000.0] }
+
+   #[test]
+   fn test_amounts() -> ErrStr<()> {
+      let w = wallets()?;
+      let ans = amounts(&w, &assets());
+      let hdr_amts: Vec<(String, f32)> =
+         hdrs().into_iter().zip(amts().into_iter()).collect();
+      for (hdr,amt) in hdr_amts {
+         let tokin = ans.get(&hdr);
+         assert!(tokin.is_some());
+         assert_eq!(&amt, tokin.unwrap(), "For {hdr}, amounts mismatch");
+      }
+      Ok(())
+   }
+
+   #[test]
+   fn test_row() -> ErrStr<()> {
+      let w = wallets()?;
+      let ans = amounts(&w, &assets());
+      let r = row(&quotes(), &ans, &assets());
+      assert_eq!(3, r.len());
+      for (ix, amt) in amts().into_iter().enumerate() {
+         assert_eq!(prices()[ix] * amt, r[ix].amount,
+                    "For {}, TVLs mismatch", hdrs()[ix]);
+      }
+      Ok(())
+   }
 }
-*/
+

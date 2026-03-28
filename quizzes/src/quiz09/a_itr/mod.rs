@@ -70,6 +70,9 @@ is the directory where cargo build will be executed in each dapp-directory.
    "dapps <dir> argument required".to_string()
 }
 
+// ----- TESTS -------------------------------------------------------
+
+#[cfg(not(tarpaulin_include))]
 pub mod functional_tests {
    use super::*;
 

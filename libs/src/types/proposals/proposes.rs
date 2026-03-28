@@ -182,8 +182,9 @@ pub fn propose(q: &Quotes)
    }
 }
 
-// ----- FUNCTIONAL TEST ------------------------------------------------
+// ----- TESTS ------------------------------------------------
 
+#[cfg(not(tarpaulin_include))]
 pub mod functional_tests {
    use super::*;
    use crate::types::{

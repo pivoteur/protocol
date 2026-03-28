@@ -31,6 +31,9 @@ stateDiagram-v2
    class UpdateDbwithoutReporting1 manual
    class UpdateDbwithoutReporting2 inUse
 
+   class Wallets manual
+   class Assets inUse
+
    [*] --> Workflow
    Workflow --> Finalize
    Finalize --> [*]
@@ -94,7 +97,9 @@ stateDiagram-v2
       [*] --> Quotes
       Quotes --> Pools
       Pools --> AdjustVirtualPivots
-      AdjustVirtualPivots --> [*]
+      AdjustVirtualPivots --> Wallets
+      Wallets --> Assets
+      Assets --> [*]
 
       Quotes: Ingest quotes
       state Quotes {
@@ -120,19 +125,18 @@ stateDiagram-v2
 
       AdjustVirtualPivots: Adjust Virtual Open Pivots
       state AdjustVirtualPivots {
-         [*] --> ScanVirtsz
-         ScanVirtsz --> AdjustVirtsz
-         AdjustVirtsz --> [*]
-
-         ScanVirtsz: Scan Pivot Pools for Virtual Pivots
-         state ScanVirtsz {
             direction LR
 
             [*] --> virtsz
             virtsz --> [*]
-         }
+      }
 
-         AdjustVirtsz: Update virtual pivots
+      Assets: Compute Protocol Asset TVLs
+      state Assets {
+         direction LR
+
+         [*] --> assets
+         assets --> [*]
       }
    }
 

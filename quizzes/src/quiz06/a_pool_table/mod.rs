@@ -19,6 +19,9 @@ where
    Err("Need <root URL> <primary> <pivot> arguments!".to_string())
 }
 
+// ----- TESTS -------------------------------------------------------
+
+#[cfg(not(tarpaulin_include))]
 pub mod functional_tests {
 
    use super::*;
@@ -31,6 +34,8 @@ pub mod functional_tests {
       types::aliases::aliases
    };
 
+   // as this function only calls a library function, it's not testable:
+   // it's infrastructure.
    async fn fetch_pool_assets(auth: &str, prim: &str, piv: &str)
          -> ErrStr<usize> {
       let aliases = aliases();
@@ -55,3 +60,4 @@ pub mod functional_tests {
       fetch_pool_assets("pivot", "btc", "eth").await
    }
 }
+
