@@ -20,6 +20,8 @@ pub fn aliases() -> Aliases {
    inserter(&mut aliaz, "IETH", "ETH");
    inserter(&mut aliaz, "IUSD", "USDC");
    inserter(&mut aliaz, "ISOL", "SOL");
+   inserter(&mut aliaz, "STABLE", "USDC");
+   inserter(&mut aliaz, "LIQUIDITY POOLS", "USDC");
    Aliases { aliaz }
 }
 

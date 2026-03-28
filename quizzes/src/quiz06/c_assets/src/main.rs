@@ -1,3 +1,7 @@
-fn main() {
-    println!("Hello, world!");
-}
+use quizzes::quiz06::c_assets::functional_tests::runoff_get_args;
+
+use book::err_utils::ErrStr;
+
+#[tokio::main]
+async fn main() -> ErrStr<()> { runoff_get_args().await }
+
