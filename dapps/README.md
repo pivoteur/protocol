@@ -32,7 +32,7 @@ stateDiagram-v2
    class UpdateDbwithoutReporting2 inUse
 
    class Wallets manual
-   class Assets inUse
+   class assets inUse
 
    [*] --> Workflow
    Workflow --> Finalize
