@@ -2,8 +2,7 @@
 
 Snapshot of the protocol's TVLs.
 
-![Pivot protocol pools, partitioned by 
-TVL](../../quizzes/src/quiz06/c_assets/imgs/01-assets.png)
+![Pivot protocol TVL](../../quizzes/src/quiz06/c_assets/imgs/01-assets.png)
 
 [source](../../quizzes/src/quiz06/c_assets/mod.rs)
 

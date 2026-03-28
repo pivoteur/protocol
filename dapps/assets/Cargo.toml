@@ -5,7 +5,7 @@ edition = "2024"
 
 [[bin]]
 name = "assets"
-path = "../../quizzes/src/quiz06/b_pools/src/main.rs"
+path = "../../quizzes/src/quiz06/c_assets/src/main.rs"
 
 [dependencies]
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
