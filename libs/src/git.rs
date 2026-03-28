@@ -85,6 +85,9 @@ fn build_header_with(token: &str) -> ErrStr<HeaderMap> {
    Ok(hm)
 }
 
+// ----- TESTS -------------------------------------------------------
+
+#[cfg(not(tarpaulin_include))]
 pub mod functional_tests {
 
    use super::*;

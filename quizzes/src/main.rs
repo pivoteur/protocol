@@ -16,21 +16,25 @@ use quizzes::{
    quiz10::functional_tests::runoff as j
 };
 
+#[cfg(not(tarpaulin_include))]
 fn two_digits(n: usize) -> String {
    format!("{}{n}", if n < 10 { "0" } else { "" })
 }
 
+#[cfg(not(tarpaulin_include))]
 fn test_names() -> Vec<String> {
    [1,2,3,5,6,7,9,10].iter()
                      .map(|n| format!("quiz{}", two_digits(*n))).collect()
 }
 
+#[cfg(not(tarpaulin_include))]
 async fn run_testa<F: Future<Output = ErrStr<usize>>>(name: &str, test: F)
       -> ErrStr<usize> {
    let res = test.await;
    test_result(name, res)
 }
 
+#[cfg(not(tarpaulin_include))]
 async fn tests() -> Vec<ErrStr<usize>> {
    vec![run_testa("quiz01",a()).await,
         run_testa("quiz02",b()).await,
@@ -42,6 +46,7 @@ async fn tests() -> Vec<ErrStr<usize>> {
         run_testa("quiz10", j()).await]
 }
 
+#[cfg(not(tarpaulin_include))]
 #[tokio::main]
 async fn main() -> ErrStr<()> {
    println!("quizzes functional tests\n");

@@ -1,6 +1,7 @@
 pub mod a_partition;
 pub mod b_aggregate;
 
+#[cfg(not(tarpaulin_include))]
 pub mod functional_tests {
 
    use book::err_utils::ErrStr;

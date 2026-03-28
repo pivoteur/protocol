@@ -1,6 +1,7 @@
 
 pub mod a_itr;
 
+#[cfg(not(tarpaulin_include))]
 pub mod functional_tests {
    use super::a_itr::functional_tests::runoff as a;
 

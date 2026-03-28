@@ -22,6 +22,9 @@ Lists the files in directory <dir>", app_name());
    Err("Missing <dir> argument".to_string())
 }
 
+// ----- TESTS -------------------------------------------------------
+
+#[cfg(not(tarpaulin_include))]
 pub mod functional_tests {
 
    use super::*;

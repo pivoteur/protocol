@@ -7,6 +7,9 @@ pub async fn reader() -> ErrStr<String> {
    read_rest(&btc_eth).await
 }
 
+// ----- TESTS -------------------------------------------------------
+
+#[cfg(not(tarpaulin_include))]
 pub mod functional_tests {
 
    use book::err_utils::ErrStr;

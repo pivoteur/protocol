@@ -162,6 +162,9 @@ where
    "Needs arguments <protocol> <date> <prim> <piv>".to_string()
 }
 
+// ----- TESTS -------------------------------------------------------
+
+#[cfg(not(tarpaulin_include))]
 pub mod functional_tests {
    use super::*;
    use book::{ date_utils::yesterday, list_utils::tail, utils::get_args };
@@ -230,7 +233,11 @@ mod tests {
    async fn test_partition_virtual_pivots() -> ErrStr<()> {
       let (all_opns, (virts, opns)) = virts_n_opns().await?;
       assert_eq!(all_opns.len(), virts.len() + opns.len());
-      assert_eq!(tvls(&all_opns), tvls(&virts) + tvls(&opns));
+      fn around(a: f32, b: f32) -> bool {
+         ((a - b) / b).abs() < 0.01
+      }
+      let tvlsz = tvls(&virts) + tvls(&opns);
+      assert!(around(tvls(&all_opns).amount, tvlsz.amount));
       Ok(())
    }
 

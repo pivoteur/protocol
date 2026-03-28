@@ -4,6 +4,10 @@ fn raw_url(root_url: &str) -> String {
    format!("{}/refs/heads/main", root_url)
 }
 
+pub fn tsv_url(root_url: &str, tsv: &str) -> String {
+   format!("{}/data/{}.tsv", raw_url(root_url), tsv)
+}
+
 fn open_pivots_url(root_url: &str) -> String {
    format!("{}/data/pivots/open/raw", raw_url(root_url))
 }

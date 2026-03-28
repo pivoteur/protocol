@@ -1,5 +1,6 @@
 pub mod a_assets;
 
+#[cfg(not(tarpaulin_include))]
 pub mod functional_tests {
 
    use super::{

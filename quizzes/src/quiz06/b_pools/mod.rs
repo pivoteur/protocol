@@ -77,6 +77,9 @@ async fn fetch_all_pools_assets(auth: &str, root_url: &str)
    Ok(pools)
 }
 
+// ----- TESTS -------------------------------------------------------
+
+#[cfg(not(tarpaulin_include))]
 pub mod functional_tests {
 
    use super::*;

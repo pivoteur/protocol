@@ -19,6 +19,9 @@ fn list_open_pivots(piv: &str, opens: Vec<Pivot>) {
    }
 }
 
+// ----- TESTS -------------------------------------------------------
+
+#[cfg(not(tarpaulin_include))]
 pub mod functional_tests {
 
    use book::{

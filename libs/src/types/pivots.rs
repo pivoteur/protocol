@@ -135,6 +135,7 @@ pub fn partition_on(tok: &str, opens: Vec<Pivot>) -> Partition<Pivot> {
 
 // ----- FUNCTIONAL TEST ------------------------------------------------
 
+#[cfg(not(tarpaulin_include))]
 pub mod functional_tests {
    use super::*;
    use book::{ string_utils::to_string, table_utils::cols };

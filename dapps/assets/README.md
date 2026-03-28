@@ -1,14 +1,14 @@
 # `assets`
 
-Snapshot of the protocol's pivot pools. Partitions pools by TVL
+Snapshot of the protocol's TVLs.
 
-![Pivot protocol pools, partitioned by 
-TVL](../../quizzes/src/quiz06/b_pools/imgs/01-assets.png)
+![Pivot protocol TVL](../../quizzes/src/quiz06/c_assets/imgs/01-assets.png)
 
-[source](../../quizzes/src/quiz06/b_pools/src/main.rs)
+[source](../../quizzes/src/quiz06/c_assets/mod.rs)
 
 ## History
 
+* 1.07, 2026-03-27: Shifted to TVLs for protocol automation
 * 1.06, 2026-02-04: added unit and functional tests; reposed into quizzes
 library.
 * 1.05, 2026-01-21: moved total_line to libs::reports

@@ -46,6 +46,9 @@ where
    "Needs arguments <protocol> <date>, optionally [min=1000]".to_string()
 }
 
+// ----- TESTS -------------------------------------------------------
+
+#[cfg(not(tarpaulin_include))]
 pub mod functional_tests {
    use super::*;
    use book::{date_utils::yesterday, string_utils::words, utils::get_args};

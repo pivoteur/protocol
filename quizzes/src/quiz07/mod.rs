@@ -1,6 +1,7 @@
 pub mod a_ssets;
 pub mod b_virtual;
 
+#[cfg(not(tarpaulin_include))]
 pub mod functional_tests {
 
    use super::{

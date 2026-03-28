@@ -1,6 +1,7 @@
 pub mod a_read;
 pub mod b_table;
 
+#[cfg(not(tarpaulin_include))]
 pub mod functional_tests {
 
    use book::err_utils::ErrStr;

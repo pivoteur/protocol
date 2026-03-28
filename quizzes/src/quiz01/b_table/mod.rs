@@ -293,6 +293,9 @@ pub fn print_actives(actives: &Vec<Pivot>) {
    println!(" ");
 }
 
+// ----- TESTS -------------------------------------------------------
+
+#[cfg(not(tarpaulin_include))]
 pub mod functional_tests {
 
    use book::err_utils::ErrStr;

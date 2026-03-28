@@ -1,6 +1,7 @@
 pub mod a_quotes;
 pub mod b_compute_close;
 
+#[cfg(not(tarpaulin_include))]
 pub mod functional_tests {
 
    use book::err_utils::ErrStr;
