@@ -37,10 +37,10 @@ jobs:
           token: ${{ secrets.PIVOTEUR_TOKEN }}
           path: pivoteur.github.io # assets will read/write here
 
-      - name: Putting date into the env
+      - name: Putting date and URL into the env
         run: |
           echo "LE_DATE=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
-          echo "PIVOT_URL=https://github.com/pivoteur/pivoteur.github.io/blob/main/data/assets.tsv" >> $GITHUB_ENV
+          echo "PIVOT_URL=https://raw.githubusercontent.com/pivoteur/pivoteur.github.io" >> $GITHUB_ENV
 
       - name: run assets and Log Output
         run: |
