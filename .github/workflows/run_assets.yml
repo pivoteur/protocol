@@ -1,16 +1,13 @@
-name: Run virtsz
+name: Run assets
 
 on:
   workflow_dispatch:
-  schedule:
-    # test the cron ("Min Hour Day Month DayofWeek" in UTC) at scheduled time 
-    - cron: "05 08 * * *" # in our time zone, this is 4:05 AM Eastern Time
 
 permissions:
   contents: write
 
 jobs:
-  run-virtsz:
+  run-assets:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout protocol # Repository A
@@ -28,28 +25,41 @@ jobs:
           token: ${{ secrets.PIVOT_GIT_TOKEN }}
           path: crypto-n-rust  # Repository B for `book` dependancies
 
-      - name: Build virtsz 
-        run: cargo build --manifest-path protocol/dapps/virtsz/Cargo.toml --bin virtsz 
+      - name: Build assets
+        run: |
+          cargo build --manifest-path protocol/dapps/assets/Cargo.toml --bin assets
+          echo "$GITHUB_WORKSPACE/protocol/dapps/assets/target/debug" >> $GITHUB_PATH
 
       - name: Checkout pivoteur.github.io # Repository C
         uses: actions/checkout@v4
         with:
           repository: pivoteur/pivoteur.github.io
           token: ${{ secrets.PIVOTEUR_TOKEN }}
-          path: pivoteur.github.io # virtsz will read/write here
+          path: pivoteur.github.io # assets will read/write here
 
       - name: Putting date into the env
         run: |
           echo "LE_DATE=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
-          echo "PATH=protocol/dapps/virtsz/target/debug:$PATH" >> $GITHUB_ENV
-          echo "PIVOT_URL=https://raw.githubusercontent.com/pivoteur/pivoteur.github.io" >> $GITHUB_ENV
 
-      - name: Run virtsz
+      - name: run assets and Log Output
         run: |
-          echo "current dir has the following"
-          ls -l
-          find . -name virtsz
-          sh ./protocol/scripts/auto-virtsz.sh pivoteur.github.io/data/pivots/open/raw
+          assets pivot $LE_DATE >> pivoteur.github.io/data/assets.tsv
+
+      - name: Verify checkouts and output file
+        run: |
+          # Repository A
+          test -d protocol/.git || (echo "ERROR: protocol not checked out" && exit 1)
+
+          # Repository B
+          test -d crypto-n-rust/.git || (echo "ERROR: crypto-n-rust not checked out" && exit 1)
+
+          # Repository C
+          test -d pivoteur.github.io/.git || (echo "ERROR: pivoteur.github.io not checked out" && exit 1)
+
+          # .tsv exists
+          test -f pivoteur.github.io/data/assets.tsv || (echo "ERROR: assets.tsv not found" && exit 1)
+
+          echo "All checks passed!"
 
       - name: Commit and push results to pivoteur.github.io
         env: 
@@ -59,7 +69,8 @@ jobs:
           cd pivoteur.github.io
           git config --local user.name "$USER0_NAME"
           git config --local user.email "$USER0_EMAIL"
-          git add data/pivots/open/raw/*.tsv
+          git add data/assets.tsv
           git diff --staged --quiet && echo "Nothing to commit, skipping push" && exit 0
-          git commit -m "virtsz $LE_DATE"
+          git commit -m "assets $LE_DATE"
           git push
+
