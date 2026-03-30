@@ -2,6 +2,9 @@ name: Run assets
 
 on:
   workflow_dispatch:
+  schedule:
+    # test the cron ("Min Hour Day Month DayofWeek" in UTC) at scheduled time 
+    - cron: "15 09 * * *" # in our time zone, this is 5:15 AM Eastern Time
 
 permissions:
   contents: write
