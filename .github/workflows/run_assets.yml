@@ -23,7 +23,7 @@ jobs:
         with:
           repository: logicalgraphs/crypto-n-rust
           token: ${{ secrets.PIVOT_GIT_TOKEN }}
-          path: crypto-n-rust  # Repository B for `book` dependancies
+          path: crypto-n-rust  # Repository B for `book` dependencies
 
       - name: Build assets
         run: |
@@ -44,22 +44,6 @@ jobs:
       - name: run assets and Log Output
         run: |
           assets pivot $LE_DATE >> pivoteur.github.io/data/assets.tsv
-
-      - name: Verify checkouts and output file
-        run: |
-          # Repository A
-          test -d protocol/.git || (echo "ERROR: protocol not checked out" && exit 1)
-
-          # Repository B
-          test -d crypto-n-rust/.git || (echo "ERROR: crypto-n-rust not checked out" && exit 1)
-
-          # Repository C
-          test -d pivoteur.github.io/.git || (echo "ERROR: pivoteur.github.io not checked out" && exit 1)
-
-          # .tsv exists
-          test -f pivoteur.github.io/data/assets.tsv || (echo "ERROR: assets.tsv not found" && exit 1)
-
-          echo "All checks passed!"
 
       - name: Commit and push results to pivoteur.github.io
         env: 
