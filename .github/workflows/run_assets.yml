@@ -40,7 +40,6 @@ jobs:
       - name: Putting date into the env
         run: |
           echo "LE_DATE=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
-          echo "PATH=protocol/dapps/assets/target/debug:$PATH" >> $GITHUB_ENV
           echo "PIVOT_URL=https://raw.githubusercontent.com/pivoteur/pivoteur.github.io/data/assets.tsv" >> $GITHUB_ENV
 
       - name: run assets and Log Output
