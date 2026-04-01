@@ -17,3 +17,5 @@ book = { path = "../../../crypto-n-rust/src/libs/book" }
 quizzes = { path = "../../quizzes" }
 libs = { path = "../../libs" }
 
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(tarpaulin_include)'] }
