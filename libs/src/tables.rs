@@ -34,8 +34,15 @@ pub fn csv2tsv<T:CsvWriter>(row: &T) -> String {
    c2t(&row.as_csv())
 }
 
+fn underscore(s: String) -> String {
+   let ss: Vec<String> = s.split(" ").map(to_string).collect();
+   ss.join("_")
+}
+
 pub fn c2t(row: &str) -> String {
-   tabify(&row.split(",").map(to_string).collect())
+   let cols: Vec<String> = row.split(",").map(to_string).collect();
+   let under_cols: Vec<String> = cols.into_iter().map(underscore).collect();
+   tabify(&under_cols)
 }
 
 fn tabify(row: &Vec<String>) -> String {
@@ -56,11 +63,18 @@ pub mod functional_tests {
 "date	count	priority	status	color",
 "2026-01-02	1	a	3	blue",
 "2026-01-02	3	b	7	green",
-"2026-03-14	7	c	1	red",
+"2026-03-14	7	c	1	peach blossom",
 "2026-05-07	11	d	2	indigo"
           ].into_iter().map(to_string).collect()
    }
 
+   fn run_underscore() -> ErrStr<usize> {
+      println!("\ntables::underscore functional test\n");
+      let pb = "peanut butter".to_string();
+      println!("\t{pb} is {}", underscore(pb.clone()));
+      println!("\ntables::underscore:...ok");
+      Ok(1)
+   }
    pub fn runoff() -> ErrStr<usize> {
       println!("\ntables functional tests\n");
       let table = index_table(some_rows())?;
@@ -68,7 +82,8 @@ pub mod functional_tests {
 
       println!("\nTable without indices as TSV:\n");
       println!("{}", sans_index(&table).join("\n"));
-      Ok(2)
+      let a = run_underscore()?;
+      Ok(2+a)
    }
 }
 
@@ -134,6 +149,20 @@ mod tests {
       let table1 = index_table(tsv)?;
       assert_eq!(table.data[2], table1.data[2]);
       Ok(())
+   }
+
+   #[test]
+   fn test_underscore_idempotent() {
+      let r = "red".to_string();
+      let b = underscore(r.clone());
+      assert_eq!(b,r);
+   }
+
+   #[test]
+   fn test_underscore_replace() {
+      let pb = "peach blossom".to_string();
+      let bp = underscore(pb);
+      assert!(bp.contains("_"));
    }
 }
 
