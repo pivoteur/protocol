@@ -112,12 +112,9 @@ async fn update_virtual_pivots(protocol: &str, dt: &str, path: &str,
       }
    }
 
-   let mut new_virts = Vec::new();
-   let computer = recompute_pivot(&quotes, debug);
-   for virt in virts {
-      let new_v = computer(virt)?;
-      new_virts.push(new_v);
-   }
+   let comp = recompute_pivot(&quotes, debug);
+   let new_virts: Vec<Pivot> =
+      virts.into_iter().filter_map(|v| comp(v).ok()).collect();
    let mut new_opens: Vec<Pivot> = 
       opns.into_iter().chain(cls.into_iter()
                       .chain(new_virts.into_iter()))
