@@ -12,7 +12,7 @@ fn app_name() -> String { "minimi_dusk".to_string() }
 fn usage() -> ErrStr<()> {
    println!("Usage:
 
-$ {} <protocol> <date> [--min]
+$ {} [--min] <protocol> <date>
 
 where:
 
