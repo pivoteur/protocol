@@ -1,4 +1,5 @@
 use book::err_utils::ErrStr;
+use book::date_utils::yesterday;
 
 use libs::{
    collections::assets::{mk_assets,assets_by_tvl},
@@ -6,7 +7,6 @@ use libs::{
    reports::{report_proposes,proposal,print_table,Proposal}
 };
 
-fn version() -> String { "2.00".to_string() }
 fn app_name() -> String { "minimi_dusk".to_string() }
 
 fn usage() -> ErrStr<()> {
@@ -45,13 +45,38 @@ fn tokens_to_pivot(proposals: Vec<Proposal>) {
 
 // ----- TESTS -----------------------------------------------------
 
+// ----- UNIT TESTS ------------------------------------------------
+
+#[cfg(test)]
+mod unit_tests {
+   use super::*;
+
+   #[test]
+   fn test_app_name() {
+      assert_eq!(app_name(), "minimi_dusk");
+   }
+
+   #[test]
+   fn test_usage_returns_err() {
+      let result = usage();
+      assert!(result.is_err());
+      assert_eq!(result.unwrap_err(), "Need <protocol> and <date> arguments");
+   }
+
+      #[test]
+   fn test_tokens_to_pivot_empty() {
+      tokens_to_pivot(vec![]);
+   }
+}
+
+// ----- FUNCTIONAL TESTS ------------------------------------------
+
 #[cfg(not(tarpaulin_include))]
 pub mod functional_tests {
    use super::*;
    use book::{ date_utils::yesterday, utils::get_args };
 
    pub async fn runoff_with_args() -> ErrStr<()> {
-      println!("{}, version: {}", app_name(), version());
       let args = get_args();
       let min = args.contains(&"--min".to_string());
       let args: Vec<String> = args.into_iter().filter(|a| a != "--min").collect();
@@ -63,11 +88,20 @@ pub mod functional_tests {
       }
    }
 
-   pub async fn runoff() -> ErrStr<usize> {
+   #[tokio::test]
+   pub async fn runoff() -> ErrStr<()> {
       let yday = format!("{}", yesterday());
-      propose("pivot", &yday, false).await
+      propose("pivot", &yday, false).await?;
+      Ok(())
    }
 }
+
+   #[tokio::test]
+   pub async fn runoff_min() -> ErrStr<()> {
+      let yday = format!("{}", yesterday());
+      propose("pivot", &yday, true).await?;
+      Ok(())
+   }
 
 #[tokio::main]
 async fn main() -> ErrStr<()> {
