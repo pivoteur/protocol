@@ -1,5 +1,4 @@
 use book::err_utils::ErrStr;
-use book::date_utils::yesterday;
 
 use libs::{
    collections::assets::{mk_assets,assets_by_tvl},
@@ -107,3 +106,4 @@ pub mod functional_tests {
 async fn main() -> ErrStr<()> {
    functional_tests::runoff_with_args().await
 }
+
