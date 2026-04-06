@@ -62,7 +62,7 @@ mod unit_tests {
       assert_eq!(result.unwrap_err(), "Need <protocol> and <date> arguments");
    }
 
-      #[test]
+   #[test]
    fn test_tokens_to_pivot_empty() {
       tokens_to_pivot(vec![]);
    }
@@ -73,7 +73,8 @@ mod unit_tests {
 #[cfg(not(tarpaulin_include))]
 pub mod functional_tests {
    use super::*;
-   use book::{ date_utils::yesterday, utils::get_args };
+   use book::date_utils::yesterday;
+   use book::utils::get_args;
 
    pub async fn runoff_with_args() -> ErrStr<()> {
       let args = get_args();
@@ -93,7 +94,6 @@ pub mod functional_tests {
       propose("pivot", &yday, false).await?;
       Ok(())
    }
-}
 
    #[tokio::test]
    pub async fn runoff_min() -> ErrStr<()> {
@@ -101,9 +101,9 @@ pub mod functional_tests {
       propose("pivot", &yday, true).await?;
       Ok(())
    }
+}
 
 #[tokio::main]
 async fn main() -> ErrStr<()> {
    functional_tests::runoff_with_args().await
 }
-
