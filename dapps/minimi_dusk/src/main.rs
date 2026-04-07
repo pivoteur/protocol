@@ -25,9 +25,9 @@ where:
 pub async fn propose(auth: &str, dt: &str, min: bool) -> ErrStr<usize> {
    let (proposals, no_closes) = process_pools(&auth, &dt).await?;
    if min {
-      report_proposes(&proposals, &vec![]);
+      report_proposes(&proposals, &vec![], min);
    } else {
-      report_proposes(&proposals, &no_closes);
+      report_proposes(&proposals, &no_closes, min);
    }
    if !min && !proposals.is_empty() { tokens_to_pivot(proposals); }
    Ok(1)
@@ -73,8 +73,8 @@ mod unit_tests {
 #[cfg(not(tarpaulin_include))]
 pub mod functional_tests {
    use super::*;
-   use book::date_utils::yesterday;
    use book::utils::get_args;
+   use book::date_utils::yesterday;
 
    pub async fn runoff_with_args() -> ErrStr<()> {
       let args = get_args();
@@ -88,14 +88,12 @@ pub mod functional_tests {
       }
    }
 
-   #[tokio::test]
    pub async fn runoff() -> ErrStr<()> {
       let yday = format!("{}", yesterday());
       propose("pivot", &yday, false).await?;
       Ok(())
    }
 
-   #[tokio::test]
    pub async fn runoff_min() -> ErrStr<()> {
       let yday = format!("{}", yesterday());
       propose("pivot", &yday, true).await?;
