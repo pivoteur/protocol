@@ -24,11 +24,8 @@ where:
 
 pub async fn propose(auth: &str, dt: &str, min: bool) -> ErrStr<usize> {
    let (proposals, no_closes) = process_pools(&auth, &dt).await?;
-   if min {
-      report_proposes(&proposals, &vec![], min);
-   } else {
-      report_proposes(&proposals, &no_closes, min);
-   }
+   let x = if min { &vec![] } else { &no_closes };
+   report_proposes(&proposals, x, min);
    if !min && !proposals.is_empty() { tokens_to_pivot(proposals); }
    Ok(1)
 }
