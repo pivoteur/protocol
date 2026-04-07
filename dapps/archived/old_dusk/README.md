@@ -4,22 +4,20 @@ Computes which pivots to close, then shows assets to pivot, aggregated by
 blockchain.
 
 ![Assets to pivot by 
-blockchain](../../quizzes/src/quiz05/a_assets/imgs/01-assets.png)
+blockchain](../../../quizzes/src/quiz05/a_assets/imgs/01-assets.png)
 
-[Source](../../quizzes/src/quiz05/a_assets/mod.rs)
+[Source](../../../quizzes/src/quiz05/a_assets/mod.rs)
 
 ## Usage
 
-`$ dusk [--min] <protocol> <date>`
+`$ dusk <protocol> <date>`
 
 where:
-* `[--min]` is to show only the close pivot calls and no meta-data
 * `<protocol>` is the protocol-name, e.g. `PIVOT`
 * `<date>` is the date to propose pivots, e.g. `2025-12-18`
 
 ## Revisions
 
-* 2.00, 2026-04-07: Permit `--min` to show only close pivot calls
 * 1.10, 2026-03-14: Brought into the functional-testing framework
 * 1.09, 2026-01-25: close pivot calls are now indexed
 * 1.08, 2025-12-28: Token-aliases handle synthetics and wrapped tokens;

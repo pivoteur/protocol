@@ -6,7 +6,8 @@ use libs::{
    reports::{report_proposes,proposal,print_table,Proposal}
 };
 
-fn app_name() -> String { "minimi_dusk".to_string() }
+fn version() -> String { "2.00".to_string() }
+fn app_name() -> String { "dusk".to_string() }
 
 fn usage() -> ErrStr<()> {
    println!("Usage:
@@ -49,7 +50,7 @@ mod unit_tests {
 
    #[test]
    fn test_app_name() {
-      assert_eq!(app_name(), "minimi_dusk");
+      assert_eq!(app_name(), "dusk");
    }
 
    #[test]
@@ -76,7 +77,9 @@ pub mod functional_tests {
    pub async fn runoff_with_args() -> ErrStr<()> {
       let args = get_args();
       let min = args.contains(&"--min".to_string());
-      let args: Vec<String> = args.into_iter().filter(|a| a != "--min").collect();
+      let args: Vec<String> =
+         args.into_iter().filter(|a| a != "--min").collect();
+      if !min { println!("\n{}, version: {}\n", app_name(), version()); }
       if let [auth, dt] = args.as_slice() {
          let _ = propose(auth, dt, min).await?;
          Ok(())

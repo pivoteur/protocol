@@ -1,0 +1,20 @@
+[package]
+name = "old_dusk"
+version = "0.1.0"
+edition = "2024"
+
+[[bin]]
+name = "old_dusk"
+path = "../../../quizzes/src/quiz05/a_assets/src/main.rs"
+
+[dependencies]
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
+
+libs = { path = "../../../libs" }
+
+book = { path = "../../../../crypto-n-rust/src/libs/book" }
+
+quizzes = { path = "../../../quizzes" }
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(tarpaulin_include)'] }
