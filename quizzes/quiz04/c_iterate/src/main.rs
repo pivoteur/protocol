@@ -16,7 +16,7 @@ async fn main() -> ErrStr<()> {
    if let [ath, dt] = get_args().as_slice() {
       let (proposals, no_closes) = process_pools(&ath, &dt).await?;
       println!("{}, version {}\n", app_name(), version());
-      report_proposes(&proposals, &no_closes);
+      report_proposes(&proposals, &no_closes, false);
       Ok(())
    } else {
       usage()
