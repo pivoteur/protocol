@@ -19,6 +19,7 @@ where:
 
 ## Revisions
 
+* 2.01, 2026-04-10: mv dusk's main.rs to quiz05 and added [[bin]] to its Cargo.toml
 * 2.00, 2026-04-07: Permit `--min` to show only close pivot calls
 * 1.10, 2026-03-14: Brought into the functional-testing framework
 * 1.09, 2026-01-25: close pivot calls are now indexed
