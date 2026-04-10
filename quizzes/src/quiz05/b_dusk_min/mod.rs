@@ -98,15 +98,24 @@ pub mod functional_tests {
         }
     }
 
-    pub async fn runoff() -> ErrStr<()> {
+    async fn run_full_dusk() -> ErrStr<usize> {
+        println!("quiz05:b_dusk_min full functional test\n");
         let yday = format!("{}", yesterday());
         propose("pivot", &yday, false).await?;
-        Ok(())
+        Ok(1)
     }
 
-    pub async fn runoff_min() -> ErrStr<()> {
+    async fn run_min_dusk() -> ErrStr<usize> {
+        println!("quiz05:b_dusk_min min functional test\n");
         let yday = format!("{}", yesterday());
         propose("pivot", &yday, true).await?;
-        Ok(())
+        Ok(1)
+    }
+
+    pub async fn runoff() -> ErrStr<usize> {
+        println!("quiz05::b_dusk_min functional tests\n");
+        let a = run_full_dusk().await?;
+        let b = run_min_dusk().await?;
+        Ok(a + b)
     }
 }
