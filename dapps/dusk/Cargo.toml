@@ -3,10 +3,12 @@ name = "dusk"
 version = "0.1.0"
 edition = "2024"
 
-
+[[bin]]
+name = "dusk"
+path = "../../quizzes/src/quiz05/b_dusk_min/src/main.rs"
 
 [dependencies]
-tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
+tokio = { version = "1.51.1", features = ["macros", "rt-multi-thread"] }
 
 libs = { path = "../../libs" }
 
