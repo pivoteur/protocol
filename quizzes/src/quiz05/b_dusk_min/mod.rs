@@ -1,7 +1,5 @@
 use book::err_utils::ErrStr;
 use quizzes::quiz05::a_assets::functional_tests;
-use quizzes::quiz07::a_ssets::functional_tests;
-use quizzes::quiz07::b_virtual::functional_tests;
 
 use libs::{
     collections::assets::{assets_by_tvl, mk_assets},
