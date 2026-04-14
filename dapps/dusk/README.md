@@ -4,9 +4,9 @@ Computes which pivots to close, then shows assets to pivot, aggregated by
 blockchain.
 
 ![Assets to pivot by 
-blockchain](../../quizzes/src/quiz05/a_assets/imgs/01-assets.png)
+blockchain](../../quizzes/src/quiz05/b_dusk_min/imgs/01-dusk.png)
 
-[Source](../../quizzes/src/quiz05/a_assets/mod.rs)
+[Source](../../quizzes/src/quiz05/b_dusk_min/mod.rs)
 
 ## Usage
 
