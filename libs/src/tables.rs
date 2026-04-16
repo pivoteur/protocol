@@ -15,13 +15,17 @@ pub type IxTable = Table<Id, String, String>;
 
 /// From a set of row-data, index the rows and parse into a table
 pub fn index_table(lines: Vec<String>) -> ErrStr<IxTable> {
+   index_table_sep("\t", lines)
+}
+
+pub fn index_table_sep(sep: &str, lines: Vec<String>) -> ErrStr<IxTable> {
    let (h, t) = ht(&lines);
    let h1 = h.ok_or("empty list for data set")?;
-   let header = format!("ix\t{h1}");
+   let header = format!("ix{sep}{h1}");
    let mut body: Vec<String> =
       t.iter().enumerate().map(|(a, b)| format!("{a}\t{b}")).collect();
    body.insert(0, header);
-   ingest(parse_id, parse_str, parse_str, &body, "\t")
+   ingest(parse_id, parse_str, parse_str, &body, sep)
 }
 
 pub fn sans_index(t: &IxTable) -> Vec<String> {
