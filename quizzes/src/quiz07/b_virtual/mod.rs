@@ -3,7 +3,6 @@ use book::{
    csv_utils::{CsvWriter,CsvHeader},
    date_utils::parse_date,
    err_utils::ErrStr,
-   file_utils::dir_file,
    tuple_utils::Partition,
    utils::get_env
 };
@@ -11,6 +10,7 @@ use book::{
 use libs::{
    collections::assets::{Assets,mk_assets,assets_by_price},
    fetchers::{fetch_quotes,fetch_pivots},
+   paths::pivot_pool_from_file,
    reports::{header,total_line,print_tsv_table_d},
    types::{
       coins::{Coin,mk_coin},
@@ -27,21 +27,6 @@ fn app_name() -> String { "virtsz".to_string() }
 
 fn partition_virtual_pivots(all_opns: Vec<Pivot>) -> Partition<Pivot> {
    all_opns.into_iter().partition(Pivot::is_virtual)
-}
-
-fn pivot_pool_from_file(path: &str) -> ErrStr<Pool> {
-   let (_dir, file) = dir_file(&path)
-         .ok_or_else(|| format!("Cannot dir_file({path})"))?;
-   if file.ends_with(".tsv") && file.contains("-") {
-      let split1: Vec<&str> = file.split(".").collect();
-      let name = split1.first().unwrap();
-      let split2: Vec<&str> = name.split("-").collect();
-      let prim = split2.first().unwrap();
-      let proper = split2.last().unwrap();
-      Ok(mk_pool(prim, proper))
-   } else {
-      Err(format!("Cannot parse pool from {file}"))
-   }
 }
 
 fn aggregate_virtual_pivots(virts: &[Pivot], blk: &Blockchain,
@@ -164,6 +149,7 @@ where
 #[cfg(not(tarpaulin_include))]
 pub mod functional_tests {
    use super::*;
+   use libs::paths::functional_tests::path_to_btc_eth_pivot_pool;
    use book::{ date_utils::yesterday, list_utils::tail, utils::get_args };
 
    pub async fn runoff_with_args() -> ErrStr<()> {
@@ -178,13 +164,6 @@ pub mod functional_tests {
       } else { Err(usage()) }
    }
 
-   pub fn path_to_btc_eth_pivot_pool() -> String {
-      let parent = "protocol/data/pivots/open/raw";
-      let filename = "btc-eth.tsv";
-      let path = format!("{parent}/{filename}");
-      path
-   }
-
    pub async fn runoff() -> ErrStr<usize> {
       let yday = format!("{}", yesterday());
       let _ = update_virtual_pivots("pivot", &yday,
@@ -196,7 +175,6 @@ pub mod functional_tests {
 #[cfg(test)]
 mod tests {
    use super::*;
-   use super::functional_tests::path_to_btc_eth_pivot_pool;
    use book::date_utils::yesterday;
    use libs::fetchers::functional_tests::btc_eth_pivots;
 
@@ -204,26 +182,6 @@ mod tests {
       let (all_opns, _cls, _mx) = btc_eth_pivots().await?;
       let (virts, opns) = partition_virtual_pivots(all_opns.clone());
       Ok((all_opns, (virts, opns)))
-   }
-
-   #[test]
-   fn test_pivot_pool_from_file_ok() {
-      let ans = pivot_pool_from_file(&path_to_btc_eth_pivot_pool());
-      assert!(ans.is_ok());
-   }
-
-   #[test]
-   fn fail_pivot_pool_from_file() {
-      let ans = pivot_pool_from_file("ble-blah-blah-bleh");
-      assert!(ans.is_err());
-   }
-
-   #[test]
-   fn test_btc_eth_pivot_pool_from_file() -> ErrStr<()> {
-      let (btc,eth) = pivot_pool_from_file(&path_to_btc_eth_pivot_pool())?;
-      assert_eq!("btc", &btc);
-      assert_eq!("eth", &eth);
-      Ok(())
    }
 
    #[tokio::test]

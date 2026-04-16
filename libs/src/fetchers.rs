@@ -10,7 +10,7 @@ use book::{
    err_utils::{err_or,ErrStr},
    list_utils::tail,
    num_utils::{parse_num,parse_commaless},
-   parse_utils::{parse_str,parse_usd},
+   parse_utils::{parse_id,parse_str,parse_usd},
    rest_utils::read_rest,
    string_utils::to_string,
    table_utils::{Table,cols,row,rows,ingest},
@@ -18,7 +18,7 @@ use book::{
 };
 
 use super::{
-   paths::{open_pivot_path,quotes_url,pool_assets_url,tsv_url},
+   paths::{open_pivot_path,quotes_url,pool_assets_url,tsv_url,pivots_dir},
    tables::{IxTable,index_table},
    types::{
       aliases::{Aliases,aliases},
@@ -87,6 +87,12 @@ fn buidl_asset<'a>(amount: &str, q: impl Fn(&'a Token) -> ErrStr<USD>,
    let amt = parse_commaless(amount)?;
    let quote = q(t)?;
    Ok(mk_coin(&(blk.clone(), t.clone()), amt, &quote, dt))
+}
+
+pub async fn fetch_calls(root_url: &str) -> ErrStr<IxTable> {
+   let calls_url = format!("{}/calls.csv", pivots_dir(root_url));
+   let lines = fetch_lines(&calls_url).await?;
+   ingest(parse_id, parse_str, parse_str, &lines, ",")
 }
 
 /// Fetch the pivots for pivot pool A+B; open pivots are reposed in git
@@ -185,7 +191,7 @@ pub mod functional_tests {
       utils::get_env
    };
 
-   pub fn marshall() -> ErrStr<(String, Aliases)> {
+   fn marshall() -> ErrStr<(String, Aliases)> {
       let root_url = get_env("PIVOT_URL")?;
       let a = aliases();
       Ok((root_url, a))
@@ -230,20 +236,29 @@ pub mod functional_tests {
    }
 
    async fn run_fetch_pivots() -> ErrStr<usize> {
-      println!("fetch_pivots functional test\n");
+      println!("fetchers::fetch_pivots functional test\n");
       let (opn, cls, mx) = btc_eth_pivots().await?;
       print_rows("Open pivots", &opn);
       print_rows("Close pivots", &cls);
       println!("\nmax_date is {mx}\n");
-      println!("fetch_pivots...ok");
+      println!("fetchers::fetch_pivots...ok");
       Ok(1)
    }
 
    async fn run_fetch_quotes() -> ErrStr<usize> {
-      println!("fetch_quotes functional test\n");
+      println!("fetchers::fetch_quotes functional test\n");
       let qts = fetch_quotes(&yesterday()).await?;
       println!("Quotes are:\n{}", qts.as_table().as_csv());
-      println!("fetch_quotes...ok");
+      println!("fetchers::fetch_quotes...ok");
+      Ok(1)
+   }
+
+   async fn run_fetch_calls() -> ErrStr<usize> {
+      println!("fetchers::fetch_calls functional test\n");
+      let (root_url, _aliases) = marshall()?;
+      let calls = fetch_calls(&root_url).await?;
+      println!("\tcalls are:\n{}", calls.as_csv());
+      println!("fetchers::fetch_calls:...ok");
       Ok(1)
    }
 
@@ -255,22 +270,73 @@ pub mod functional_tests {
       let w = run_fetch_wallets().await?;
       let fat = run_fetch_asset_table_tvls().await?;
           // fat: 'fetch_asset_table' ... of course!
-      Ok(a+p+q+w+fat)
+      let c = run_fetch_calls().await?;
+      Ok(a+p+q+w+fat+c)
    }
-}
 
 #[cfg(test)]
 mod tests {
    use std::iter::once;
    use super::*;
-   use super::functional_tests::{marshall,btc_eth_pivots};
    use crate::tables::{c2t,csv2tsv};
    use book::{
       currency::usd::mk_usd,
       csv_utils::CsvHeader,
       date_utils::{yesterday,tomorrow},
-      table_utils::val
+      string_utils::s,
+      table_utils::{val,row}
    };
+
+   #[tokio::test]
+   async fn test_fetch_calls_ok() -> ErrStr<()> {
+      let (root_url, _aliases) = marshall()?;
+      let mb_tab = fetch_calls(&root_url).await;
+      assert!(mb_tab.is_ok());
+      Ok(())
+   }
+
+   async fn test_fetch_calls() -> ErrStr<IxTable> {
+      let (root_url, _aliases) = marshall()?;
+      fetch_calls(&root_url).await
+   }
+
+   #[tokio::test]
+   async fn test_fetch_calls_has_calls() -> ErrStr<()> {
+      let calls = test_fetch_calls().await?;
+      let r1 = row(&calls, &1);
+      assert!(!r1.is_none(), "No calls to test! {r1:?}");
+      Ok(())
+   }
+
+   fn fetch_val(t: &IxTable, r: usize) -> impl Fn(&str) -> String {
+      move |st| {
+         let v = val(t, &r, &s(st));
+         assert!(!v.is_none());
+         v.unwrap()
+      }
+   }
+
+   #[tokio::test]
+   async fn test_fetch_calls_close_date() -> ErrStr<()> {
+      let yday = yesterday();
+      let calls = test_fetch_calls().await?;
+      let f = fetch_val(&calls, 1);
+      let close = f("close_date");
+      let closed = parse_date(&close)?;
+      assert!(closed >= yday);
+      Ok(())
+   }
+
+   #[tokio::test]
+   async fn test_fetch_calls_pivot_price() -> ErrStr<()> {
+      let calls = test_fetch_calls().await?;
+      let f = fetch_val(&calls, 1);
+      let piv_price = f("pivot_close_price");
+      let pp: USD = err_or(piv_price.parse(),
+                           "Cannot parse USD from {piv_price}")?;
+      assert!(pp.amount > 0.0);
+      Ok(())
+   }
 
    #[tokio::test]
    async fn test_fetch_wallets_ok() -> ErrStr<()> {
@@ -452,4 +518,4 @@ mod tests {
       Ok(())
    }
 }
-
+}
