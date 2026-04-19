@@ -14,6 +14,7 @@ use book::{
    rest_utils::read_rest,
    string_utils::to_string,
    table_utils::{Table,cols,row,rows,ingest},
+   tuple_utils::{Partition,fst},
    utils::pred
 };
 
@@ -96,9 +97,9 @@ pub async fn fetch_calls(root_url: &str) -> ErrStr<IxTable> {
 }
 
 /// Fetch the pivots for pivot pool A+B; open pivots are reposed in git
-pub async fn fetch_pivots(root_url: &str, primary: &str, pivot: &str,
-                          a: &Aliases)
-      -> ErrStr<(Vec<Pivot>, Vec<Pivot>, NaiveDate)> {
+pub async fn fetch_pivots(root_url: &str, primary: &str,
+                          pivot: &str, a: &Aliases)
+      -> ErrStr<(Partition<Pivot>, NaiveDate)> {
    let (pri, seggs) = enlowerify(primary, pivot);
    let pool = format!("{pri}+{seggs}");
    let url = open_pivot_path(root_url, &pri, &seggs);
@@ -107,7 +108,7 @@ pub async fn fetch_pivots(root_url: &str, primary: &str, pivot: &str,
 }
 
 pub fn parse_pivots(pool: &str, lines: Vec<String>, a: &Aliases)
-      -> ErrStr<(Vec<Pivot>, Vec<Pivot>, NaiveDate)> {
+      -> ErrStr<(Partition<Pivot>, NaiveDate)> {
    let table = index_table(lines)?;
 
    let hdrs = a.enum_headers(cols(&table));
@@ -124,7 +125,7 @@ pub fn parse_pivots(pool: &str, lines: Vec<String>, a: &Aliases)
          pass.push(piv);
       }
    }
-   Ok((acts, pass, max_date.clone()))
+   Ok(((acts, pass), max_date.clone()))
 }
 
 fn enlowerify(primary: &str, pivot: &str) -> (String, String) {
@@ -148,8 +149,8 @@ fn max_diem<T>(table: &Table<T, String, String>, ix: usize, pool: &str)
 /// Filter to only the open pivots for pivot pool A+B
 pub async fn fetch_open_pivots(root_url: &str, primary: &str, pivot: &str,
                                a: &Aliases) -> ErrStr<(Vec<Pivot>, NaiveDate)> {
-   let (ans, _, max_date) = fetch_pivots(root_url, primary, pivot, a).await?;
-   Ok((ans, max_date))
+   let (part, max_date) = fetch_pivots(root_url, primary, pivot, a).await?;
+   Ok((fst(part), max_date))
 }
 
 async fn fetch_lines(url: &str) -> ErrStr<Vec<String>> {
@@ -197,8 +198,7 @@ pub mod functional_tests {
       Ok((root_url, a))
    }
 
-   pub async fn btc_eth_pivots()
-         -> ErrStr<(Vec<Pivot>, Vec<Pivot>, NaiveDate)> {
+   pub async fn btc_eth_pivots() -> ErrStr<(Partition<Pivot>, NaiveDate)> {
       let (root_url, a) = marshall()?;
       fetch_pivots(&root_url, "btc", "eth", &a).await
    }
@@ -237,7 +237,7 @@ pub mod functional_tests {
 
    async fn run_fetch_pivots() -> ErrStr<usize> {
       println!("fetchers::fetch_pivots functional test\n");
-      let (opn, cls, mx) = btc_eth_pivots().await?;
+      let ((opn, cls), mx) = btc_eth_pivots().await?;
       print_rows("Open pivots", &opn);
       print_rows("Close pivots", &cls);
       println!("\nmax_date is {mx}\n");
@@ -466,7 +466,7 @@ mod tests {
 
    #[tokio::test]
    async fn test_fetch_pivots() -> ErrStr<()> {
-      let (opns, cls, mx) = btc_eth_pivots().await?;
+      let ((opns, cls), mx) = btc_eth_pivots().await?;
       assert!(!opns.is_empty());
       assert!(!cls.is_empty());
       assert!(tomorrow() > mx);
@@ -486,7 +486,7 @@ mod tests {
    }
 
    async fn btc_eth_pool_as_tsv() -> ErrStr<Vec<String>> {
-      let (opns, cls, _mx) = btc_eth_pivots().await?;
+      let ((opns, cls), _mx) = btc_eth_pivots().await?;
       pivots_to_tsv("BTC+ETH", &opns, &cls)
    }
 
@@ -510,8 +510,8 @@ mod tests {
    async fn test_reparse_pivots() -> ErrStr<()> {
       let tsv = btc_eth_pool_as_tsv().await?;
       let a = aliases();
-      let (o,c,m) = parse_pivots("BTC+ETH", tsv, &a)?;
-      let (opns, cls, mx) = btc_eth_pivots().await?;
+      let ((o,c),m) = parse_pivots("BTC+ETH", tsv, &a)?;
+      let ((opns, cls), mx) = btc_eth_pivots().await?;
       assert_eq!(opns.len(), o.len());
       assert_eq!(cls.len(), c.len());
       assert_eq!(mx, m);

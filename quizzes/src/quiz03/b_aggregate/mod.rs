@@ -15,12 +15,12 @@ async fn aggregate(root_url: &str, prim: &str, piv: &str, date: NaiveDate)
       -> ErrStr<()> {
    let quotes = fetch_quotes(&date).await?;
    let a = &quotes.aliases;
-   let (opens, closes, max_date) = fetch_pivots(root_url, prim, piv, a).await?;
-   let next_close = next_close_id(&closes);
-   preamble(prim, piv, opens.len(), &max_date, &date);
+   let ((opns, cls), max_date) = fetch_pivots(root_url, prim, piv, a).await?;
+   let next_close = next_close_id(&cls);
+   preamble(prim, piv, opns.len(), &max_date, &date);
    let proposer = propose(&quotes);
 
-   let (lefts, rights) = partition_on(prim, opens);
+   let (lefts, rights) = partition_on(prim, opns);
    let mut props = Vec::new();
    let follow = if let Some((prop, nxt)) = proposer((lefts, next_close))? {
       props.push(prop);

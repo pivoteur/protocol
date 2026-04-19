@@ -59,7 +59,7 @@ pub mod functional_tests {
 
    async fn do_it(root_url: &str, prim: &str, piv: &str) -> ErrStr<()> {
       let a = aliases();
-      let (opens, _closes, _max_date) =
+      let ((opens, _closes), _max_date) =
          fetch_pivots(root_url, prim, piv, &a).await?;
       let (lefts, rights) = partition_on(prim, opens);
       list_open_pivots(prim, lefts);

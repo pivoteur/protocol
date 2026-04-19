@@ -24,12 +24,12 @@ async fn compute_closes(root_url: &str, prim: &str, piv: &str,
                         date: NaiveDate) -> ErrStr<Report> {
    let quotes = fetch_quotes(&date).await?;
    let a = &quotes.aliases;
-   let (opens, closes, max_date) = fetch_pivots(root_url, prim, piv, a).await?;
-   let mut next_close = next_close_id(&closes);
+   let ((opns, cls), max_date) = fetch_pivots(root_url, prim, piv, a).await?;
+   let mut next_close = next_close_id(&cls);
    let proposer = propose(&quotes);
    let mut props = Vec::new();
 
-   for h in &opens {
+   for h in &opns {
       let hs = vec![h.clone()];
       if let Some((prop, next_next)) = proposer((hs, next_close))? {
          props.push(prop);
@@ -39,7 +39,7 @@ async fn compute_closes(root_url: &str, prim: &str, piv: &str,
 
    Ok(Report { primary: prim.to_string(),
                pivot: piv.to_string(),
-               opens: opens.len(),
+               opens: opns.len(),
                date, props, max_date })
 }
 

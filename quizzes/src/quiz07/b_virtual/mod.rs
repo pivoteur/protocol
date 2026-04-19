@@ -77,7 +77,8 @@ async fn update_virtual_pivots(protocol: &str, dt: &str, path: &str,
    let date = parse_date(&dt)?;
    let quotes = fetch_quotes(&date).await?;
    let truz = &quotes.aliases;
-   let (all_opns, cls, _mx) = fetch_pivots(&root_url, &pri, &piv, truz).await?;
+   let (pivots, _mx) = fetch_pivots(&root_url, &pri, &piv, truz).await?;
+   let (all_opns, cls) = pivots;
    let (virts, opns) = partition_virtual_pivots(all_opns);
 
    if debug {
@@ -175,11 +176,12 @@ pub mod functional_tests {
 #[cfg(test)]
 mod tests {
    use super::*;
-   use book::date_utils::yesterday;
+   use book::{ date_utils::yesterday, tuple_utils::fst };
    use libs::fetchers::functional_tests::btc_eth_pivots;
 
    async fn virts_n_opns() -> ErrStr<(Vec<Pivot>, Partition<Pivot>)> {
-      let (all_opns, _cls, _mx) = btc_eth_pivots().await?;
+      let (pivots, _mx) = btc_eth_pivots().await?;
+      let all_opns = fst(pivots);
       let (virts, opns) = partition_virtual_pivots(all_opns.clone());
       Ok((all_opns, (virts, opns)))
    }

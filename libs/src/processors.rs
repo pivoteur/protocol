@@ -37,7 +37,7 @@ async fn process_pools0(root_url: &str, pools: &Vec<Pool>, date: NaiveDate)
 
    for pool in pools {
       let (prim, piv) = pool;
-      let (opens, closes, max_date) =
+      let ((opens, closes), max_date) =
          fetch_pivots(root_url, prim, piv, a).await?;
       let ans = propose(&proposer, pool, prim, opens, closes, max_date)?;
       if ans.is_empty() {
