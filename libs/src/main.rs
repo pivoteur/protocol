@@ -18,7 +18,7 @@ use libs::{
 #[cfg(not(tarpaulin_include))]
 #[tokio::main]
 async fn main() -> ErrStr<()> {
-   preamble("book");
+   preamble("libs");
    preamble("fetchers");
    let run_fetchers = f().await?;
    let a = rpt(run_fetchers, "fetchers")?;
@@ -28,7 +28,7 @@ async fn main() -> ErrStr<()> {
    let e = report_test("types::pivot", &mut mk_sync(tp))?;
    let f = report_test("types::proposals::proposes", &mut mk_sync(tpp))?;
    let g = report_test("types::assets::assets", &mut mk_sync(taa))?;
-   let _ur_mom = rpt(a+b+c+d+e+f+g, "book")?;
+   let _ur_mom = rpt(a+b+c+d+e+f+g, "libs")?;
    Ok(())
 }
 
