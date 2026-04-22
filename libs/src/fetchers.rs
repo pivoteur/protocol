@@ -323,7 +323,7 @@ mod tests {
       let f = fetch_val(&calls, 1);
       let close = f("close_date");
       let closed = parse_date(&close)?;
-      assert!(closed >= yday);
+      assert!(closed >= yday, "{closed} is neither yesterday nor today.");
       Ok(())
    }
 
