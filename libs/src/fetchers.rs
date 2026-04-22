@@ -46,12 +46,12 @@ fn raw_pools(lines: &[String]) -> Vec<String> {
 }
 
 fn pool(line: &str) -> ErrStr<Pool> {
-   let [a, b] = match line.split(",").collect::<Vec<_>>()[..] {
-      [a,b] => Ok([a,b]),
-      [a,b,_detritus] => Ok([a,b]),
-      _ => Err(format!("Unable to derive pool from {line}"))
-   }?;
-   Ok(mk_pool(&alphanum(&a), &alphanum(&b)))
+   let v: Vec<&str> = line.split(",").collect();
+   if v.len() == 2 || (v.len() == 3 && v[2].is_empty()) {
+      Ok(mk_pool(&alphanum(v[0]), &alphanum(v[1])))
+   } else {
+      Err(format!("Unable to derive pool from {line}"))
+   }
 }
    
 fn alphanum(input: &str) -> String {
@@ -350,19 +350,25 @@ const poolAssets = {
    }
 
    #[test]
-   fn test_pool_ok() {
+   fn test_pool_last_ok() {
       let mb_btc_eth = pool("[ 'BTC', 'ETH' ]");
       assert!(mb_btc_eth.is_ok());
    }
 
    #[test]
-   fn fail_pool() {
+   fn fail_non_pool() {
       let mb_btc_eth = pool("The gnerrs com from der voodverk out.");
       assert!(mb_btc_eth.is_err());
    }
 
    #[test]
-   fn test_pool_btc_eth() -> ErrStr<()> {
+   fn fail_pool_trailing_detritus() {
+      let mb_btc_eth = pool("    [ 'BTC', 'ETH' ], and some other data");
+      assert!(mb_btc_eth.is_err());
+   }
+
+   #[test]
+   fn test_pool_btc_eth_medial() -> ErrStr<()> {
       let btc_eth = pool("[ 'BTC', 'ETH' ],")?;
       assert_eq!("BTC", &fst(btc_eth.clone()));
       assert_eq!("ETH", &snd(btc_eth));
