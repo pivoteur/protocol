@@ -198,6 +198,24 @@ pub mod functional_tests {
       Ok((root_url, a))
    }
 
+   fn sample_pivot_pools() -> String { "
+// created by: pools, version: 1.00
+
+
+const poolAssets = {
+   generated: '2026-04-18',
+   assets: [
+      [ 'AVAX', 'UNDEAD' ],
+      [ 'BTC', 'AVAX' ],
+      [ 'BTC', 'ETH' ],
+      [ 'BTC', 'UNDEAD' ],
+      [ 'BTC', 'USDC' ],
+      [ 'ETH', 'UNDEAD' ],
+      [ 'UNDEAD', 'USDC' ]
+   ]
+};".to_string()
+   }
+
    pub async fn btc_eth_pivots() -> ErrStr<(Partition<Pivot>, NaiveDate)> {
       let (root_url, a) = marshall()?;
       fetch_pivots(&root_url, "btc", "eth", &a).await
