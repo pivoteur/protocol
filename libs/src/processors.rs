@@ -13,8 +13,7 @@ use crate::{
       proposals::proposes::{Propose,propose as propose_f},
       util::{Token,Pool}
    },
-   fetchers::{fetch_pivots,fetch_quotes},
-   git::fetch_pool_names,
+   fetchers::{fetch_pivots,fetch_quotes,fetch_pool_names},
    reports::{Proposal,mk_proposal}
 };
 
@@ -23,7 +22,7 @@ pub async fn process_pools(auth_name: &str, dt: &str)
    let auth = auth_name.to_uppercase();
    let date = parse_date(dt)?;
    let root_url = get_env(&format!("{auth}_URL"))?;
-   let pools = fetch_pool_names(&auth, "data/pivots/open/raw/").await?;
+   let pools = fetch_pool_names(&root_url).await?;
    process_pools0(&root_url, &pools, date).await
 }
 

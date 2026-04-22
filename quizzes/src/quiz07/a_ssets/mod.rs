@@ -6,8 +6,7 @@ use book::{
 };
 
 use libs::{
-   fetchers::{fetch_quotes,fetch_assets,fetch_open_pivots},
-   git::fetch_pool_names,
+   fetchers::{fetch_quotes,fetch_assets,fetch_pool_names,fetch_open_pivots},
    reports::{header,print_table}
 };
 
@@ -21,7 +20,7 @@ async fn list_quotes_and_assets(args: Vec<String>) -> ErrStr<()> {
       let quotes = fetch_quotes(&date).await?;
       let aliases = &quotes.aliases.clone();
       print_table("Quotes:", &[quotes]);
-      let pool_names = fetch_pool_names(&auth, "data/pools").await?;
+      let pool_names = fetch_pool_names(&root_url).await?;
       for (pri, piv) in pool_names {
          let pool = fetch_assets(&root_url, &pri, &piv, aliases).await?;
          print_table(&format!("Pool {}:", header(&pri, &piv)), &[pool]);

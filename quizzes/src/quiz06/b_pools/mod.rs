@@ -6,8 +6,7 @@ use book::{
 };
 
 use libs::{
-   fetchers::fetch_assets,
-   git::fetch_pool_names,
+   fetchers::{fetch_pool_names,fetch_assets},
    reports::{print_table,total_line},
    types::{
       aliases::aliases,
@@ -65,10 +64,9 @@ where
    "<protocol>-argument missing.".to_string()
 }
 
-async fn fetch_all_pools_assets(auth: &str, root_url: &str)
-      -> ErrStr<Vec<Composition>> {
+async fn fetch_all_pools_assets(root_url: &str) -> ErrStr<Vec<Composition>> {
    let aliases = aliases();
-   let pool_names = fetch_pool_names(&auth, "data/pools").await?;
+   let pool_names = fetch_pool_names(&root_url).await?;
    let mut pools = Vec::new();
    for (prim, piv) in pool_names {
       let pool = fetch_assets(&root_url, &prim, &piv, &aliases).await?;
@@ -97,7 +95,7 @@ pub mod functional_tests {
       let auth = mb_auth.ok_or_else(|| usage())?.to_uppercase();
       let root_url = get_env(&format!("{auth}_URL"))?;
       let mini = min_value(mb_mini);
-      let pools = fetch_all_pools_assets(&auth, &root_url).await?;
+      let pools = fetch_all_pools_assets(&root_url).await?;
       report_on_assets(pools, mini);
       Ok(())
    }
@@ -121,7 +119,7 @@ mod tests {
 
    async fn fetch_pools() -> ErrStr<Vec<Composition>> {
       let root_url = get_env("PIVOT_URL")?;
-      fetch_all_pools_assets("PIVOT", &root_url).await
+      fetch_all_pools_assets(&root_url).await
    }
 
    #[tokio::test]
