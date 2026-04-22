@@ -1,15 +1,16 @@
 use chrono::NaiveDate;
 
-use libs::git::fetch_pool_names;
+use libs::fetchers::fetch_pool_names;
 
-use book::err_utils::ErrStr;
+use book::{ err_utils::ErrStr, utils::get_env };
 
 fn app_name() -> String { "pools".to_string() }
 fn version() -> String { "1.00".to_string() }
 
 async fn print_pool_assets(auth: &str, dt: &NaiveDate) -> ErrStr<()> {
    let ogori_cap = auth.to_uppercase();
-   let pools = fetch_pool_names(&ogori_cap, "data/pivots/open/raw").await?;
+   let root_url = get_env(&format!("{ogori_cap}_URL"))?;
+   let pools = fetch_pool_names(&root_url).await?;  // TODO: FIXME
    let assets: Vec<String> =
       pools.into_iter().map(|(a,b)| format!("[ '{a}', '{b}' ]")).collect();
    println!("

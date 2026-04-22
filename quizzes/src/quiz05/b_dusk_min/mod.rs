@@ -86,7 +86,8 @@ pub mod functional_tests {
     pub async fn runoff_with_args() -> ErrStr<()> {
         let args = get_args();
         let min = args.contains(&"--min".to_string());
-        let args: Vec<String> = args.into_iter().filter(|a| a != "--min").collect();
+        let args: Vec<String> =
+           args.into_iter().filter(|a| a != "--min").collect();
         if !min {
             println!("\n{}, version: {}\n", app_name(), version());
         }

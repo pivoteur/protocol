@@ -13,7 +13,7 @@ use book::{
    parse_utils::{parse_id,parse_str,parse_usd},
    rest_utils::read_rest,
    string_utils::to_string,
-   table_utils::{Table,cols,row,rows,ingest},
+   table_utils::{Table,cols,row,rows,ingest,filter_map_or},
    tuple_utils::{Partition,fst},
    utils::pred
 };
@@ -27,13 +27,35 @@ use super::{
       quotes::{Quotes,mk_quotes},
       coins::{Coin,mk_coin},
       comps::{Composition,mk_composition},
-      util::{Token,Blockchain,TVLs,Pool},
+      util::{Token,Blockchain,TVLs,Pool,mk_pool},
    }
 };
 
 pub async fn fetch_pool_names(root_url: &str) -> ErrStr<Vec<Pool>> {
-   let _pools = format!("{root_url}/libs/pool-assets.js");
-   Err("fetch_pool_names() not implemented".to_string())
+   let url = format!("{root_url}/refs/heads/main/libs/pool-assets.js");
+   let lines = fetch_lines(&url).await?;
+   filter_map_or(pool, &raw_pools(&lines))
+}
+
+fn raw_pools(lines: &[String]) -> Vec<String> {
+   lines.iter()
+        .map(|s| s.trim())
+        .filter(|s| s.starts_with("["))
+        .map(to_string)
+        .collect()
+}
+
+fn pool(line: &str) -> ErrStr<Pool> {
+   let [a, b] = match line.split(",").collect::<Vec<_>>()[..] {
+      [a,b] => Ok([a,b]),
+      [a,b,_detritus] => Ok([a,b]),
+      _ => Err(format!("Unable to derive pool from {line}"))
+   }?;
+   Ok(mk_pool(&alphanum(&a), &alphanum(&b)))
+}
+   
+fn alphanum(input: &str) -> String {
+    input.chars().filter(|c| c.is_alphanumeric()).collect()
 }
 
 pub async fn fetch_wallets(root_url: &str) -> ErrStr<IxTable> {
@@ -299,10 +321,11 @@ mod tests {
       csv_utils::CsvHeader,
       date_utils::{yesterday,tomorrow},
       string_utils::s,
-      table_utils::{val,row}
+      table_utils::{val,row},
+      tuple_utils::{fst,snd}
    };
 
-   fn sample_pivot_pools() -> String { "
+   fn sample_pivot_pools() -> Vec<String> { "
 // created by: pools, version: 1.00
 
 
@@ -317,7 +340,33 @@ const poolAssets = {
       [ 'ETH', 'UNDEAD' ],
       [ 'UNDEAD', 'USDC' ]
    ]
-};".to_string()
+};".lines().map(to_string).collect()
+   }
+
+   #[test]
+   fn test_raw_pivots_count() {
+      let rp = raw_pools(&sample_pivot_pools());
+      assert_eq!(7, rp.len());
+   }
+
+   #[test]
+   fn test_pool_ok() {
+      let mb_btc_eth = pool("[ 'BTC', 'ETH' ]");
+      assert!(mb_btc_eth.is_ok());
+   }
+
+   #[test]
+   fn fail_pool() {
+      let mb_btc_eth = pool("The gnerrs com from der voodverk out.");
+      assert!(mb_btc_eth.is_err());
+   }
+
+   #[test]
+   fn test_pool_btc_eth() -> ErrStr<()> {
+      let btc_eth = pool("[ 'BTC', 'ETH' ],")?;
+      assert_eq!("BTC", &fst(btc_eth.clone()));
+      assert_eq!("ETH", &snd(btc_eth));
+      Ok(())
    }
 
    #[tokio::test]
