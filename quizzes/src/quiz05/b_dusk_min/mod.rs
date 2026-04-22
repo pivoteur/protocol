@@ -7,7 +7,7 @@ use libs::{
 };
 
 fn version() -> String {
-    "2.01".to_string()
+    "2.02".to_string()
 }
 fn app_name() -> String {
     "dusk".to_string()

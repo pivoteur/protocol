@@ -19,6 +19,7 @@ where:
 
 ## Revisions
 
+* 2.02, 2026-04-22: `dusk` now determines pivot pools from `libs/pool-assets.js`
 * 2.01, 2026-04-10: moved `dusk` into to the furnctional and unit test framework
 * 2.00, 2026-04-07: Permit `--min` to show only close pivot calls
 * 1.10, 2026-03-14: Brought into the functional-testing framework
