@@ -46,12 +46,16 @@ fn raw_pools(lines: &[String]) -> Vec<String> {
 }
 
 fn pool(line: &str) -> ErrStr<Pool> {
-   let [a, b] = match line.split(",").collect::<Vec<_>>()[..] {
-      [a,b] => Ok([a,b]),
-      [a,b,_detritus] => Ok([a,b]),
-      _ => Err(format!("Unable to derive pool from {line}"))
+   fn e(s: &str) -> impl Fn() -> ErrStr<(&'static str, &'static str)> {
+      move || Err(format!("Unable to derive pool from {s}"))
+   }
+   let err = e(line);
+   let (a, b) = match line.trim().split(",").collect::<Vec<_>>()[..] {
+      [a,b] => Ok((a,b)),
+      [a,b,detritus] => if detritus.is_empty() { Ok((a,b)) } else { err() },
+      _ => err()
    }?;
-   Ok(mk_pool(&alphanum(&a), &alphanum(&b)))
+   Ok(mk_pool(&alphanum(a), &alphanum(b)))
 }
    
 fn alphanum(input: &str) -> String {
