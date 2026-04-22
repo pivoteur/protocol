@@ -20,8 +20,5 @@ pub mod fetchers;
 /// reports, ... for when you want to report stuff
 pub mod reports;
 
-/// marshalling requests to the git API
-pub mod git;
-
 /// the whole kit-and-kaboodle
 pub mod processors;

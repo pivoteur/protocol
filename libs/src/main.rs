@@ -3,12 +3,11 @@
 use book::{
    err_utils::ErrStr,
    string_utils::plural,
-   test_utils::{run_test,mk_async,mk_sync,Thunk}
+   test_utils::{run_test,mk_sync,Thunk}
 };
 
 use libs::{
    fetchers::functional_tests::runoff as f,
-   git::functional_tests::runoff as g,
    paths::functional_tests::runoff as p,
    tables::functional_tests::runoff as t,
    types::pivots::functional_tests::runoff as tp,
@@ -23,7 +22,7 @@ async fn main() -> ErrStr<()> {
    preamble("fetchers");
    let run_fetchers = f().await?;
    let a = rpt(run_fetchers, "fetchers")?;
-   let b = report_test("git", &mut mk_async(g()))?;
+   let b = 0; // git module deprecated
    let c = report_test("paths", &mut mk_sync(p))?;
    let d = report_test("tables", &mut mk_sync(t))?;
    let e = report_test("types::pivot", &mut mk_sync(tp))?;
