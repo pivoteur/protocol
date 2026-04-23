@@ -9,6 +9,7 @@ use book::{
 use libs::{
    fetchers::functional_tests::runoff as f,
    paths::functional_tests::runoff as p,
+   processors::functional_tests::runoff as pft,
    tables::functional_tests::runoff as t,
    types::pivots::functional_tests::runoff as tp,
    types::proposals::proposes::functional_tests::runoff as tpp,
@@ -22,7 +23,8 @@ async fn main() -> ErrStr<()> {
    preamble("fetchers");
    let run_fetchers = f().await?;
    let a = rpt(run_fetchers, "fetchers")?;
-   let b = 0; // git module deprecated
+   let run_processors = pft().await?;
+   let b = rpt(run_processors, "processors")?;
    let c = report_test("paths", &mut mk_sync(p))?;
    let d = report_test("tables", &mut mk_sync(t))?;
    let e = report_test("types::pivot", &mut mk_sync(tp))?;
