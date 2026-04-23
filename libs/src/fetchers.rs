@@ -219,7 +219,7 @@ pub mod functional_tests {
       utils::get_env
    };
 
-   fn marshall() -> ErrStr<(String, Aliases)> {
+   pub fn marshall() -> ErrStr<(String, Aliases)> {
       let root_url = get_env("PIVOT_URL")?;
       let a = aliases();
       Ok((root_url, a))
