@@ -4,6 +4,7 @@ use book::{
    csv_utils::{CsvHeader,CsvWriter},
    currency::usd::mk_usd,
    err_utils::ErrStr,
+   list_utils::filter_map_or,
    tuple_utils::Partition
 };
 
@@ -180,9 +181,7 @@ pub mod functional_tests {
 
    pub fn btc_eth_pivots() -> ErrStr<Vec<Pivot>> {
       let (tabl, ix) = btc_eth()?;
-      Ok(tabl.data.into_iter()
-               .filter_map(|row| parse_pivot(&ix, &row).ok())
-               .collect())
+      filter_map_or(|row| parse_pivot(&ix, &row), tabl.data)
    }
 
    fn run_recompute_pivot() -> ErrStr<usize> {
