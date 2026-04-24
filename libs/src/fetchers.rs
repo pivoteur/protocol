@@ -8,12 +8,12 @@ use book::{
    currency::usd::USD,
    date_utils::{parse_date,datef},
    err_utils::{err_or,ErrStr},
-   list_utils::tail,
+   list_utils::{tail,filter_map_or},
    num_utils::{parse_num,parse_commaless},
    parse_utils::{parse_id,parse_str,parse_usd},
    rest_utils::read_rest,
-   string_utils::to_string,
-   table_utils::{Table,cols,row,rows,ingest,filter_map_or},
+   string_utils::{str2strf,to_string},
+   table_utils::{Table,cols,row,rows,ingest},
    tuple_utils::{Partition,fst},
    utils::pred
 };
@@ -34,7 +34,7 @@ use super::{
 pub async fn fetch_pool_names(root_url: &str) -> ErrStr<Vec<Pool>> {
    let url = format!("{root_url}/refs/heads/main/libs/pool-assets.js");
    let lines = fetch_lines(&url).await?;
-   filter_map_or(pool, &raw_pools(&lines))
+   filter_map_or(str2strf(&pool), raw_pools(&lines))
 }
 
 fn raw_pools(lines: &[String]) -> Vec<String> {
@@ -72,7 +72,7 @@ pub async fn fetch_asset_table_tvls(root_url: &str) -> ErrStr<TVLs> {
    let first_line: Vec<String> =
       tail(&lines).first().unwrap().split("\t").map(to_string).collect();
    let amts: Vec<USD> =
-      tail(&first_line).iter().filter_map(|m| parse_usd(m).ok()).collect();
+      filter_map_or(str2strf(parse_usd), tail(&first_line))?;
    let ans: TVLs = tail(&hdrs).into_iter().zip(amts.into_iter()).collect();
    Ok(ans)
 }
