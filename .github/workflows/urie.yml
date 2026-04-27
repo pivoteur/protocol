@@ -1,0 +1,83 @@
+name: clothes
+
+on:
+  workflow_dispatch:
+    inputs:
+      ix:
+        description: 'ix row from table'
+        required: true
+        type: string
+        default: '1'
+      tx_id:
+        description: 'Transaction ID'
+        required: true
+        type: string
+        default: 'asdf'
+      new_to_actual:
+        description: 'New to actual value'
+        required: true
+        type: string
+        default: '8008'
+
+permissions:
+  contents: write
+
+jobs:
+  run-panic:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: use_your_noodle
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: "pivot_dapps/new_automation"
+
+      - name: Checkout protocol # needed for `lib` dependencies
+        uses: actions/checkout@v4
+        with: 
+          repository: pivoteur/protocol
+          path: protocol
+
+      - name: Set up rust
+        uses: dtolnay/rust-toolchain@stable
+      - name: Checkout crypto-n-rust # needed for `book` dependencies
+        uses: actions/checkout@v4
+        with:
+          repository: logicalgraphs/crypto-n-rust
+          path: crypto-n-rust
+
+      - name: Showing panic's vars
+        run: |
+          echo "=== Running panic with manual inputs ==="
+          echo "ix: ${{ inputs.ix }}"
+          echo "tx_id: ${{ inputs.tx_id }}"
+          echo "new_to_actual: ${{ inputs.new_to_actual }}"
+
+      - name: Build panic
+        run: |
+          cargo build --manifest-path use_your_noodle/pivot_dapps/new_automation/Cargo.toml --bin panic
+          echo "$GITHUB_WORKSPACE/use_your_noodle/pivot_dapps/new_automation/target/debug" >> $GITHUB_PATH
+
+      - name: adding the date and pivot_url into the env
+        run: |
+          echo "LE_DATE=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
+          echo "PIVOT_URL=https://raw.githubusercontent.com/pivoteur/pivoteur.github.io" >> $GITHUB_ENV
+
+      - name: run panic and Log Output
+        run: |
+          panic ${{inputs.ix}} "${{inputs.tx_id}}" "${{inputs.new_to_actual}}" # > use_your_noodle/data/clothes.csv
+
+      - name: Commit and push results
+        env: 
+          USER1_NAME: ${{ vars.USER1_NAME }}
+          USER1_EMAIL: ${{ secrets.USER1_EMAIL }}
+        run: |
+          cd use_your_noodle
+          git config --local user.name "$USER1_NAME"
+          git config --local user.email "$USER1_EMAIL"
+          git add data/clothes.csv 
+          git commit -m "clothes updated $LE_DATE"
+          git push
