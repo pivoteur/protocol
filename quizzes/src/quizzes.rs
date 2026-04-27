@@ -1,7 +1,7 @@
 pub mod quiz01;
 pub mod quiz02;
 pub mod quiz03;
-
+pub mod quiz04;
 pub mod quiz05;
 pub mod quiz06;
 pub mod quiz07;

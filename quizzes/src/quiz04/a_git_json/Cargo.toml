@@ -1,0 +1,13 @@
+[package]
+name = "a_git_json"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
+reqwest = { version = "0.12.4", features = ["json"] }
+
+libs = { path = "../../../../libs" }
+quizzes = { path = "../../.." }
+book = { path = "../../../../../crypto-n-rust/src/libs/book" }
+
