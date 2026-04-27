@@ -11,14 +11,13 @@ async fn fetch_opens(auth: &str) -> ErrStr<()> {
 }
 
 async fn fetch_opens_json(auth: &str) -> ErrStr<String> {
-   let aut = auth.to_uppercase();
-   let (header, url) = hdr_url(&aut)?;
+   let (header, url) = hdr_url(&auth)?;
    read_rest_with(header, &url).await
 }
 
 fn hdr_url(auth: &str) -> ErrStr<(HeaderMap, String)> {
-   let header = build_header_with(auth)?;
-   let ownr = owner(auth)?;
+   let (header, aut) = build_header_with(auth)?;
+   let ownr = owner(&aut)?;
    let rep = repo(&ownr);
    let path = "data/pivots/open/raw/";
    let url = mk_url(&ownr, &rep, path);
@@ -70,15 +69,16 @@ Accept: application/vnd.github.object
 "X-GitHub-Api-Version: 2022-11-28
 */
 
-fn build_header_with(auth: &str) -> ErrStr<HeaderMap> {
+fn build_header_with(auth: &str) -> ErrStr<(HeaderMap, String)> {
+   let aut = auth.to_uppercase();
    let mut hm = HeaderMap::new();
    hm.insert(ACCEPT, HeaderValue::from_static("application/vnd.github.object"));
-   let tok = get_env(&format!("{auth}_GIT_TOKEN"))?;
+   let tok = get_env(&format!("{aut}_GIT_TOKEN"))?;
    hm.insert(AUTHORIZATION,
              HeaderValue::from_str(&format!("BEARER {tok}")).unwrap());
    hm.insert("X-GitHub-Api-Version", HeaderValue::from_static("2022-11-28"));
    hm.insert(USER_AGENT, HeaderValue::from_static("PivotProtocol"));
-   Ok(hm)
+   Ok((hm,aut))
 }
 
 // ------ TESTS -------------------------------------------------------
@@ -105,6 +105,24 @@ pub mod functional_tests {
       let auth =
          args.first().ok_or("Need <auth> token to fetch open pivot info")?;
       fetch_opens(&auth).await
+   }
+}
+
+#[cfg(not(tarpaulin_include))]
+#[cfg(test)]
+mod tests {
+   use super::*;
+
+   #[test]
+   fn fail_build_header_with() {
+      let ans = build_header_with("asdf");
+      assert!(ans.is_err());
+   }
+
+   #[test]
+   fn test_build_header_with_ok() {
+      let ans = build_header_with("pivot");
+      assert!(ans.is_ok());
    }
 }
 
