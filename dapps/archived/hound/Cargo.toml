@@ -5,7 +5,7 @@ edition = "2024"
 
 [[bin]]
 name = "hound"
-path = "../../../quizzes/quiz04/c_iterate/src/main.rs"
+path = "../../../quizzes/src/quiz04/c_iterate/src/main.rs"
 
 [dependencies]
 chrono = "0.4.38"

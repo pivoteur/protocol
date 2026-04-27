@@ -4,11 +4,11 @@
 
 `dusk` makes close-pivot calls.
 
-* [00](quiz00): Hi, Mom!
+* [00](src/quiz00): Hi, Mom!
 * [01](src/quiz01): read and parse a set of open pivots reposed on github
 * [02](src/quiz02): With today's (fetched) prices, identify pivots to close
 * [03](src/quiz03): Partition and aggregate the close-pivots
-* [04](quiz04): Find the pivot pools; iterate over the pivot pools
+* [04](src/quiz04): Find the pivot pools; iterate over the pivot pools
 * [05](src/quiz05): Aggregate pivot-assets by blockchain
 
 ## `dawn` evolution
@@ -16,7 +16,7 @@
 `dawn` (eventually) makes open-pivot calls [WIP].
 
 * [06](src/quiz06): Pool tables, ... but not billiards.
-* [07](quiz07): Pool tables - open pivots = available assets
+* [07](src/quiz07): Pool tables - open pivots = available assets
 
 ## `closer` evolution
 
