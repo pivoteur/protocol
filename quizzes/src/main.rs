@@ -16,6 +16,7 @@ mod test_infrastructure {
       quiz05::functional_tests::runoff as e,
       quiz06::functional_tests::runoff as f,
       quiz07::functional_tests::runoff as g,
+      quiz08::functional_tests::runoff as h,
       quiz09::functional_tests::runoff as i,
       quiz10::functional_tests::runoff as j
    };
@@ -25,7 +26,7 @@ mod test_infrastructure {
    }
 
    pub fn test_names() -> Vec<String> {
-      [1,2,3,4,5,6,7,9,10]
+      [1,2,3,4,5,6,7,8,9,10]
            .iter().map(|n| format!("quiz{}", two_digits(*n))).collect()
    }
 
@@ -43,6 +44,7 @@ mod test_infrastructure {
            run_testa("quiz05",e()).await,
            run_testa("quiz06",f()).await,
            run_testa("quiz07",g()).await,
+           test_result("quiz08",h()),
            test_result("quiz09",i()),
            run_testa("quiz10", j()).await]
    }

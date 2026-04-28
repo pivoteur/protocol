@@ -22,7 +22,7 @@
 
 `closer` helps me to close pivots
 
-* [08](quiz08): Read `dusk` output
+* [08](src/quiz08): Read `dusk` output
 
 ## Integration testing
 

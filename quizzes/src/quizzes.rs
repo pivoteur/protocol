@@ -5,7 +5,7 @@ pub mod quiz04;
 pub mod quiz05;
 pub mod quiz06;
 pub mod quiz07;
-
+pub mod quiz08;
 pub mod quiz09;
 pub mod quiz10;
 
