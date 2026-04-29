@@ -5,17 +5,17 @@ edition = "2024"
 
 [[bin]]
 name = "pools"
-path = "../../quizzes/src/quiz10/c_local_pools/src/main.rs"
+path = "../../../quizzes/src/quiz10/b_pools/src/main.rs"
 
 [dependencies]
 chrono = "0.4.38"
 
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 
-book = { path = "../../../crypto-n-rust/src/libs/book" }
+book = { path = "../../../../crypto-n-rust/src/libs/book" }
 
-quizzes = { path = "../../quizzes" }
-libs = { path = "../../libs" }
+quizzes = { path = "../../../quizzes" }
+libs = { path = "../../../libs" }
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(tarpaulin_include)'] }
