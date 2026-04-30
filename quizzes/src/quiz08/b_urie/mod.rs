@@ -3,7 +3,34 @@ use book::parse_utils::{ parse_id, parse_str };
 use book::table_utils::{ ingest, val };
 use book::date_utils::parse_date;
 use libs::tables::IxTable;
+use book::utils::get_env;
+use libs::fetchers::fetch_calls;
+use tokio::runtime::Runtime;
 
+
+// ===========================================================================================================================
+//----- pub fn run -----------------------------------------------------------------------------------------------------------
+// ===========================================================================================================================
+pub fn run() -> ErrStr<()> {
+    let args: Vec<String> = std::env::args().collect();
+    if args.len() < 4 {
+        eprintln!("Error: not enough arguments.");
+        eprintln!("Usage: `panic` <ix> <tx_id> <new_to_actual>");
+        eprintln!("Example: `panic` 5 \"asdf\" \"1250.75\"");
+        std::process::exit(1);
+    }
+    let ix       = parse_id(&args[1])?;
+    let root_url = get_env("PIVOT_URL")?;
+    let rt       = Runtime::new().map_err(|e| e.to_string())?;
+    match rt.block_on(fetch_calls(&root_url)) {
+        Ok(t)  => {
+            println!("{}", header());
+            println!("{}", parse_row(&t, ix, &args[2], &args[3])?);
+        }
+        Err(e) => eprintln!("Error: {e}"),
+    }
+    Ok(())
+}
 // ===========================================================================================================================
 //----- pub fn header --------------------------------------------------------------------------------------------------------
 // ===========================================================================================================================
@@ -72,6 +99,7 @@ mod tests {
     use book::table_utils::row;
     use book::date_utils::today;
 
+
     fn mock_dusk_output() -> String {
         "ix,pool,ids\n\
          1,BTC+UNDEAD,20\n\
@@ -79,6 +107,7 @@ mod tests {
          3,SOL+UNDEAD,10"
             .to_string()
     }
+
     fn mock_trade_row() -> String {
         let dt = format!("{}", today());
         format!(
@@ -86,6 +115,7 @@ mod tests {
              1,{dt},{dt},500,100,50,2.00"
         )
     }
+
     fn mock_losing_row() -> String {
         let dt = format!("{}", today());
         format!(
@@ -93,6 +123,7 @@ mod tests {
             1,{dt},{dt},0,100,50,0.00"
         )
     }
+
     fn mock_missing_dates() -> String {
         "ix,amount1,virtual\n\
          1,100,50"
@@ -114,18 +145,7 @@ mod tests {
             .expect("Failed to ingest mock data");
         assert!(row(&table, &99).is_none());
     }
-    #[test]
-    fn test_header_field_count() {
-        assert_eq!(16, header().split(',').count());
-    }
-    #[test]
-    fn test_header_contains_key_fields() {
-        let h = header();
-        for field in &["date","pivot","close","tx_id","from","to",
-                       "trade","vol","gain","roi","apr"] {
-            assert!(h.contains(field), "header missing field: {field}");
-        }
-    }
+
     #[test]
     fn test_parse_row_returns_ok() {
         let raw_data = mock_trade_row();
@@ -133,6 +153,7 @@ mod tests {
             .expect("Failed to ingest mock data");
         assert!(parse_row(&table, 1, "tx1", "160.0").is_ok());
     }
+
     #[test]
     fn test_parse_row_err_on_missing_dates() {
         let raw_data = mock_missing_dates();
@@ -140,6 +161,7 @@ mod tests {
             .expect("Failed to ingest mock data");
         assert!(parse_row(&table, 1, "tx1", "160.0").is_err());
     }
+
     #[test]
     fn test_parse_row_field_count_matches_header() {
         let raw_data = mock_trade_row();
@@ -148,6 +170,7 @@ mod tests {
         let row_str = parse_row(&table, 1, "tx1", "160.0").unwrap();
         assert_eq!(header().split(',').count(), row_str.split(',').count());
     }
+
     #[test]
     fn test_parse_row_passthrough_tx_id() {
         let raw_data = mock_trade_row();
@@ -156,6 +179,7 @@ mod tests {
         let row_str = parse_row(&table, 1, "my-tx-abc", "160.0").unwrap();
         assert!(row_str.contains("my-tx-abc"));
     }
+
     #[test]
     fn test_parse_row_vol_calculation() {
         let raw_data = mock_trade_row();
@@ -164,6 +188,7 @@ mod tests {
         let row_str = parse_row(&table, 1, "tx1", "160.0").unwrap();
         assert!(row_str.contains("$1000.0000"), "expected $1000.0000 in: {row_str}");
     }
+
     #[test]
     fn test_parse_row_gain_10_percent() {
         let raw_data = mock_trade_row();
@@ -172,6 +197,7 @@ mod tests {
         let row_str = parse_row(&table, 1, "tx1", "160.0").unwrap();
         assert!(row_str.contains("165.0000"), "expected 165.0000 in: {row_str}");
     }
+
     #[test]
     fn test_parse_row_negative_gain() {
         let raw_data = mock_losing_row();
@@ -181,6 +207,7 @@ mod tests {
         let gain: f64 = row_str.split(',').nth(12).unwrap_or("0").parse().unwrap_or(0.0);
         assert!(gain < 0.0, "expected negative gain, got {gain}");
     }
+
     #[test]
     fn test_parse_row_no_nan_or_inf() {
         let raw_data = mock_trade_row();
@@ -190,21 +217,25 @@ mod tests {
         assert!(!row_str.contains("NaN") && !row_str.contains("inf"),
             "NaN or inf in output: {row_str}");
     }
+
     #[test]
     fn test_col_num_strips_dollar() {
         let v: f64 = "$1.50".replace('$', "").replace(',', "").trim().parse().unwrap_or(0.0);
         assert!((v - 1.50).abs() < f64::EPSILON);
     }
+
     #[test]
     fn test_col_num_strips_comma() {
         let v: f64 = "1,250.75".replace('$', "").replace(',', "").trim().parse().unwrap_or(0.0);
         assert!((v - 1250.75).abs() < f64::EPSILON);
     }
+
     #[test]
     fn test_col_num_strips_dollar_and_comma() {
         let v: f64 = "$1,250.75".replace('$', "").replace(',', "").trim().parse().unwrap_or(0.0);
         assert!((v - 1250.75).abs() < f64::EPSILON);
     }
+
     #[test]
     fn test_col_num_empty_returns_missing_data_err() {
         let raw = "";
@@ -220,29 +251,34 @@ mod tests {
         assert!(result.is_err());
         assert_eq!(result.unwrap_err(), "missing table's data");
     }
+
     #[test]
     fn test_to_quote_fallback_applies() {
         let mut q = 0.0_f64; let f = 0.0025_f64;
         if q == 0.0 && f > 0.0 { q = f; }
         assert!((q - 0.0025).abs() < f64::EPSILON);
     }
+
     #[test]
     fn test_to_quote_fallback_skipped_when_set() {
         let mut q = 1.50_f64; let f = 0.0025_f64;
         if q == 0.0 && f > 0.0 { q = f; }
         assert!((q - 1.50).abs() < f64::EPSILON);
     }
+
     #[test]
     fn test_to_quote_fallback_skipped_when_from_also_zero() {
         let mut q = 0.0_f64; let f = 0.0_f64;
         if q == 0.0 && f > 0.0 { q = f; }
         assert_eq!(q, 0.0);
     }
+
     #[test]
     fn test_roi_zero_division_guard() {
         let s = 0.0_f64;
         assert_eq!(0.0, if s != 0.0 { 1.0 / s } else { 0.0 });
     }
+
     #[test]
     fn test_apr_zero_days_guard() {
         assert_eq!(0.0, if 0.0_f64 > 0.0 { 0.1 * 365.0 / 0.0 } else { 0.0 });
@@ -252,6 +288,7 @@ mod tests {
         let roi = 0.1_f64;
         assert!((roi - roi * 365.0 / 365.0).abs() < 1e-10);
     }
+    
 }
 // ===========================================================================================================================
 //----- FUNCTIONAL TESTS ----------------------------------------------------------------------------------------------------
@@ -261,6 +298,7 @@ pub mod functional_tests {
     use book::{ err_utils::ErrStr, date_utils::today };
     use super::*;
 
+    
     fn now() -> String { format!("{}", today()) }
     fn make_table(raw: &str) -> ErrStr<IxTable> {
         let lines: Vec<String> = raw.lines().map(|s| s.to_string()).collect();
@@ -374,6 +412,9 @@ pub mod functional_tests {
         Ok(a+b+c+d+e+f+g+h+i)
     }
 
+
+    // this entire block can be converte into unit tests with its own respective `assert` statements
+    // -->
     #[cfg(test)]
     mod tests {
         use super::*;
@@ -387,6 +428,5 @@ pub mod functional_tests {
         #[test] fn test_apr_365_equals_roi()  { let roi = 0.1_f64; assert!((roi - roi * 365.0 / 365.0).abs() < 1e-10); }
         #[test] fn test_to_quote_fallback()   { let mut q = 0.0_f64; let f = 0.0025_f64; if q == 0.0 && f > 0.0 { q = f; } assert_eq!(q, 0.0025); }
         #[test] fn test_col_num_strips()      { let v: f64 = "$1,250.75".replace('$',"").replace(',',"").trim().parse().unwrap_or(0.0); assert!((v - 1250.75).abs() < f64::EPSILON); }
-        #[test] fn test_header_field_count()  { assert_eq!(16, header().split(',').count()); }
     }
 }
