@@ -184,8 +184,8 @@ async fn fetch_lines(url: &str) -> ErrStr<Vec<String>> {
    let daters = read_rest(url).await?;
    let lines: Vec<String> =
       daters.lines()
-            .filter_map(|l| pred(!l.is_empty(), l.to_string()))
-            .collect();
+      .filter_map(|l| pred(!l.is_empty(), l.to_string()))
+      .collect();
    Ok(lines)
 }
 
@@ -218,18 +218,18 @@ pub mod functional_tests {
       date_utils::yesterday,
       utils::get_env
    };
-
+   
    pub fn marshall() -> ErrStr<(String, Aliases)> {
       let root_url = get_env("PIVOT_URL")?;
       let a = aliases();
       Ok((root_url, a))
    }
-
+   
    pub async fn btc_eth_pivots() -> ErrStr<(Partition<Pivot>, NaiveDate)> {
       let (root_url, a) = marshall()?;
       fetch_pivots(&root_url, "btc", "eth", &a).await
    }
-
+   
    async fn run_fetch_pool_names() -> ErrStr<usize> {
       println!("fetchers::fetch_pool_names functional test\n");
       let (root_url, _aliases) = marshall()?;
@@ -238,7 +238,7 @@ pub mod functional_tests {
       println!("fetchers::fetch_pool_names...ok");
       Ok(1)
    }
-
+   
    async fn run_fetch_wallets() -> ErrStr<usize> {
       println!("fetchers::fetch_wallets functional test\n");
       let (root_url, _aliases) = marshall()?;
@@ -247,7 +247,7 @@ pub mod functional_tests {
       println!("fetchers::fetch_wallets...ok");
       Ok(1)
    }
-
+   
    async fn run_fetch_asset_table_tvls() -> ErrStr<usize> {
       println!("fetchers::fetch_asset_table_tvls functional test\n");
       let (root_url, _aliases) = marshall()?;
@@ -256,7 +256,7 @@ pub mod functional_tests {
       println!("fetchers::fetch_asset_table_tvls...ok");
       Ok(1)
    }
-
+   
    async fn run_fetch_assets() -> ErrStr<usize> {
       println!("fetchers::fetch_assets functional test\n");
       let (root_url, a) = marshall()?;
@@ -265,7 +265,7 @@ pub mod functional_tests {
       println!("fetchers::fetch_assets...ok");
       Ok(1)
    }
-
+   
    fn print_rows<T:CsvWriter>(title: &str, rows: &[T]) {
       println!("\n{title}:\n");
       for row in rows { print_as_tsv(&row.as_csv()); }
@@ -280,7 +280,7 @@ pub mod functional_tests {
       println!("fetchers::fetch_pivots...ok");
       Ok(1)
    }
-
+   
    async fn run_fetch_quotes() -> ErrStr<usize> {
       println!("fetchers::fetch_quotes functional test\n");
       let qts = fetch_quotes(&yesterday()).await?;
@@ -288,7 +288,7 @@ pub mod functional_tests {
       println!("fetchers::fetch_quotes...ok");
       Ok(1)
    }
-
+   
    async fn run_fetch_calls() -> ErrStr<usize> {
       println!("fetchers::fetch_calls functional test\n");
       let (root_url, _aliases) = marshall()?;
@@ -306,28 +306,29 @@ pub mod functional_tests {
       let q = run_fetch_quotes().await?;
       let w = run_fetch_wallets().await?;
       let fat = run_fetch_asset_table_tvls().await?;
-          // fat: 'fetch_asset_table' ... of course!
+      // fat: 'fetch_asset_table' ... of course!
       let c = run_fetch_calls().await?;
       Ok(pn+a+p+q+w+fat+c)
    }
-
-#[cfg(test)]
-mod tests {
-   use std::iter::once;
-   use super::*;
-   use crate::tables::{c2t,csv2tsv};
-   use book::{
-      currency::usd::mk_usd,
-      csv_utils::CsvHeader,
-      date_utils::{yesterday,tomorrow},
-      string_utils::s,
-      table_utils::{val,row},
-      tuple_utils::{fst,snd}
-   };
-
-   fn sample_pivot_pools() -> Vec<String> { "
-// created by: pools, version: 1.00
-
+   
+   #[cfg(test)]
+   mod tests {
+      use std::iter::once;
+      use super::*;
+      use crate::tables::{c2t,csv2tsv};
+      use book::{
+         currency::usd::mk_usd,
+         csv_utils::CsvHeader,
+         date_utils::{yesterday,tomorrow},
+         string_utils::s,
+         table_utils::{val,row},
+         tuple_utils::{fst,snd}
+      };
+      use quizzes::quiz08::b_urie::header;
+      
+      fn sample_pivot_pools() -> Vec<String> { "
+      // created by: pools, version: 1.00
+      
 
 const poolAssets = {
    generated: '2026-04-18',
@@ -629,5 +630,19 @@ const poolAssets = {
       assert_eq!(mx, m);
       Ok(())
    }
+
+       #[test]
+    fn test_header_field_count() {
+        assert_eq!(16, header().split(',').count());
+    }
+
+    #[test]
+    fn test_header_contains_key_fields() {
+        let h = header();
+        for field in &["date","pivot","close","tx_id","from","to",
+                       "trade","vol","gain","roi","apr"] {
+            assert!(h.contains(field), "header missing field: {field}");
+        }
+    }
 }
 }
