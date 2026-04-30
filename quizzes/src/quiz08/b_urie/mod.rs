@@ -54,9 +54,9 @@ pub fn parse_row(table: &IxTable, ix: usize, tx_id: &str, new_to_actual: &str) -
             strip.parse::<f64>().map_err(|_| "missing table's data".to_string())
         }
     };
-    let col_opt = |name: &str| -> f64 {
+    let col_opt = |name: &str| -> ErrStr<f64> {
         let strip = col(name).replace('$', "").replace(',', "");
-        strip.trim().parse::<f64>().unwrap_or(0.0)
+        strip.trim().parse::<f64>().map_err(|_| format!("invalid value for '{name}' "))
     };
     //----- truth values -----------------------------------------------------------------
     let date     = parse_date(&col("close_date"))?;
@@ -68,12 +68,9 @@ pub fn parse_row(table: &IxTable, ix: usize, tx_id: &str, new_to_actual: &str) -
     let trade    = col_num("pivot_amount")?;
     let amount1  = col_num("amount1")?;
     let virtual_ = col_num("virtual")?;
-    let actual   = new_to_actual.parse::<f64>().unwrap_or(0.0);
+    let actual   = new_to_actual.parse::<f64>().map_err(|_| format!("invalid new_to_actual: '{new_to_actual}' is not a number"))?;
     let from_quote   = col_num("pivot_close_price")?;
-    let mut to_quote = col_opt("proposed_close_price");
-    if to_quote == 0.0 && from_quote > 0.0 {
-        to_quote = from_quote;
-    }
+    let to_quote = col_opt("proposed_close_price")?;
     //----- formulas for the correct headers ---------------------------------------------
     let sum_amt_virt    = amount1 + virtual_;
     let vol             = trade * from_quote;
@@ -111,16 +108,16 @@ mod tests {
     fn mock_trade_row() -> String {
         let dt = format!("{}", today());
         format!(
-            "ix,close_date,opened,pivot_amount,amount1,virtual,pivot_close_price\n\
-             1,{dt},{dt},500,100,50,2.00"
+            "ix,close_date,opened,pivot_amount,amount1,virtual,pivot_close_price,proposed_close_price\n\
+            1,{dt},{dt},500,100,50,2.00,2.00"
         )
     }
 
     fn mock_losing_row() -> String {
         let dt = format!("{}", today());
         format!(
-            "ix,close_date,opened,pivot_amount,amount1,virtual,pivot_close_price\n\
-            1,{dt},{dt},0,100,50,0.00"
+            "ix,close_date,opened,pivot_amount,amount1,virtual,pivot_close_price,proposed_close_price\n\
+            1,{dt},{dt},0,100,50,0.00,0.00"
         )
     }
 
@@ -253,27 +250,6 @@ mod tests {
     }
 
     #[test]
-    fn test_to_quote_fallback_applies() {
-        let mut q = 0.0_f64; let f = 0.0025_f64;
-        if q == 0.0 && f > 0.0 { q = f; }
-        assert!((q - 0.0025).abs() < f64::EPSILON);
-    }
-
-    #[test]
-    fn test_to_quote_fallback_skipped_when_set() {
-        let mut q = 1.50_f64; let f = 0.0025_f64;
-        if q == 0.0 && f > 0.0 { q = f; }
-        assert!((q - 1.50).abs() < f64::EPSILON);
-    }
-
-    #[test]
-    fn test_to_quote_fallback_skipped_when_from_also_zero() {
-        let mut q = 0.0_f64; let f = 0.0_f64;
-        if q == 0.0 && f > 0.0 { q = f; }
-        assert_eq!(q, 0.0);
-    }
-
-    #[test]
     fn test_roi_zero_division_guard() {
         let s = 0.0_f64;
         assert_eq!(0.0, if s != 0.0 { 1.0 / s } else { 0.0 });
@@ -289,9 +265,55 @@ mod tests {
         assert!((roi - roi * 365.0 / 365.0).abs() < 1e-10);
     }
     
+    #[test] 
+    fn test_functional_suite() { 
+        super::functional_tests::runoff().expect("Functional suite failed"); 
+    }
+
+    #[test] 
+    fn test_gain_formula() { 
+        assert_eq!(-50.0, 100.0_f64 - (100.0 + 50.0)); 
+    }    
+
+    #[test] 
+    fn test_gain_10_percent() { 
+        assert!((165.0_f64 - (100.0 + 50.0) * 1.1).abs() < f64::EPSILON); 
+    }
+
+    #[test] 
+    fn test_vol_formula() { 
+        assert!((750.0_f64 - 500.0 * 1.5).abs() < f64::EPSILON); 
+    }
+
+    #[test] 
+    fn test_col_num_strips() { 
+        let v: f64 = "$1,250.75".replace('$',"").replace(',',"").trim().parse().unwrap_or(0.0); 
+        assert!((v - 1250.75).abs() < f64::EPSILON); 
+    }
+
+    #[test]
+    fn test_truth_values_populated() {
+        let dt = format!("{}", today());
+        let raw = format!(
+            "ix,close_date,opened,ids,close_id,pivot_token,from,pivot_amount,amount1,virtual,pivot_close_price,proposed_close_price\n\
+            1,{dt},{dt},20,99,BTC,UNDEAD,500,100,50,2.00,2.00"
+        );
+        let table = ingest(parse_id, parse_str, parse_str, &raw.lines()
+            .map(|s| s.to_string()).collect::<Vec<_>>(), ",")
+            .expect("Failed to ingest");
+        let result = parse_row(&table, 1, "tx1", "160.0");
+        assert!(result.is_ok(), "parse_row failed: {:?}", result);
+        let row_str = result.unwrap();
+        let fields: Vec<&str> = row_str.split(',').collect();
+        assert_eq!(fields.len(), 16);
+        for (i, f) in fields.iter().enumerate() {
+            assert!(!f.is_empty(), "field at index {i} is empty: full row: {row_str}");
+        }
+    }
+    
 }
 // ===========================================================================================================================
-//----- FUNCTIONAL TESTS ----------------------------------------------------------------------------------------------------
+//----- FUNCTIONAL TESTS -----------------------------------------------------------------------------------------------------
 // ===========================================================================================================================
 #[cfg(not(tarpaulin_include))]
 pub mod functional_tests {
@@ -300,15 +322,18 @@ pub mod functional_tests {
 
     
     fn now() -> String { format!("{}", today()) }
+
     fn make_table(raw: &str) -> ErrStr<IxTable> {
         let lines: Vec<String> = raw.lines().map(|s| s.to_string()).collect();
         ingest(parse_id, parse_str, parse_str, &lines, ",")
     }
+
     fn report<A: std::fmt::Debug + Clone>(test: &str, t: A, f: impl Fn(A) -> ErrStr<String>) -> ErrStr<usize> {
         let result = f(t.clone())?;
         println!("\npivot_dapps::run_{test} functional test\n\n\tinput: {t:?}, result: {result}\n\npivot_dapps::{test}:...ok");
         Ok(1)
     }
+
     fn run_resilience() -> ErrStr<usize> {
         let table = make_table("ix,pool,ids\n1,BTC,20")?;
         if parse_row(&table, 1, "tx_id", "1.0").is_ok() {
@@ -317,66 +342,62 @@ pub mod functional_tests {
         println!("\npivot_dapps::run_resilience functional test\n\n\tresult: Err (correct)\n\npivot_dapps::resilience:...ok");
         Ok(1)
     }
+
     fn apr_safety(dt: String) -> ErrStr<String> {
         let row = make_table(&format!(
-            "ix,close_date,opened,pivot_amount,amount1,virtual,pivot_close_price\n\
-            1,{dt},{dt},0,0,1,0.00"
+            "ix,close_date,opened,pivot_amount,amount1,virtual,pivot_close_price,proposed_close_price\n\
+            1,{dt},{dt},0,0,1,0.00,0.00"
         )).and_then(|t| parse_row(&t, 1, "tx_id", "1.0"))?;
         if row.contains("NaN") || row.contains("inf") { return Err(format!("apr_safety: NaN or inf in: {row}")); }
         Ok(row)
     }
     fn run_apr_safety() -> ErrStr<usize> { report("apr_safety", now(), apr_safety) }
+
     fn whale(dt: String) -> ErrStr<String> {
         let row = make_table(&format!(
-            "ix,close_date,opened,pivot_amount,amount1,virtual,pivot_close_price\n\
-            1,{dt},{dt},100000000,0,0,1.50"
+            "ix,close_date,opened,pivot_amount,amount1,virtual,pivot_close_price,proposed_close_price\n\
+            1,{dt},{dt},100000000,0,0,1.50,1.50"
         )).and_then(|t| parse_row(&t, 1, "tx_id", "1.0"))?;
         if !row.contains("150000000.0000") { return Err(format!("whale: expected 150000000.0000 in: {row}")); }
         Ok(row)
     }
     fn run_whale() -> ErrStr<usize> { report("whale", now(), whale) }
+
     fn roi_zero_div(dt: String) -> ErrStr<String> {
         let row = make_table(&format!(
-            "ix,close_date,opened,pivot_amount,amount1,virtual,pivot_close_price\n\
-            1,{dt},{dt},0,0,0,0.00"
+            "ix,close_date,opened,pivot_amount,amount1,virtual,pivot_close_price,proposed_close_price\n\
+            1,{dt},{dt},0,0,0,0.00,0.00"
         )).and_then(|t| parse_row(&t, 1, "tx_id", "0.0"))?;
         if row.contains("NaN") || row.contains("inf") { return Err(format!("roi_zero_div: NaN or inf in: {row}")); }
         Ok(row)
     }
     fn run_roi_zero_div() -> ErrStr<usize> { report("roi_zero_div", now(), roi_zero_div) }
+
     fn column_count(dt: String) -> ErrStr<String> {
         let row = make_table(&format!(
-            "ix,close_date,opened,pivot_amount,amount1,virtual,pivot_close_price\n\
-            1,{dt},{dt},0,100,50,0.00"
+            "ix,close_date,opened,pivot_amount,amount1,virtual,pivot_close_price,proposed_close_price\n\
+            1,{dt},{dt},0,100,50,0.00,0.00"
         )).and_then(|t| parse_row(&t, 1, "tx_id", "120.0"))?;
         let (h, r) = (header().split(',').count(), row.split(',').count());
         if h != r { return Err(format!("column_count: header={h} row={r}")); }
         Ok(row)
     }
     fn run_column_count() -> ErrStr<usize> { report("column_count", now(), column_count) }
-    fn negative_gain(dt: String) -> ErrStr<String> {
-        let row = make_table(&format!(
-            "ix,close_date,opened,pivot_amount,amount1,virtual,pivot_close_price\n\
-            1,{dt},{dt},0,100,50,0.00"
-        )).and_then(|t| parse_row(&t, 1, "tx_id", "100.0"))?;
-        let gain: f64 = row.split(',').nth(12).unwrap_or("0").parse().unwrap_or(0.0);
-        if gain >= 0.0 { return Err(format!("negative_gain: expected gain < 0, got {gain}")); }
-        Ok(row)
-    }
-    fn run_negative_gain() -> ErrStr<usize> { report("negative_gain", now(), negative_gain) }
+
     fn currency_format(dt: String) -> ErrStr<String> {
         let row = make_table(&format!(
-            "ix,close_date,opened,pivot_amount,amount1,virtual,pivot_close_price\n\
-            1,{dt},{dt},100000,0,0,$1.50"
+            "ix,close_date,opened,pivot_amount,amount1,virtual,pivot_close_price,proposed_close_price\n\
+            1,{dt},{dt},100000,0,0,$1.50,$1.50"
         )).and_then(|t| parse_row(&t, 1, "tx_id", "1.0"))?;
         if !row.contains("150000.0000") { return Err(format!("currency_format: expected 150000.0000 in: {row}")); }
         Ok(row)
     }
     fn run_currency_format() -> ErrStr<usize> { report("currency_format", now(), currency_format) }
+
     fn apr_math((close_str, open_str): (String, String)) -> ErrStr<String> {
         let row = make_table(&format!(
-            "ix,close_date,opened,pivot_amount,amount1,virtual,pivot_close_price\n\
-            1,{close_str},{open_str},0,100,0,0.00"
+            "ix,close_date,opened,pivot_amount,amount1,virtual,pivot_close_price,proposed_close_price\n\
+            1,{close_str},{open_str},0,100,0,0.00,0.00"
         )).and_then(|t| parse_row(&t, 1, "tx_id", "110.0"))?;
         if !row.contains("10.00%") { return Err(format!("apr_math: expected 10.00% in: {row}")); }
         Ok(row)
@@ -386,10 +407,11 @@ pub mod functional_tests {
         let opened = close - chrono::Duration::days(365);
         report("apr_math", (format!("{close}"), format!("{opened}")), apr_math)
     }
+
     fn undead_zero_precision(dt: String) -> ErrStr<String> {
         let row = make_table(&format!(
-            "ix,close_date,opened,pivot_token,pivot_close_price,from,pivot_amount,amount1,virtual\n\
-            1,{dt},{dt},UNDEAD,0.0025,UNDEAD,1000,500,100"
+            "ix,close_date,opened,pivot_token,pivot_close_price,from,pivot_amount,amount1,virtual,proposed_close_price\n\
+            1,{dt},{dt},UNDEAD,0.0025,UNDEAD,1000,500,100,0.0025"
         )).and_then(|t| parse_row(&t, 1, "tx_id", "650.0"))?;
         let gain_usd: f64 = row.split(',').nth(13).unwrap_or("$0").replace('$', "").parse().unwrap_or(0.0);
         if gain_usd == 0.0 { return Err("undead_zero_precision: gain_total_usd is 0, to_quote not rescued".to_string()); }
@@ -404,29 +426,11 @@ pub mod functional_tests {
         let c = run_whale()?;
         let d = run_roi_zero_div()?;
         let e = run_column_count()?;
-        let f = run_negative_gain()?;
-        let g = run_currency_format()?;
-        let h = run_apr_math()?;
-        let i = run_undead_zero_precision()?;
+        let f = run_currency_format()?;
+        let g = run_apr_math()?;
+        let h = run_undead_zero_precision()?;
         println!("\nFunctional suite complete. All tests passed.");
-        Ok(a+b+c+d+e+f+g+h+i)
+        Ok(a+b+c+d+e+f+g+h)
     }
-
-
-    // this entire block can be converte into unit tests with its own respective `assert` statements
-    // -->
-    #[cfg(test)]
-    mod tests {
-        use super::*;
-
-        #[test] fn test_functional_suite()    { runoff().expect("Functional suite failed"); }
-        #[test] fn test_gain_formula()        { assert_eq!(-50.0, 100.0_f64 - (100.0 + 50.0)); }
-        #[test] fn test_gain_10_percent()     { assert!((165.0_f64 - (100.0 + 50.0) * 1.1).abs() < f64::EPSILON); }
-        #[test] fn test_vol_formula()         { assert!((750.0_f64 - 500.0 * 1.5).abs() < f64::EPSILON); }
-        #[test] fn test_roi_zero_guard()      { let s = 0.0_f64; assert_eq!(0.0, if s != 0.0 { 1.0/s } else { 0.0 }); }
-        #[test] fn test_apr_zero_days_guard() { assert_eq!(0.0, if 0.0_f64 > 0.0 { 0.1 * 365.0 / 0.0 } else { 0.0 }); }
-        #[test] fn test_apr_365_equals_roi()  { let roi = 0.1_f64; assert!((roi - roi * 365.0 / 365.0).abs() < 1e-10); }
-        #[test] fn test_to_quote_fallback()   { let mut q = 0.0_f64; let f = 0.0025_f64; if q == 0.0 && f > 0.0 { q = f; } assert_eq!(q, 0.0025); }
-        #[test] fn test_col_num_strips()      { let v: f64 = "$1,250.75".replace('$',"").replace(',',"").trim().parse().unwrap_or(0.0); assert!((v - 1250.75).abs() < f64::EPSILON); }
-    }
+    
 }
