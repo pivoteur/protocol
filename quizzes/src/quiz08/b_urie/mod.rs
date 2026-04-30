@@ -15,8 +15,8 @@ pub fn run() -> ErrStr<()> {
     let args: Vec<String> = std::env::args().collect();
     if args.len() < 4 {
         eprintln!("Error: not enough arguments.");
-        eprintln!("Usage: `panic` <ix> <tx_id> <new_to_actual>");
-        eprintln!("Example: `panic` 5 \"asdf\" \"1250.75\"");
+        eprintln!("Usage: `urie` <ix> <tx_id> <new_to_actual>");
+        eprintln!("Example: `urie` 5 \"asdf\" \"1250.75\"");
         std::process::exit(1);
     }
     let ix       = parse_id(&args[1])?;
@@ -432,5 +432,5 @@ pub mod functional_tests {
         println!("\nFunctional suite complete. All tests passed.");
         Ok(a+b+c+d+e+f+g+h)
     }
-    
+
 }
