@@ -1,7 +1,7 @@
 use book::err_utils::ErrStr;
-use quizzes::quiz08::b_urie::run;
+use quizzes::quiz08::b_urie::funtional_tests::runoff_with_args;
 
 
 fn main() -> ErrStr<()> {
-    run()
+    runoff_with_args()
 }

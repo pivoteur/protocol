@@ -3,34 +3,31 @@ use book::parse_utils::{ parse_id, parse_str };
 use book::table_utils::{ ingest, val };
 use book::date_utils::parse_date;
 use libs::tables::IxTable;
-use book::utils::get_env;
-use libs::fetchers::fetch_calls;
-use tokio::runtime::Runtime;
 
 
 // ===========================================================================================================================
 //----- pub fn run -----------------------------------------------------------------------------------------------------------
 // ===========================================================================================================================
-pub fn run() -> ErrStr<()> {
-    let args: Vec<String> = std::env::args().collect();
-    if args.len() < 4 {
-        eprintln!("Error: not enough arguments.");
-        eprintln!("Usage: `urie` <ix> <tx_id> <new_to_actual>");
-        eprintln!("Example: `urie` 5 \"asdf\" \"1250.75\"");
-        std::process::exit(1);
-    }
-    let ix       = parse_id(&args[1])?;
-    let root_url = get_env("PIVOT_URL")?;
-    let rt       = Runtime::new().map_err(|e| e.to_string())?;
-    match rt.block_on(fetch_calls(&root_url)) {
-        Ok(t)  => {
-            println!("{}", header());
-            println!("{}", parse_row(&t, ix, &args[2], &args[3])?);
-        }
-        Err(e) => eprintln!("Error: {e}"),
-    }
-    Ok(())
-}
+// pub fn run() -> ErrStr<()> {
+    // let args: Vec<String> = std::env::args().collect();
+    // if args.len() < 4 {
+        // eprintln!("Error: not enough arguments.");
+        // eprintln!("Usage: `urie` <ix> <tx_id> <new_to_actual>");
+        // eprintln!("Example: `urie` 5 \"asdf\" \"1250.75\"");
+        // std::process::exit(1);
+    // }
+    // let ix        = parse_id(&args[1])?;
+    // let root_url = get_env("PIVOT_URL")?;
+    // let rt      = Runtime::new().map_err(|e| e.to_string())?;
+    // match rt.block_on(fetch_calls(&root_url)) {
+        // Ok(t)  => {
+            // println!("{}", header());
+            // println!("{}", parse_row(&t, ix, &args[2], &args[3])?);
+        // }
+        // Err(e) => eprintln!("Error: {e}"),
+    // }
+    // Ok(())
+// }
 // ===========================================================================================================================
 //----- pub fn header --------------------------------------------------------------------------------------------------------
 // ===========================================================================================================================
@@ -320,6 +317,9 @@ mod tests {
 pub mod functional_tests {
     use book::{ err_utils::ErrStr, date_utils::today };
     use super::*;
+    use book::utils::get_env;
+    use libs::fetchers::fetch_calls;
+    use tokio::runtime::Runtime;
 
     
     fn now() -> String { format!("{}", today()) }
@@ -419,6 +419,27 @@ pub mod functional_tests {
         Ok(row)
     }
     fn run_undead_zero_precision() -> ErrStr<usize> { report("undead_zero_precision", now(), undead_zero_precision) }
+
+    pub fn runoff_with_args() -> ErrStr<()> {
+        let args: Vec<String> = std::env::args().collect();
+        if args.len() < 4 {
+            eprintln!("Error: not enough arguments.");
+            eprintln!("Usage: `urie` <ix> <tx_id> <new_to_actual>");
+            eprintln!("Example: `urie` 5 \"asdf\" \"1250.75\"");
+            std::process::exit(1);
+        }
+        let ix       = parse_id(&args[1])?;
+        let root_url = get_env("PIVOT_URL")?;
+        let rt       = Runtime::new().map_err(|e| e.to_string())?;
+        match rt.block_on(fetch_calls(&root_url)) {
+            Ok(t)  => {
+                println!("{}", header());
+                println!("{}", parse_row(&t, ix, &args[2], &args[3])?);
+            }
+            Err(e) => eprintln!("Error: {e}"),
+        }
+        Ok(())
+    }
 
     pub fn runoff() -> ErrStr<usize> {
         println!("\npivot_dapps functional tests\n");
