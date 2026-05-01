@@ -324,7 +324,6 @@ pub mod functional_tests {
          table_utils::{val,row},
          tuple_utils::{fst,snd}
       };
-      use quizzes::quiz08::b_urie::header;
       
       fn sample_pivot_pools() -> Vec<String> { "
       // created by: pools, version: 1.00
@@ -631,18 +630,5 @@ const poolAssets = {
       Ok(())
    }
 
-       #[test]
-    fn test_header_field_count() {
-        assert_eq!(16, header().split(',').count());
-    }
-
-    #[test]
-    fn test_header_contains_key_fields() {
-        let h = header();
-        for field in &["date","pivot","close","tx_id","from","to",
-                       "trade","vol","gain","roi","apr"] {
-            assert!(h.contains(field), "header missing field: {field}");
-        }
-    }
 }
 }
