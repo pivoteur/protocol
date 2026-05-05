@@ -1,12 +1,12 @@
 pub mod a_table;
-pub mod b_urie;
+pub mod b_wyrd;
 
 #[cfg(not(tarpaulin_include))]
 pub mod functional_tests {
    use book::{ err_utils::ErrStr, test_utils::preamble };
    use super::{
       a_table::functional_tests::runoff as a,
-      b_urie::functional_tests::runoff as b
+      b_wyrd::functional_tests::runoff as b
    };
 
    pub fn runoff() -> ErrStr<usize> {
@@ -16,4 +16,3 @@ pub mod functional_tests {
       Ok(n1+n2)
    }
 }
-
