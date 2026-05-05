@@ -34,6 +34,7 @@ const poolAssets = {
 
 # Revision History
 
+* 2.02, 2026-05-05: brought into the automation framework
 * 2.01, 2026-04-29: trustless version, no authentication needed
 * 1.00, 2026-02-09: first version, reads pivot pools from github
 
