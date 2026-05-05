@@ -401,8 +401,8 @@ pub mod functional_tests {
         let args: Vec<String> = std::env::args().collect();
         if args.len() < 4 {
             eprintln!("Error: not enough arguments.");
-            eprintln!("Usage: `urie` <ix> <tx_id> <new_to_actual>");
-            eprintln!("Example: `urie` 5 \"asdf\" \"1250.75\"");
+            eprintln!("Usage: `wyrd` <ix> <tx_id> <new_to_actual>");
+            eprintln!("Example: `wyrd` 5 \"asdf\" \"1250.75\"");
             std::process::exit(1);
         }
         let ix       = parse_id(&args[1])?;
