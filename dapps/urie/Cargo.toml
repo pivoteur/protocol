@@ -1,11 +1,11 @@
 [package]
-name = "dusk"
+name = "close"
 version = "0.1.0"
 edition = "2024"
 
 [[bin]]
-name = "dusk"
-path = "../../quizzes/src/quiz05/b_dusk_min/src/main.rs"
+name = "close"
+path = "../../quizzes/src/quiz08/b_urie/src/main.rs"
 
 [dependencies]
 tokio = { version = "1.51.2", features = ["macros", "rt-multi-thread"] }
