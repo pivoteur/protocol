@@ -9,19 +9,27 @@ use libs::tables::IxTable;
 //----- pub fn header --------------------------------------------------------------------------------------------------------
 // ===========================================================================================================================
 pub fn header() -> String {
-    let line1 = format!("date,pivot,close,tx_id,from,from_quote");
-    let line2 = format!("to,to_quote,trade,vol,gain_10_percent");
-    let line3 = format!("new_to_actual,gain,gain_total_usd,roi,apr");
+    let line1 = "date,pivot,close,tx_id,from,from_quote";
+    let line2 = "to,to_quote,trade,vol,gain_10_percent";
+    let line3 = "new_to_actual,gain,gain_total_usd,roi,apr";
     format!("{line1},{line2},{line3}")
 }
 // ===========================================================================================================================
 //----- pub fn parse_row -----------------------------------------------------------------------------------------------------
 // ===========================================================================================================================
 pub fn parse_row(table: &IxTable, ix: usize, tx_id: &str, new_to_actual: &str) -> ErrStr<String> {
-    let col     = |name: &str| val(&table, &ix, &name.to_string()).unwrap_or_default();
+    let col = |name: &str| -> ErrStr<String> {
+        let v = val(&table, &ix, &name.to_string()).unwrap_or_default();
+        if v.is_empty() {
+            Err(format!("missing or empty column '{name}'"))
+        } else {
+            Ok(v)
+        }
+    };    
     let col_num = |name: &str| -> ErrStr<f64> {
-        let strip = col(name).replace('$', "").replace(',', "");
-        let strip = strip.trim();
+        let raw   = col(name)?;
+        let strip = raw.replace('$', "").replace(',', "");
+        let strip   = strip.trim();
         if strip.is_empty() {
             Err("missing table's data".to_string())
         } else {
@@ -29,22 +37,24 @@ pub fn parse_row(table: &IxTable, ix: usize, tx_id: &str, new_to_actual: &str) -
         }
     };
     let col_opt = |name: &str| -> ErrStr<f64> {
-        let strip = col(name).replace('$', "").replace(',', "");
+        let raw   = col(name)?;
+        let strip = raw.replace('$', "").replace(',', "");
         strip.trim().parse::<f64>().map_err(|_| format!("invalid value for '{name}' "))
     };
     //----- truth values -----------------------------------------------------------------
-    let date     = parse_date(&col("close_date"))?;
-    let opened   = parse_date(&col("opened"))?;
-    let pivot    = col("ids");
-    let close    = col("close_id");
-    let from     = col("pivot_token");
-    let to       = col("from");
-    let trade    = col_num("pivot_amount")?;
-    let amount1  = col_num("amount1")?;
-    let virtual_ = col_num("virtual")?;
-    let actual   = new_to_actual.parse::<f64>().map_err(|_| format!("invalid new_to_actual: '{new_to_actual}' is not a number"))?;
+    let date   = parse_date(&col("close_date")?)?;
+    let opened = parse_date(&col("opened")?)?;
+    let pivot     = col("ids")?;
+    let close     = col("close_id")?;
+    let from      = col("pivot_token")?;
+    let to        = col("from")?;
+    let trade        = col_num("pivot_amount")?;
+    let amount1      = col_num("amount1")?;
+    let virtual_     = col_num("virtual")?;
+    let actual       = new_to_actual.parse::<f64>()
+                            .map_err(|_| format!("invalid new_to_actual: '{new_to_actual}' is not a number"))?;
     let from_quote   = col_num("pivot_close_price")?;
-    let to_quote = col_opt("proposed_close_price")?;
+    let to_quote     = col_opt("proposed_close_price")?;
     //----- formulas for the correct headers ---------------------------------------------
     let sum_amt_virt    = amount1 + virtual_;
     let vol             = trade * from_quote;
@@ -52,8 +62,11 @@ pub fn parse_row(table: &IxTable, ix: usize, tx_id: &str, new_to_actual: &str) -
     let gain            = actual - sum_amt_virt;
     let gain_total_usd  = gain * to_quote;
     let roi_val         = if sum_amt_virt != 0.0 { gain / sum_amt_virt } else { 0.0 };
-    let days            = (date - opened).num_days() as f64;
-    let apr_val         = if days > 0.0 { (roi_val * 365.0) / days } else { 0.0 };
+    let days            = (date - opened).num_days();
+    if days < 0 {
+        return Err(format!("opened date '{opened}' is after close date '{date}', cannot compute APR"));
+    }
+    let apr_val         = if days > 0 { (roi_val * 365.0) / days as f64 } else { 0.0 };
     //----- formatting the actual output -------------------------------------------------
     let line1 = format!("{date},{pivot},{close},{tx_id},{from},${from_quote}");
     let line2 = format!("{to},${to_quote},{trade},${vol:.4},{gain_10_percent:.4}");
@@ -83,16 +96,18 @@ mod tests {
     fn mock_trade_row() -> String {
         let dt = format!("{}", today());
         format!(
-            "ix,close_date,opened,pivot_amount,amount1,virtual,pivot_close_price,proposed_close_price\n\
-            1,{dt},{dt},500,100,50,2.00,2.00"
+            "ix,close_date,opened,ids,close_id,pivot_token,from,\
+            pivot_amount,amount1,virtual,pivot_close_price,proposed_close_price\n\
+            1,{dt},{dt},20,99,BTC,UNDEAD,500,100,50,2.00,2.00"
         )
     }
 
     fn mock_losing_row() -> String {
         let dt = format!("{}", today());
         format!(
-            "ix,close_date,opened,pivot_amount,amount1,virtual,pivot_close_price,proposed_close_price\n\
-            1,{dt},{dt},0,100,50,0.00,0.00"
+            "ix,close_date,opened,ids,close_id,pivot_token,from,\
+            pivot_amount,amount1,virtual,pivot_close_price,proposed_close_price\n\
+            1,{dt},{dt},20,99,BTC,UNDEAD,0,100,50,0.00,0.00"
         )
     }
 
@@ -260,10 +275,28 @@ mod tests {
         assert!((750.0_f64 - 500.0 * 1.5).abs() < f64::EPSILON); 
     }
 
-    #[test] 
-    fn test_col_num_strips() { 
-        let v: f64 = "$1,250.75".replace('$',"").replace(',',"").trim().parse().unwrap_or(0.0); 
-        assert!((v - 1250.75).abs() < f64::EPSILON); 
+    #[test]
+    fn test_parse_row_currency_fields_have_dollar_prefix() {
+        let dt = format!("{}", today());
+        let raw = format!(
+            "ix,close_date,opened,ids,close_id,pivot_token,from,\
+            pivot_amount,amount1,virtual,pivot_close_price,proposed_close_price\n\
+            1,{dt},{dt},20,99,BTC,UNDEAD,500,100,50,2.00,3.00"
+        );
+        let table = ingest(
+            parse_id, parse_str, parse_str,
+            &raw.lines().map(|s| s.to_string()).collect::<Vec<_>>(),
+            ",",
+        )
+        .expect("Failed to ingest");
+        let row_str = parse_row(&table, 1, "tx1", "160.0").unwrap();
+        let fields: Vec<&str> = row_str.split(',').collect();
+        // from_quote  = index 5  → "$2.00"
+        // vol         = index 9  → "$1000.0000"
+        // gain_total  = index 13 → "$..."
+        assert!(fields[5].starts_with('$'),  "from_quote missing $: '{}'", fields[5]);
+        assert!(fields[9].starts_with('$'),  "vol missing $: '{}'", fields[9]);
+        assert!(fields[13].starts_with('$'), "gain_total_usd missing $: '{}'", fields[13]);
     }
 
     #[test]
@@ -286,6 +319,41 @@ mod tests {
         }
     }
     
+    #[test]
+    fn test_parse_row_inverted_dates_returns_error() {
+        // "opened" is one year AFTER close_date, this should trigger the days > 0.0 guard
+        let close  = today();
+        let opened = close + chrono::Duration::days(365);
+        let raw = format!(
+            "ix,close_date,opened,ids,close_id,pivot_token,from,\
+            pivot_amount,amount1,virtual,pivot_close_price,proposed_close_price\n\
+            1,{close},{opened},20,99,BTC,UNDEAD,500,100,50,2.00,2.00"
+        );
+        let table = ingest(parse_id, parse_str, parse_str,
+            &raw.lines().map(|s| s.to_string()).collect::<Vec<_>>(), ",")
+            .expect("Failed to ingest");
+        let result = parse_row(&table, 1, "tx1", "160.0");
+        assert!(result.is_err(), "expected Err for inverted dates, got Ok");
+        let msg = result.unwrap_err();
+        assert!(msg.contains("cannot compute APR"),
+            "expected APR error message, got: {msg}");
+    }
+
+    #[test]
+    fn test_parse_row_err_on_empty_to_quote() {
+        let dt = format!("{}", today());
+        // proposed_close_price is intentionally left blank
+        let raw = format!(
+            "ix,close_date,opened,pivot_amount,amount1,virtual,pivot_close_price,proposed_close_price\n\
+            1,{dt},{dt},500,100,50,2.00,"
+        );
+        let table = ingest(parse_id, parse_str, parse_str,
+            &raw.lines().map(|s| s.to_string()).collect::<Vec<_>>(), ",")
+            .expect("Failed to ingest");
+        let result = parse_row(&table, 1, "tx1", "160.0");
+        assert!(result.is_err(), "expected Err when proposed_close_price is empty, got Ok");
+    }
+
 }
 // ===========================================================================================================================
 //----- FUNCTIONAL TESTS -----------------------------------------------------------------------------------------------------
@@ -323,8 +391,9 @@ pub mod functional_tests {
 
     fn apr_safety(dt: String) -> ErrStr<String> {
         let row = make_table(&format!(
-            "ix,close_date,opened,pivot_amount,amount1,virtual,pivot_close_price,proposed_close_price\n\
-            1,{dt},{dt},0,0,1,0.00,0.00"
+            "ix,close_date,opened,ids,close_id,pivot_token,from,\
+            pivot_amount,amount1,virtual,pivot_close_price,proposed_close_price\n\
+            1,{dt},{dt},20,99,BTC,UNDEAD,0,0,1,0.00,0.00"
         )).and_then(|t| parse_row(&t, 1, "tx_id", "1.0"))?;
         if row.contains("NaN") || row.contains("inf") { return Err(format!("apr_safety: NaN or inf in: {row}")); }
         Ok(row)
@@ -333,8 +402,9 @@ pub mod functional_tests {
 
     fn whale(dt: String) -> ErrStr<String> {
         let row = make_table(&format!(
-            "ix,close_date,opened,pivot_amount,amount1,virtual,pivot_close_price,proposed_close_price\n\
-            1,{dt},{dt},100000000,0,0,1.50,1.50"
+            "ix,close_date,opened,ids,close_id,pivot_token,from,\
+            pivot_amount,amount1,virtual,pivot_close_price,proposed_close_price\n\
+            1,{dt},{dt},20,99,BTC,UNDEAD,100000000,0,0,1.50,1.50"
         )).and_then(|t| parse_row(&t, 1, "tx_id", "1.0"))?;
         if !row.contains("150000000.0000") { return Err(format!("whale: expected 150000000.0000 in: {row}")); }
         Ok(row)
@@ -343,8 +413,9 @@ pub mod functional_tests {
 
     fn roi_zero_div(dt: String) -> ErrStr<String> {
         let row = make_table(&format!(
-            "ix,close_date,opened,pivot_amount,amount1,virtual,pivot_close_price,proposed_close_price\n\
-            1,{dt},{dt},0,0,0,0.00,0.00"
+            "ix,close_date,opened,ids,close_id,pivot_token,from,\
+            pivot_amount,amount1,virtual,pivot_close_price,proposed_close_price\n\
+            1,{dt},{dt},20,99,BTC,UNDEAD,0,0,0,0.00,0.00"
         )).and_then(|t| parse_row(&t, 1, "tx_id", "0.0"))?;
         if row.contains("NaN") || row.contains("inf") { return Err(format!("roi_zero_div: NaN or inf in: {row}")); }
         Ok(row)
@@ -353,8 +424,9 @@ pub mod functional_tests {
 
     fn column_count(dt: String) -> ErrStr<String> {
         let row = make_table(&format!(
-            "ix,close_date,opened,pivot_amount,amount1,virtual,pivot_close_price,proposed_close_price\n\
-            1,{dt},{dt},0,100,50,0.00,0.00"
+            "ix,close_date,opened,ids,close_id,pivot_token,from,\
+            pivot_amount,amount1,virtual,pivot_close_price,proposed_close_price\n\
+            1,{dt},{dt},20,99,BTC,UNDEAD,0,100,50,0.00,0.00"
         )).and_then(|t| parse_row(&t, 1, "tx_id", "120.0"))?;
         let (h, r) = (header().split(',').count(), row.split(',').count());
         if h != r { return Err(format!("column_count: header={h} row={r}")); }
@@ -364,8 +436,9 @@ pub mod functional_tests {
 
     fn currency_format(dt: String) -> ErrStr<String> {
         let row = make_table(&format!(
-            "ix,close_date,opened,pivot_amount,amount1,virtual,pivot_close_price,proposed_close_price\n\
-            1,{dt},{dt},100000,0,0,$1.50,$1.50"
+            "ix,close_date,opened,ids,close_id,pivot_token,from,\
+            pivot_amount,amount1,virtual,pivot_close_price,proposed_close_price\n\
+            1,{dt},{dt},20,99,BTC,UNDEAD,100000,0,0,$1.50,$1.50"
         )).and_then(|t| parse_row(&t, 1, "tx_id", "1.0"))?;
         if !row.contains("150000.0000") { return Err(format!("currency_format: expected 150000.0000 in: {row}")); }
         Ok(row)
@@ -374,8 +447,9 @@ pub mod functional_tests {
 
     fn apr_math((close_str, open_str): (String, String)) -> ErrStr<String> {
         let row = make_table(&format!(
-            "ix,close_date,opened,pivot_amount,amount1,virtual,pivot_close_price,proposed_close_price\n\
-            1,{close_str},{open_str},0,100,0,0.00,0.00"
+            "ix,close_date,opened,ids,close_id,pivot_token,from,\
+            pivot_amount,amount1,virtual,pivot_close_price,proposed_close_price\n\
+            1,{close_str},{open_str},20,99,BTC,UNDEAD,0,100,0,0.00,0.00"
         )).and_then(|t| parse_row(&t, 1, "tx_id", "110.0"))?;
         if !row.contains("10.00%") { return Err(format!("apr_math: expected 10.00% in: {row}")); }
         Ok(row)
@@ -388,8 +462,9 @@ pub mod functional_tests {
 
     fn undead_zero_precision(dt: String) -> ErrStr<String> {
         let row = make_table(&format!(
-            "ix,close_date,opened,pivot_token,pivot_close_price,from,pivot_amount,amount1,virtual,proposed_close_price\n\
-            1,{dt},{dt},UNDEAD,0.0025,UNDEAD,1000,500,100,0.0025"
+            "ix,close_date,opened,ids,close_id,pivot_token,from,\
+            pivot_amount,amount1,virtual,pivot_close_price,proposed_close_price\n\
+            1,{dt},{dt},20,99,BTC,UNDEAD,1000,500,100,0.0025,0.0025"
         )).and_then(|t| parse_row(&t, 1, "tx_id", "650.0"))?;
         let gain_usd: f64 = row.split(',').nth(13).unwrap_or("$0").replace('$', "").parse().unwrap_or(0.0);
         if gain_usd == 0.0 { return Err("undead_zero_precision: gain_total_usd is 0, to_quote not rescued".to_string()); }
