@@ -14,7 +14,6 @@ use super::{
 use crate::types::{
    assets::{
       assets::{Asset,coalesce,gain_10_percent},
-      amounts::mk_amt,
       asset_types::AssetType::*
    },
    coins::Coin,
@@ -184,18 +183,23 @@ pub fn propose(q: &Quotes)
 
 // ----- TESTS ------------------------------------------------
 
+#[cfg(test)]
 #[cfg(not(tarpaulin_include))]
 pub mod functional_tests {
    use super::*;
+   use paste::paste;
    use crate::types::{
+      assets::amounts::mk_amt,
       quotes::functional_tests::test_mk_quotes,
-      pivots::functional_tests::mk_hbar_usdc_piv
+      pivots::functional_tests::mk_btc_usdc_piv
    };
+   use book::create_testing;
 
-   fn run_propose() -> ErrStr<usize> {
-      println!("\ntypes::proposals::propose functional test\n");
-      let piv = mk_hbar_usdc_piv(0.2, mk_amt(0.0,500.0), 0, "virtual pivot")?;
-      let quotes = test_mk_quotes(&[("HBAR", 0.15)]);
+   create_testing!("types::proposals::proposes");
+
+   run!("propose", {
+      let piv = mk_btc_usdc_piv(78408.88,mk_amt(0.0,0.1),0,"virtual pivot")?;
+      let quotes = test_mk_quotes(&[("BTC", 65000.0)]);
       let proposer = propose(&quotes);
       if let Some((call, next_id)) = proposer((vec![piv], 1))? {
          println!("call:\n{}\n{}\n\nnext_id: {next_id}",
@@ -203,29 +207,22 @@ pub mod functional_tests {
       } else {
          println!("No call for pivots!");
       }
-      println!("\ntypes::proposals::propose...ok\n");
-      Ok(1)
-   }
-
-   pub fn runoff() -> ErrStr<usize> {
-      println!("\ntypes::proposals::proposes functional tests\n");
-      let b = run_propose()?;
-      Ok(b)
-   }
+   });
 }
 
 #[cfg(test)]
 mod tests {
    use super::*;
    use crate::types::{
+      assets::amounts::mk_amt,
       quotes::functional_tests::test_mk_quotes,
-      pivots::functional_tests::mk_hbar_usdc_piv
+      pivots::functional_tests::mk_btc_usdc_piv
    };
 
    #[test]
    fn test_propose_ok_no_call() -> ErrStr<()> {
-      let piv = mk_hbar_usdc_piv(0.2, mk_amt(0.0, 500.0), 0, "virtual_pivot")?;
-      let quotes = test_mk_quotes(&[("HBAR",0.25)]);
+      let piv = mk_btc_usdc_piv(78408.88,mk_amt(0.0, 500.0),0,"virtual_pivot")?;
+      let quotes = test_mk_quotes(&[("BTC",85000.0)]);
       let proposer = propose(&quotes);
       let max_id = 1;
       let ans = proposer((vec![piv], max_id));
@@ -237,17 +234,17 @@ mod tests {
 
    #[test]
    fn test_propose_ok_with_call() -> ErrStr<()> {
-      let piv = mk_hbar_usdc_piv(0.2, mk_amt(0.0, 500.0), 0, "virtual_pivot")?;
-      let quotes = test_mk_quotes(&[("HBAR",0.15)]);
+      let piv = mk_btc_usdc_piv(78408.88,mk_amt(0.0, 0.1),0,"virtual_pivot")?;
+      let quotes = test_mk_quotes(&[("BTC",65000.0)]);
       let max_id = 1;
       let proposer = propose(&quotes);
       let ans = proposer((vec![piv], max_id));
       assert!(ans.is_ok());
-      if let Some((_call, next_id)) = ans? {
+      if let Some((_call, next_id)) = ans.clone()? {
          assert_eq!(2, next_id);
          Ok(())
       } else {
-         Err(format!("Should have been a call"))
+         Err(format!("Should have been a call: {ans:?}"))
       }
    }
 }

@@ -7,7 +7,10 @@ pub type Token = String;
 
 pub type Pool = (Token, Token);
 pub fn mk_pool(a: &str, b: &str) -> Pool { (a.to_string(), b.to_string()) }
-
+pub fn pool_name(p: &Pool) -> String {
+   let (a,b) = p;
+   format!("{}+{}", a.to_uppercase(), b.to_uppercase())
+}
 pub type Blockchain = String; // enum? maybe, but String for now.
 
 pub type TVLs = Vec<(Token,USD)>;

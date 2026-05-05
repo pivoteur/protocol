@@ -2,20 +2,23 @@ use chrono::NaiveDate;
 
 use book::{
    date_utils::parse_date,
-   err_utils::ErrStr,
+   err_utils::{ErrStr,not_implemented},
    utils::get_env
 };
 
-use crate::{
+use super::{
+   fetchers::{fetch_pivots,fetch_quotes,fetch_pool_names},
+   reports::{Proposal,mk_proposal},
    types::{
+      comps::Composition,
       measurable::sort_descending,
       pivots::{Pivot,next_close_id,partition_on},
       proposals::proposes::{Propose,propose as propose_f},
       util::{Token,Pool}
-   },
-   fetchers::{fetch_pivots,fetch_quotes,fetch_pool_names},
-   reports::{Proposal,mk_proposal}
+   }
 };
+
+// ---- Proposals -------------------------------------------------------
 
 pub async fn process_pools(auth_name: &str, dt: &str)
       -> ErrStr<(Vec<Proposal>, Vec<Pool>)> {
@@ -72,49 +75,50 @@ fn propose(proposer: impl Fn(Ixs<Pivot>) -> ErrStr<Option<Ix<Propose>>>,
    Ok(props)
 }
 
+// ---- Available assets ---------------------------------------------
+
+// we transition between composition and pivots and back
+
+pub fn available_assets(_asset: Composition, _open_pivots: &Vec<Pivot>)
+      -> ErrStr<Composition> {
+   not_implemented("available_assets")
+}
+
 // ----- TESTS -------------------------------------------------------
 
+#[cfg(test)]
 #[cfg(not(tarpaulin_include))]
 pub mod functional_tests {
-   use std::fmt::Debug;
    use super::*;
-   use book::{ date_utils::yesterday, string_utils::s };
+   use paste::paste;
+   use book::{
+      create_testing,
+      date_utils::yesterday,
+      utils::now
+   };
+   use crate::{ reports::print_table, types::util::pool_name };
 
-   fn preambles(test: Option<&str>) -> String {
-      let (t, z) = test.and_then(|t| Some((format!("::run_{t}"), "")))
-                       .unwrap_or((s(""), "s"));
-      println!("\nprocessors{t} functional test{z}\n");
-      t
-   }
-   fn preamble(test: &str) -> String { preambles(Some(test)) }
 
-   fn report<RES: Debug>(test: &str, result: RES) -> ErrStr<usize> {
-      println!(
-"	Result:
-{result:?}
+   create_testing!("processors");
 
-processors{test}:...ok
-");
-      Ok(1)
-   }
-
-   fn yday() -> String { format!("{}", yesterday()) }
-   async fn run_process_pools() -> ErrStr<usize> {
-      let test = preamble("process_pools");
-      let calls_n_neins = process_pools("pivot", &yday()).await?;
-      report(&test, calls_n_neins)
-   }
-
-   pub async fn runoff() -> ErrStr<usize> {
-      preambles(None);
-      let a = run_process_pools().await?;
-      Ok(a)
-   }
+   run!("process_pools", {
+      let yday = format!("{}", yesterday());
+      let (calls,nixen) = now(process_pools("pivot", &yday))?;
+      let hdr = format!("Calls for {}:\n", yday);
+      print_table(&hdr, &calls);
+      let ps: Vec<String> = nixen.iter().map(pool_name).collect();
+      println!("Pools with no calls:\n\n{}", ps.join("\t"));
+   });
+}
 
 #[cfg(test)]
+#[cfg(not(tarpaulin_include))]
 mod tests {
    use super::*;
    use crate::fetchers::functional_tests::marshall;
+   use book::date_utils::yesterday;
+
+   fn yday() -> String { format!("{}", yesterday()) }
 
    #[tokio::test]
    async fn fail_process_pools() {
@@ -139,6 +143,5 @@ mod tests {
               "Number of pools: {npools}; calls and no-calls: {cnn}");
       Ok(())
    }
-}
 }
 
