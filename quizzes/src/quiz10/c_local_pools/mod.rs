@@ -1,7 +1,7 @@
 use book::err_utils::ErrStr;
 
 fn app_name() -> String { "pools".to_string() }
-fn version() -> String { "2.01".to_string() }
+fn version() -> String { "2.02".to_string() }
 
 fn usage() -> ErrStr<()> {
    println!("
