@@ -184,8 +184,8 @@ async fn fetch_lines(url: &str) -> ErrStr<Vec<String>> {
    let daters = read_rest(url).await?;
    let lines: Vec<String> =
       daters.lines()
-            .filter_map(|l| pred(!l.is_empty(), l.to_string()))
-            .collect();
+      .filter_map(|l| pred(!l.is_empty(), l.to_string()))
+      .collect();
    Ok(lines)
 }
 
@@ -278,24 +278,23 @@ pub mod functional_tests {
       println!("\tcalls are:\n{}", calls.as_csv());
    });
 
-#[cfg(test)]
-mod tests {
-   use std::iter::once;
-   use super::*;
-   use crate::tables::{c2t,csv2tsv};
-   use book::{
-      currency::usd::mk_usd,
-      csv_utils::CsvHeader,
-      date_utils::{yesterday,tomorrow},
-      string_utils::s,
-      table_utils::{val,row},
-      tuple_utils::{fst,snd}
-   };
-
-   fn sample_pivot_pools() -> Vec<String> { "
-// created by: pools, version: 1.00
-
-
+   #[cfg(test)]
+   mod tests {
+      use std::iter::once;
+      use super::*;
+      use crate::tables::{c2t,csv2tsv};
+      use book::{
+         currency::usd::mk_usd,
+         csv_utils::CsvHeader,
+         date_utils::{yesterday,tomorrow},
+         string_utils::s,
+         table_utils::{val,row},
+         tuple_utils::{fst,snd}
+      };
+      
+      fn sample_pivot_pools() -> Vec<String> { "
+      // created by: pools, version: 1.00
+      
 const poolAssets = {
    generated: '2026-04-18',
    assets: [
