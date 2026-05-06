@@ -87,7 +87,5 @@ pub mod functional_tests {
       for asset in [btc, eth] { assets.add(asset); }
       println!("\tAssets with BTC and ETH:\n\n{}", assets.as_csv());
    });
-
-   run_all_functional_tests!();
 }
 

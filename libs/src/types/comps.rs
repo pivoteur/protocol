@@ -112,7 +112,5 @@ pub mod functional_tests {
              &mk_btc_eth()?, CsvWriter::as_csv);
    run_with!("as_assets", " (BTC+ETH pivot pool)",
              &mk_btc_eth()?.as_assets(), CsvWriter::as_csv);
-
-   run_all_functional_tests!();
 }
 

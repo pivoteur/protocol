@@ -123,7 +123,5 @@ pub mod functional_tests {
    run_with!("mk_coin", &coin("BTC", 0.1)?, CsvWriter::as_csv);
    run_with!("mk_pivot_coin", coin("ETH", 3.4)?,
              composer(deref(CsvWriter::as_csv), mk_pivot_coin));
-
-   run_all_functional_tests!();
 }
 

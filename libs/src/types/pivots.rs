@@ -211,8 +211,6 @@ s("opened	open	close	tx_id	updated	from	from_blockchain	amount1	virtual	quote1	v
       let assets = pivot_assets(&pivs)?;
       println!("\tPivot assets:\n\n{}", assets.as_csv());
    });
-
-   run_all_functional_tests!();
 }
 
 #[cfg(test)]

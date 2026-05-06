@@ -85,8 +85,6 @@ pub mod functional_tests {
       println!("\tpool: {ans:?}\n");
    });
 
-   run_all_functional_tests!();
-
 #[cfg(test)]
 mod tests {
    use super::*;
