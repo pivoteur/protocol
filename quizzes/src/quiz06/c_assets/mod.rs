@@ -8,7 +8,7 @@ use book::{
    err_utils::ErrStr,
    num_utils::parse_num,
    table_utils::col,
-   utils::get_env
+   utils::{get_env,get_args}
 };
 
 use libs::{
@@ -90,39 +90,42 @@ fn output_line(dt: &NaiveDate, row: &Vec<USD>) -> String {
    format!("{dt}\t{}", dollaz.join("\t"))
 }
 
+async fn print_assets(auth: &str, dt: &str) -> ErrStr<usize> {
+   let date = parse_date(dt)?;
+   let tvls = compute_assets(auth, &date).await?;
+   let row = output_line(&date, &tvls);
+   println!("{row}\n");
+   Ok(1)
+}
+
+pub async fn runoff_get_args() -> ErrStr<()> {
+   let args = get_args();
+   if let [auth, dt] = args.as_slice() {
+      let _ = print_assets(&auth, &dt).await?;
+      Ok(())
+   } else {
+      usage()
+   }
+}
+
 // ----- TESTS -------------------------------------------------------
 
+#[cfg(test)]
 #[cfg(not(tarpaulin_include))]
 pub mod functional_tests {
 
    use super::*;
+   use paste::paste;
+   use book::{ create_testing, date_utils::yesterday, utils::now };
 
-   use book::{ date_utils::yesterday, utils::get_args };
+   create_testing!("quiz06::c_assets");
 
-   async fn run_compute_assets(auth: &str, dt: &str) -> ErrStr<usize> {
-      let date = parse_date(dt)?;
-      let tvls = compute_assets(auth, &date).await?;
-      let row = output_line(&date, &tvls);
-      println!("{row}\n");
-      Ok(1)
-   }
-
-   pub async fn runoff_get_args() -> ErrStr<()> {
-      let args = get_args();
-      if let [auth, dt] = args.as_slice() {
-         let _ = run_compute_assets(&auth, &dt).await?;
-         Ok(())
-      } else {
-         usage()
-      }
-   }
-
-   pub async fn runoff() -> ErrStr<usize> {
+   run!("compute_assets", {
       println!("\nquizzes::quiz06::c_assets functional test\n");
       let yday = yesterday();
       println!("\tasset row is:\n");
-      run_compute_assets("pivot", &format!("{yday}")).await
-   }
+      let _ = now(print_assets("pivot", &format!("{yday}")));
+   });
 }
 
 #[cfg(test)]

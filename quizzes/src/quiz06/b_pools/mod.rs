@@ -2,7 +2,8 @@ use book::{
    currency::usd::{USD,mk_usd,no_monay},
    csv_utils::CsvWriter,
    err_utils::ErrStr,
-   num_utils::parse_or
+   num_utils::parse_or,
+   utils::{get_env,get_args}
 };
 
 use libs::{
@@ -75,46 +76,43 @@ async fn fetch_all_pools_assets(root_url: &str) -> ErrStr<Vec<Composition>> {
    Ok(pools)
 }
 
+async fn do_it(mb_auth: Option<&String>, mb_mini: Option<&String>)
+      -> ErrStr<()> {
+   println!("{}, version: {}\n", app_name(), version());
+   let auth = mb_auth.ok_or_else(|| usage())?.to_uppercase();
+   let root_url = get_env(&format!("{auth}_URL"))?;
+   let mini = min_value(mb_mini);
+   let pools = fetch_all_pools_assets(&root_url).await?;
+   report_on_assets(pools, mini);
+   Ok(())
+}
+
+pub async fn runoff_get_args() -> ErrStr<()> {
+   let args = get_args();
+   do_it(args.first(), args.last()).await
+}
+
 // ----- TESTS -------------------------------------------------------
 
+#[cfg(test)]
 #[cfg(not(tarpaulin_include))]
 pub mod functional_tests {
 
    use super::*;
+   use paste::paste;
+   use book::{ create_testing, utils::now };
 
-   use book::utils::{get_args,get_env};
-
-   pub async fn runoff_get_args() -> ErrStr<()> {
-      let args = get_args();
-      do_it(args.first(), args.last()).await
-   }
-
-   async fn do_it(mb_auth: Option<&String>, mb_mini: Option<&String>)
-         -> ErrStr<()> {
-      println!("{}, version: {}\n", app_name(), version());
-      let auth = mb_auth.ok_or_else(|| usage())?.to_uppercase();
-      let root_url = get_env(&format!("{auth}_URL"))?;
-      let mini = min_value(mb_mini);
-      let pools = fetch_all_pools_assets(&root_url).await?;
-      report_on_assets(pools, mini);
-      Ok(())
-   }
-
-   pub async fn runoff() -> ErrStr<usize> {
-      let pools =
-         do_it(Some(&"PIVOT".to_string()), Some(&"10000".to_string())).await;
-      match pools {
-         Ok(_) => Ok(1),
-         Err(x) => Err(x)
-      }
-   }
+   create_testing!("quiz06::b_pools");
+   run!("fetch_all_pool_assets", {
+      let _ =
+         now(do_it(Some(&"PIVOT".to_string()), Some(&"10000".to_string())));
+   });
 }
 
 #[cfg(test)]
 mod tests {
 
    use super::*;
-
    use book::utils::get_env;
 
    async fn fetch_pools() -> ErrStr<Vec<Composition>> {

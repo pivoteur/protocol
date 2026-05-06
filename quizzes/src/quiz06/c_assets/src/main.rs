@@ -1,4 +1,4 @@
-use quizzes::quiz06::c_assets::functional_tests::runoff_get_args;
+use quizzes::quiz06::c_assets::runoff_get_args;
 
 use book::err_utils::ErrStr;
 
