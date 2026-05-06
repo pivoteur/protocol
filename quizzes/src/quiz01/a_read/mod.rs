@@ -8,21 +8,25 @@ pub async fn reader() -> ErrStr<String> {
 }
 
 // ----- TESTS -------------------------------------------------------
-
+#[cfg(test)]
 #[cfg(not(tarpaulin_include))]
 pub mod functional_tests {
-
-   use book::err_utils::ErrStr;
-
+   use book:: {
+      err_utils::ErrStr,
+      create_testing,
+      utils::now
+   };
+   use paste::paste;
    use super::reader;
 
-   pub async fn runoff() -> ErrStr<usize> {
-      println!("quiz01: a_read functional test.\n");
 
-      let body = reader().await?;
-      println!("I got {body}");
-      Ok(1)
-   }
+   create_testing!("quiz01::a_read");
+
+   run!("reader", {
+      println!("quiz01: a_read functional test.\n");
+      let body = now(reader());
+      println!("I got {:?}", body);
+   }); 
 }
 
 #[cfg(test)]
