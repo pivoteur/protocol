@@ -1,19 +1,17 @@
 [package]
-name = "close"
+name = "wyrd"
 version = "0.1.0"
 edition = "2024"
 
 [[bin]]
-name = "close"
+name = "wyrd"
 path = "../../quizzes/src/quiz08/b_urie/src/main.rs"
 
 [dependencies]
 tokio = { version = "1.51.2", features = ["macros", "rt-multi-thread"] }
 
 libs = { path = "../../libs" }
-
 book = { path = "../../../crypto-n-rust/src/libs/book" }
-
 quizzes = { path = "../../quizzes" }
 
 [lints.rust]
