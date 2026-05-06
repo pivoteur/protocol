@@ -1,8 +1,9 @@
 use chrono::NaiveDate;
 
 use book::{
+   date_utils::parse_date,
    err_utils::{ErrStr,not_implemented},
-   utils::get_env
+   utils::{get_env,get_args}
 };
 
 use libs::{
@@ -44,6 +45,17 @@ async fn new_opens(auth: &str, date: NaiveDate, path: &str)
    not_implemented("new_opens")
 }
 
+pub async fn runoff_with_args() -> ErrStr<()> {
+   let args = get_args();
+   if let [auth, dt, path] = args.as_slice() {
+      let date = parse_date(&dt)?;
+      let _pivs = new_opens(&auth, date, &path).await?;
+      Ok(())
+   } else {
+      usage()
+   }
+}
+
 // ----- TESTS -------------------------------------------------------
 
 #[cfg(test)]
@@ -53,20 +65,9 @@ pub mod functional_tests {
    use paste::paste;
    use book::{
       create_testing,
-      date_utils::{yesterday,parse_date},
-      utils::{get_args,now}
+      date_utils::yesterday,
+      utils::now
    };
-
-   pub async fn runoff_with_args() -> ErrStr<()> {
-      let args = get_args();
-      if let [auth, dt, path] = args.as_slice() {
-         let date = parse_date(&dt)?;
-         let _pivs = new_opens(&auth, date, &path).await?;
-         Ok(())
-      } else {
-         usage()
-      }
-   }
 
    create_testing!("quiz07::c_open");
 

@@ -2,7 +2,7 @@ use book::{
    date_utils::parse_date,
    err_utils::ErrStr,
    num_utils::parse_or,
-   utils::get_env
+   utils::{get_env,get_args}
 };
 
 use libs::{
@@ -45,6 +45,15 @@ where
    "Needs arguments <protocol> <date>, optionally [min=1000]".to_string()
 }
 
+pub async fn runoff_with_args() -> ErrStr<()> {
+   let args = get_args();
+   if args.len() < 2 {
+      Err(usage())
+   } else {
+      list_quotes_and_assets(args).await
+   }
+}
+
 // ----- TESTS -------------------------------------------------------
 
 #[cfg(test)]
@@ -56,17 +65,8 @@ pub mod functional_tests {
       create_testing,
       date_utils::yesterday,
       string_utils::words,
-      utils::{get_args,now}
+      utils::now
    };
-
-   pub async fn runoff_with_args() -> ErrStr<()> {
-      let args = get_args();
-      if args.len() < 2 {
-         Err(usage())
-      } else {
-         list_quotes_and_assets(args).await
-      }
-   }
 
    create_testing!("quiz07::a_ssets");
 

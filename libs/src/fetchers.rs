@@ -213,7 +213,7 @@ pub async fn fetch_quotes(date: &NaiveDate) -> ErrStr<Quotes> {
 #[cfg(not(tarpaulin_include))]
 pub mod fetchers_test_helpers {
    use super::*;
-   use book::utils::{get_env,now};
+   use book::utils::get_env;
 
    pub fn marshall() -> ErrStr<(String, Aliases)> {
       let root_url = get_env("PIVOT_URL")?;
@@ -221,9 +221,9 @@ pub mod fetchers_test_helpers {
       Ok((root_url, a))
    }
 
-   pub fn btc_eth_pivots() -> ErrStr<(Partition<Pivot>, NaiveDate)> {
+   pub async fn btc_eth_pivots() -> ErrStr<(Partition<Pivot>, NaiveDate)> {
       let (root_url, a) = marshall()?;
-      now(fetch_pivots(&root_url, "btc", "eth", &a))
+      fetch_pivots(&root_url, "btc", "eth", &a).await
    }
 }
 
@@ -268,7 +268,7 @@ pub mod functional_tests {
    });
 
    run!("fetch_pivots", {
-      let ((opn, cls), mx) = btc_eth_pivots()?;
+      let ((opn, cls), mx) = now(btc_eth_pivots())?;
       print_tsv_table_d("Open pivots", &opn, false);
       print_tsv_table_d("Close pivots", &cls, false);
       println!("\nmax_date is {mx}\n");
@@ -542,9 +542,9 @@ const poolAssets = {
       Ok(())
    }
 
-   #[test]
-   fn test_fetch_pivots_ok() -> ErrStr<()> {
-      let mb_opns = btc_eth_pivots();
+   #[tokio::test]
+   async fn test_fetch_pivots_ok() -> ErrStr<()> {
+      let mb_opns = btc_eth_pivots().await;
       assert!(mb_opns.is_ok());
       let ((opns, cls), mx) = mb_opns?;
       assert!(!opns.is_empty());
@@ -565,33 +565,33 @@ const poolAssets = {
       Ok(once(hdr).chain(ops0.into_iter().chain(cls0.into_iter())).collect())
    }
 
-   fn btc_eth_pool_as_tsv() -> ErrStr<Vec<String>> {
-      let ((opns, cls), _mx) = btc_eth_pivots()?;
+   async fn btc_eth_pool_as_tsv() -> ErrStr<Vec<String>> {
+      let ((opns, cls), _mx) = btc_eth_pivots().await?;
       pivots_to_tsv("BTC+ETH", &opns, &cls)
    }
 
-   #[test]
-   fn test_pivots_as_tsv_ok() -> ErrStr<()> {
-      let tsv = btc_eth_pool_as_tsv();
+   #[tokio::test]
+   async fn test_pivots_as_tsv_ok() -> ErrStr<()> {
+      let tsv = btc_eth_pool_as_tsv().await;
       assert!(tsv.is_ok());
       Ok(())
    }
 
-   #[test]
-   fn test_reparse_pivots_ok() -> ErrStr<()> {
-      let tsv = btc_eth_pool_as_tsv()?;
+   #[tokio::test]
+   async fn test_reparse_pivots_ok() -> ErrStr<()> {
+      let tsv = btc_eth_pool_as_tsv().await?;
       let a = aliases();
       let ans = parse_pivots("BTC+ETH", tsv, &a);
       assert!(ans.is_ok());
       Ok(())
    }
 
-   #[test]
-   fn test_reparse_pivots() -> ErrStr<()> {
-      let tsv = btc_eth_pool_as_tsv()?;
+   #[tokio::test]
+   async fn test_reparse_pivots() -> ErrStr<()> {
+      let tsv = btc_eth_pool_as_tsv().await?;
       let a = aliases();
       let ((o,c),m) = parse_pivots("BTC+ETH", tsv, &a)?;
-      let ((opns, cls), mx) = btc_eth_pivots()?;
+      let ((opns, cls), mx) = btc_eth_pivots().await?;
       assert_eq!(opns.len(), o.len());
       assert_eq!(cls.len(), c.len());
       assert_eq!(mx, m);
