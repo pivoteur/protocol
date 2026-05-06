@@ -5,7 +5,6 @@ use book::{
    err_utils::ErrStr,
    tuple_utils::Partition,
    utils::get_env,
-   create_testing
 };
 
 use libs::{
@@ -153,14 +152,12 @@ where
 pub mod functional_tests {
    use super::*;
    use paste::paste;
-   use libs::{
-      paths::path_test_helpers::path_to_btc_eth_pivot_pool,
-      fetchers::fetcher_test_helpers::btc_eth_pivots
-   };
+   use libs::paths::paths_test_helpers::path_to_btc_eth_pivot_pool;
    use book::{
       date_utils::yesterday,
       list_utils::tail,
-      utils::{get_args,now}
+      utils::{get_args,now},
+      create_testing
    };
 
    pub async fn runoff_with_args() -> ErrStr<()> {
@@ -188,10 +185,10 @@ pub mod functional_tests {
 mod tests {
    use super::*;
    use book::{ date_utils::yesterday, tuple_utils::fst };
-   use libs::fetchers::functional_tests::btc_eth_pivots;
+   use libs::fetchers::fetchers_test_helpers::btc_eth_pivots;
 
    async fn virts_n_opns() -> ErrStr<(Vec<Pivot>, Partition<Pivot>)> {
-      let (pivots, _mx) = btc_eth_pivots().await?;
+      let (pivots, _mx) = btc_eth_pivots()?;
       let all_opns = fst(pivots);
       let (virts, opns) = partition_virtual_pivots(all_opns.clone());
       Ok((all_opns, (virts, opns)))

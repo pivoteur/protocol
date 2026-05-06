@@ -63,7 +63,7 @@ pub fn quotes_url() -> String {
 // ----- TESTS -------------------------------------------------------
 
 #[cfg(not(tarpaulin_include))]
-pub mod path_test_helpers {
+pub mod paths_test_helpers {
    fn pool_file() -> String { format!("btc-eth.tsv") }
    fn opens_path() -> String { format!("protocol/data/pivots/open/raw") }
 
@@ -78,7 +78,7 @@ pub mod functional_tests {
    use super::*;
    use paste::paste;
    use book::create_testing;
-   use super::path_test_helpers::path_to_btc_eth_pivot_pool;
+   use super::paths_test_helpers::path_to_btc_eth_pivot_pool;
 
    create_testing!("paths");
 
