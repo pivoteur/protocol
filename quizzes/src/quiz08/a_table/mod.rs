@@ -4,6 +4,8 @@ use book::{
    parse_utils::{parse_id,parse_str},
    string_utils::s,
    table_utils::{ingest,val},
+   utils::get_args,
+   stream_utils::lines_from_stdin
 };
 
 use libs::{ tables::IxTable, types::util::Id };
@@ -28,6 +30,16 @@ fn report(table: IxTable, r: Id, col: &str, datum: String) {
    println!("\nThe value at row {r} / col {col} is {datum}");
 }
 
+pub fn runoff_with_args() -> ErrStr<()> {
+   if let [row, col] = get_args().as_slice() {
+      let lines = lines_from_stdin()?;
+      let r = parse_id(&row)?;
+      parse_and_print_call_datum(lines, r, col)
+   } else {
+      Err("Select a <row> and <col> view; table from stream".to_string())
+   }
+}
+
 //----- TEST --------------------------------------------------------------------------------------------------------
 
 #[cfg(test)]
@@ -36,19 +48,9 @@ pub mod functional_tests {
    use paste::paste;
    use super::*;
    use book::{ create_testing,
-      stream_utils::lines_from_stdin,
-      utils::get_args
+
    };
    
-   pub fn runoff_with_args() -> ErrStr<()> {
-      if let [row, col] = get_args().as_slice() {
-         let lines = lines_from_stdin()?;
-         let r = parse_id(&row)?;
-         parse_and_print_call_datum(lines, r, col)
-      } else {
-         Err("Select a <row> and <col> view; table from stream".to_string())
-      }
-   }
 
    fn calls() -> Vec<String> {
 "ix,pool,open_pivots,last_pivot_on_dt,opened,ids,close_id,close_date,from,from_blockchain,amount1,virtual,quote1,val1,gain_10_percent,pivot_token,pivot_blockchain,pivot_close_price,pivot_amount,proposed_token,proposed_blockchain,proposed_close_price,proposed_amount,roi,apr
