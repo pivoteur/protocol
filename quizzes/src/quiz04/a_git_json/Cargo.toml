@@ -6,6 +6,7 @@ edition = "2024"
 [dependencies]
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 reqwest = { version = "0.12.4", features = ["json"] }
+paste = "1.0" 
 
 libs = { path = "../../../../libs" }
 quizzes = { path = "../../.." }

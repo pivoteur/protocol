@@ -130,19 +130,14 @@ async fn fetch_opens_json(auth: &str) -> ErrStr<String> {
 #[cfg(not(tarpaulin_include))]
 pub mod functional_tests {
    use super::*;
-   use book::{ test_utils::preamble, utils::get_args };
+   use paste::paste;
+   use book::{ create_testing, utils::{ get_args, now } };
 
-   fn module() -> String { "quiz04::a_git_json".to_string() }
+   create_testing! ( "quiz04::a_git_json" );
 
-   async fn run_fetch_opens() -> ErrStr<usize> {
-      fetch_opens("pivot").await?;
-      Ok(1)
-   }
-   pub async fn runoff() -> ErrStr<usize> {
-      preamble(&module());
-      let a = run_fetch_opens().await?;
-      Ok(a)
-   }
+   run!( "fetch_opens" , {
+      now(fetch_opens("pivot"));
+   });
 
    pub async fn runoff_with_args() -> ErrStr<()> {
       let args = get_args();
