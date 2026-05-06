@@ -211,106 +211,80 @@ pub async fn fetch_quotes(date: &NaiveDate) -> ErrStr<Quotes> {
 // ----- TESTS -------------------------------------------------------
 
 #[cfg(not(tarpaulin_include))]
-pub mod functional_tests {
+pub mod fetchers_test_helpers {
    use super::*;
-   use book::{
-      csv_utils::{CsvWriter,print_as_tsv},
-      date_utils::yesterday,
-      utils::get_env
-   };
-   
+   use book::utils::get_env;
+
    pub fn marshall() -> ErrStr<(String, Aliases)> {
       let root_url = get_env("PIVOT_URL")?;
       let a = aliases();
       Ok((root_url, a))
    }
-   
+
    pub async fn btc_eth_pivots() -> ErrStr<(Partition<Pivot>, NaiveDate)> {
       let (root_url, a) = marshall()?;
       fetch_pivots(&root_url, "btc", "eth", &a).await
    }
-   
-   async fn run_fetch_pool_names() -> ErrStr<usize> {
-      println!("fetchers::fetch_pool_names functional test\n");
+}
+
+#[cfg(test)]
+#[cfg(not(tarpaulin_include))]
+pub mod functional_tests {
+   use super::*;
+   use paste::paste;
+   use book::{
+      create_testing,
+      csv_utils::{CsvWriter},
+      date_utils::yesterday,
+      utils::now
+   };
+   use super::fetchers_test_helpers::{marshall,btc_eth_pivots};
+   use crate::reports::print_tsv_table_d;
+
+   create_testing!("fetchers");
+
+   run!("fetch_pool_names", {
       let (root_url, _aliases) = marshall()?;
-      let pool_names = fetch_pool_names(&root_url).await?;
+      let pool_names = now(fetch_pool_names(&root_url))?;
       println!("\tpool names:\n\n\t{pool_names:?}");
-      println!("fetchers::fetch_pool_names...ok");
-      Ok(1)
-   }
-   
-   async fn run_fetch_wallets() -> ErrStr<usize> {
-      println!("fetchers::fetch_wallets functional test\n");
+   });
+
+   run!("fetch_wallets", {
       let (root_url, _aliases) = marshall()?;
-      let wallets = fetch_wallets(&root_url).await?;
+      let wallets = now(fetch_wallets(&root_url))?;
       println!("The wallets for {root_url} are:\n\n{}\n", wallets.as_csv());
-      println!("fetchers::fetch_wallets...ok");
-      Ok(1)
-   }
-   
-   async fn run_fetch_asset_table_tvls() -> ErrStr<usize> {
-      println!("fetchers::fetch_asset_table_tvls functional test\n");
+   });
+
+   run!("fetch_asset_table_tvls", {
       let (root_url, _aliases) = marshall()?;
-      let tvls = fetch_asset_table_tvls(&root_url).await?;
+      let tvls = now(fetch_asset_table_tvls(&root_url))?;
       println!("The tvls for the assets {root_url} are:\n\n{tvls:?}\n");
-      println!("fetchers::fetch_asset_table_tvls...ok");
-      Ok(1)
-   }
-   
-   async fn run_fetch_assets() -> ErrStr<usize> {
-      println!("fetchers::fetch_assets functional test\n");
+   });
+
+   run!("fetch_assets", {
       let (root_url, a) = marshall()?;
-      let assets = fetch_assets(&root_url, "btc", "eth", &a).await?;
+      let assets = now(fetch_assets(&root_url, "btc", "eth", &a))?;
       println!("The assets for BTC+ETH are:\n\n{}\n", assets.as_csv());
-      println!("fetchers::fetch_assets...ok");
-      Ok(1)
-   }
-   
-   fn print_rows<T:CsvWriter>(title: &str, rows: &[T]) {
-      println!("\n{title}:\n");
-      for row in rows { print_as_tsv(&row.as_csv()); }
-   }
+   });
 
-   async fn run_fetch_pivots() -> ErrStr<usize> {
-      println!("fetchers::fetch_pivots functional test\n");
-      let ((opn, cls), mx) = btc_eth_pivots().await?;
-      print_rows("Open pivots", &opn);
-      print_rows("Close pivots", &cls);
+   run!("fetch_pivots", {
+      let ((opn, cls), mx) = now(btc_eth_pivots())?;
+      print_tsv_table_d("Open pivots", &opn, false);
+      print_tsv_table_d("Close pivots", &cls, false);
       println!("\nmax_date is {mx}\n");
-      println!("fetchers::fetch_pivots...ok");
-      Ok(1)
-   }
-   
-   async fn run_fetch_quotes() -> ErrStr<usize> {
-      println!("fetchers::fetch_quotes functional test\n");
-      let qts = fetch_quotes(&yesterday()).await?;
-      println!("Quotes are:\n{}", qts.as_table().as_csv());
-      println!("fetchers::fetch_quotes...ok");
-      Ok(1)
-   }
-   
-   async fn run_fetch_calls() -> ErrStr<usize> {
-      println!("fetchers::fetch_calls functional test\n");
-      let (root_url, _aliases) = marshall()?;
-      let calls = fetch_calls(&root_url).await?;
-      println!("\tcalls are:\n{}", calls.as_csv());
-      println!("fetchers::fetch_calls:...ok");
-      Ok(1)
-   }
+   });
 
-   pub async fn runoff() -> ErrStr<usize> {
-      println!("\nfetchers functional tests\n");
-      let pn = run_fetch_pool_names().await?;
-      let a = run_fetch_assets().await?;
-      let p = run_fetch_pivots().await?;
-      let q = run_fetch_quotes().await?;
-      let w = run_fetch_wallets().await?;
-      let fat = run_fetch_asset_table_tvls().await?;
-      // fat: 'fetch_asset_table' ... of course!
-      let c = run_fetch_calls().await?;
-      Ok(pn+a+p+q+w+fat+c)
-   }
-   
+   run!("fetch_quotes", {
+      let qts = now(fetch_quotes(&yesterday()))?;
+      println!("Quotes are:\n{}", qts.as_table().as_csv());
+   });
+
+   run!("fetch_calls", {
+      let (root_url, _aliases) = marshall()?;
+      let calls = now(fetch_calls(&root_url))?;
+      println!("\tcalls are:\n{}", calls.as_csv());
+   });
+
    #[cfg(test)]
    mod tests {
       use std::iter::once;
@@ -328,7 +302,6 @@ pub mod functional_tests {
       fn sample_pivot_pools() -> Vec<String> { "
       // created by: pools, version: 1.00
       
-
 const poolAssets = {
    generated: '2026-04-18',
    assets: [
@@ -573,12 +546,7 @@ const poolAssets = {
    async fn test_fetch_pivots_ok() -> ErrStr<()> {
       let mb_opns = btc_eth_pivots().await;
       assert!(mb_opns.is_ok());
-      Ok(())
-   }
-
-   #[tokio::test]
-   async fn test_fetch_pivots() -> ErrStr<()> {
-      let ((opns, cls), mx) = btc_eth_pivots().await?;
+      let ((opns, cls), mx) = mb_opns?;
       assert!(!opns.is_empty());
       assert!(!cls.is_empty());
       assert!(tomorrow() > mx);
@@ -629,6 +597,5 @@ const poolAssets = {
       assert_eq!(mx, m);
       Ok(())
    }
-
 }
 }

@@ -2,19 +2,15 @@ use std::collections::HashMap;
 
 use book::{
    csv_utils::{CsvHeader,CsvWriter},
-   currency::usd::mk_usd,
    err_utils::ErrStr,
-   list_utils::filter_map_or,
    tuple_utils::Partition
 };
 
+use crate::collections::assets::{Assets,mk_assets};
 use super::{
    assets::{
-      assets::{
-         Asset,mk_asset,parse_asset,recompute_assets,gain_10_percent,trade
-      },
-      asset_types::AssetType::{FROM,TO},
-      amounts::{Amount,mk_amt}
+      assets::{Asset,parse_asset,recompute_assets,gain_10_percent,trade},
+      asset_types::AssetType::{FROM,TO}
    },
    headers::{Header, next_close_id as closer, parse_header},
    coins::Coin,
@@ -85,6 +81,15 @@ pub fn parse_pivot(hdrs: &HashMap<String, usize>, row: &Vec<String>)
 
 // ----- COLLECTIONS OPERATIONS ------------------------------------------
 
+pub fn pivot_assets(opens: &[Pivot]) -> ErrStr<Assets> {
+   let mut ans = mk_assets();
+   for p in opens {
+      let c = p.committed()?;
+      ans.add(c);
+   }
+   Ok(ans)
+}
+
 pub fn next_close_id(pivs: &Vec<Pivot>) -> Id {
    closer(&headers(pivs))
 }
@@ -134,27 +139,37 @@ pub fn partition_on(tok: &str, opens: Vec<Pivot>) -> Partition<Pivot> {
    opens.into_iter().partition(|p: &Pivot| &p.from.token() == tok)
 }
 
-// ----- FUNCTIONAL TEST ------------------------------------------------
+// ----- TESTS -----------------------------------------------------------
 
+#[cfg(test)]
 #[cfg(not(tarpaulin_include))]
 pub mod functional_tests {
+   use paste::paste;
    use super::*;
-   use book::{ string_utils::to_string, table_utils::cols };
+   use book::{
+      create_testing,
+      currency::usd::mk_usd,
+      list_utils::filter_map_or,
+      string_utils::s,
+      table_utils::cols
+   };
    use crate::{
       tables::{IxTable,index_table},
       types::{
          aliases::aliases,
+         assets::{assets::mk_asset, amounts::{Amount,mk_amt} },
          quotes::functional_tests::test_mk_quotes,
          headers::mk_hdr
       }
    };
 
-   pub fn mk_hbar_usdc_piv(q: f32, a: Amount, c: usize, tx: &str)
+   pub fn mk_btc_usdc_piv(q: f32, a: Amount, c: usize, tx: &str)
          -> ErrStr<Pivot> {
+      let ava = "Avalanche";
       let qt = mk_usd(q);
-      let to = mk_asset("USDC", "Hedera", mk_amt(100.0, 0.0), mk_usd(1.0), &TO);
-      let header = mk_hdr("2026-03-10",1,c, tx.to_string(), None)?;
-      Ok(Pivot { header, from: mk_asset("HBAR", "Hedera", a, qt, &FROM), to })
+      let to = mk_asset("USDC", ava, mk_amt(7840.0, 0.0), mk_usd(1.0), &TO);
+      let header = mk_hdr("2026-03-10", 1, c, tx.to_string(), None)?;
+      Ok(Pivot { header, from: mk_asset("BTC", ava, a, qt, &FROM), to })
    }
 
    // this test data contains 
@@ -163,17 +178,16 @@ pub mod functional_tests {
    // a virtual pivot
    // and a non-virtual virtual pivot (protocol_issue_010_non_virtual_pivots)
    fn btc_eth_raw() -> String {
-"opened	open	close	tx_id	updated	from	from_blockchain	amount1	virtual	quote1	val1	gain_10_percent	to	to_blockchain	net	ersatz	quote2	val2
+s("opened	open	close	tx_id	updated	from	from_blockchain	amount1	virtual	quote1	val1	gain_10_percent	to	to_blockchain	net	ersatz	quote2	val2
 2025-08-06	1	1	https://snowtrace.io/tx/0x60a2129cf19213def46b4355739cf69e998ed6245fe0ade6563e83c1ba2d83c8	n/a	BTC	Avalanche	0.004498	0	$113883.00	$512.25	0.0049477997	ETH	Avalanche	0.14203	0	$3588.72	$509.71
 2025-09-30	28	0	https://snowtrace.io/tx/0xdef66cbfea4687eff8390728557a07b9697dc15927de51d0819e07aa5bc71963	n/a	BTC	Avalanche	0.0087	0	$113056.00	$983.59	0.009570001	ETH	Avalanche	0.2305	0	$4162.11	$959.37
 2026-02-21	17	0	virtual swap	n/a	BTC	Avalanche	0	0.009205	$114701.00	$1055.82	0.0101255	ETH	Avalanche	0.3177	0	$4810.58	$1528.32
 2026-02-21	52	0	https://snowtrace.io/tx/0x267ed024578621a51aabc47b9b0d7f4791c6624863130ad0dcab4c1328fd8a90	n/a	ETH	Avalanche	5.046	0	$1987.48	$10028.82	5.5506	BTC	Avalanche	0.14587	0	$68429.00	$9981.74
-2026-02-21	41	0	https://snowtrace.io/tx/0x77fe7489ccb408e103e86f12bdfa1fbf0dc4476912a7a0bff6ad4b12b32e55c1	n/a	BTC	Avalanche	0	0.0074	$107858.00	$798.15	0.0081400005	ETH	Avalanche	0.2559	0	$3715.49	$950.79".to_string()
+2026-02-21	41	0	https://snowtrace.io/tx/0x77fe7489ccb408e103e86f12bdfa1fbf0dc4476912a7a0bff6ad4b12b32e55c1	n/a	BTC	Avalanche	0	0.0074	$107858.00	$798.15	0.0081400005	ETH	Avalanche	0.2559	0	$3715.49	$950.79")
    }
 
    pub fn btc_eth() -> ErrStr<(IxTable, HashMap<String, usize>)> {
-      let lines: Vec<String> =
-         btc_eth_raw().split("\n").map(to_string).collect();
+      let lines: Vec<String> = btc_eth_raw().split("\n").map(s).collect();
       let table = index_table(lines)?;
       let ix = aliases().enum_headers(cols(&table));
       Ok((table, ix))
@@ -184,35 +198,32 @@ pub mod functional_tests {
       filter_map_or(|row| parse_pivot(&ix, &row), tabl.data)
    }
 
-   fn run_recompute_pivot() -> ErrStr<usize> {
-      println!("\ntypes::pivot::recompute_pivot functional test\n");
-      let piv = mk_hbar_usdc_piv(0.2, mk_amt(0.0,500.0), 0, "virtual pivot")?;
-      let quotes = test_mk_quotes(&[("HBAR", 0.25)]);
-      let _new_piv = recompute_pivot(&quotes, true)(piv)?;
-      println!("\ntypes::pivot::recompute_pivot...ok\n");
-      Ok(1)
-   }
+   create_testing!("types::pivots");
 
-   pub fn runoff() -> ErrStr<usize> {
-      println!("\ntypes::pivots functional tests\n");
-      let a = run_recompute_pivot()?;
-      Ok(a)
-   }
+   run!("recompute_pivot", {
+      let piv = mk_btc_usdc_piv(78408.88,mk_amt(0.0,0.1),0,"virtual pivot")?;
+      let quotes = test_mk_quotes(&[("BTC", 80000.0)]);
+      let _new_piv = recompute_pivot(&quotes, true)(piv)?;
+   });
+
+   run!("pivot_assets", {
+      let pivs = btc_eth_pivots()?;
+      let assets = pivot_assets(&pivs)?;
+      println!("\tPivot assets:\n\n{}", assets.as_csv());
+   });
 }
 
 #[cfg(test)]
+#[cfg(not(tarpaulin_include))]
 mod tests {
    use super::*;
-   use super::functional_tests::{btc_eth,btc_eth_pivots,mk_hbar_usdc_piv};
-   use crate::{
-      types::{
-         assets::assets::functional_tests::assert_price_k,
-         quotes::functional_tests::test_mk_quotes
-      }
+   use super::functional_tests::{btc_eth,btc_eth_pivots,mk_btc_usdc_piv};
+   use crate::types::{
+      assets::{ assets::functional_tests::assert_price_k, amounts::mk_amt },
+      quotes::functional_tests::test_mk_quotes
    };
 
-   #[test]
-   fn test_partition_on_btc() -> ErrStr<()> {
+   #[test] fn test_partition_on_btc() -> ErrStr<()> {
       let pivs = btc_eth_pivots()?;
       let (btcs, eths) = partition_on("BTC", pivs);
       assert_eq!(4, btcs.len());
@@ -225,8 +236,7 @@ mod tests {
       assert_price_k(&p.to, b);
    }
 
-   #[test]
-   fn test_asset_quotes() -> ErrStr<()> {
+   #[test] fn test_asset_quotes() -> ErrStr<()> {
       let pivs = btc_eth_pivots()?;
       assert_prices_k(&pivs[0], 113.9, 3.6);
       assert_prices_k(&pivs[1], 113.1, 4.1);
@@ -236,8 +246,7 @@ mod tests {
       Ok(())
    }
 
-   #[test]
-   fn test_parse_pivot_ok() -> ErrStr<()> {
+   #[test] fn test_parse_pivot_ok() -> ErrStr<()> {
       let (table, ix) = btc_eth()?;
       let row = table.data.first().unwrap();
       let ans = parse_pivot(&ix, &row);
@@ -245,8 +254,7 @@ mod tests {
       Ok(())
    }
 
-   #[test]
-   fn test_parse_virtual_pivot() -> ErrStr<()> {
+   #[test] fn test_parse_virtual_pivot() -> ErrStr<()> {
       let (table, ix) = btc_eth()?;
       let mut virt = false;
       for row in table.data {
@@ -257,8 +265,7 @@ mod tests {
       Ok(())
    }
 
-   #[test]
-   fn test_no_url() -> ErrStr<()> {
+   #[test] fn test_no_url() -> ErrStr<()> {
       let (table, ix) = btc_eth()?;
       let row = table.data.first().unwrap();
       let piv = parse_pivot(&ix, &row)?;
@@ -268,8 +275,7 @@ mod tests {
       Ok(())
    }
 
-   #[test]
-   fn test_parse_pivots() -> ErrStr<()> {
+   #[test] fn test_parse_pivots() -> ErrStr<()> {
       let (table, ix) = btc_eth()?;
       let mut virts = 0;
       for row in &table.data {
@@ -281,11 +287,10 @@ mod tests {
       Ok(())
    }
 
-   #[test]
-   fn fail_recompute_non_virtual_amt_pivot() -> ErrStr<()> {
-      let piv = mk_hbar_usdc_piv(0.2, mk_amt(500.0, 0.0), 0, "https://yo")?;
+   #[test] fn fail_recompute_non_virtual_amt_pivot() -> ErrStr<()> {
+      let piv = mk_btc_usdc_piv(78408.88, mk_amt(500.0, 0.0), 0, "https://yo")?;
       let reckt =
-         recompute_pivot(&test_mk_quotes(&[("HBAR", 0.22)]), false)(piv);
+         recompute_pivot(&test_mk_quotes(&[("BTC", 80000.0)]), false)(piv);
       assert!(reckt.is_err());
       if let Err(x) = reckt {
          assert!(x.contains("virtual"));
@@ -295,11 +300,10 @@ mod tests {
       }
    }
 
-   #[test]
-   fn fail_recompute_non_virtual_tx_pivot() -> ErrStr<()> {
-      let piv = mk_hbar_usdc_piv(0.2, mk_amt(0.0, 500.0), 0, "https://yo")?;
+   #[test] fn fail_recompute_non_virtual_tx_pivot() -> ErrStr<()> {
+      let piv = mk_btc_usdc_piv(78408.88, mk_amt(0.0, 500.0), 0, "https://yo")?;
       let reckt =
-         recompute_pivot(&test_mk_quotes(&[("HBAR",0.22)]), false)(piv);
+         recompute_pivot(&test_mk_quotes(&[("BTC", 80000.0)]), false)(piv);
       assert!(reckt.is_err());
       if let Err(x) = reckt {
          assert!(x.contains("virtual"));
@@ -309,11 +313,10 @@ mod tests {
       }
    }
 
-   #[test]
-   fn fail_recompute_closed_pivot() -> ErrStr<()> {
-      let piv = mk_hbar_usdc_piv(0.2, mk_amt(0.0, 500.0), 1, "virtual pivot")?;
+   #[test] fn fail_recompute_closed_pivot() -> ErrStr<()> {
+      let piv = mk_btc_usdc_piv(78408.88,mk_amt(0.0,500.0),1,"virtual pivot")?;
       let reckt =
-         recompute_pivot(&test_mk_quotes(&[("HBAR",0.22)]), false)(piv);
+         recompute_pivot(&test_mk_quotes(&[("BTC",80000.0)]), false)(piv);
       assert!(reckt.is_err());
       if let Err(x) = reckt {
          assert!(x.contains("close"));
@@ -324,32 +327,54 @@ mod tests {
       }
    }
 
-   #[test]
-   fn test_no_recompute_virtual_pivot_ok() -> ErrStr<()> {
-      let piv = mk_hbar_usdc_piv(0.2, mk_amt(0.0, 500.0), 0, "virtual_pivot")?;
+   #[test] fn test_no_recompute_virtual_pivot_ok() -> ErrStr<()> {
+      let piv = mk_btc_usdc_piv(78408.88,mk_amt(0.0, 0.1),0,"virtual_pivot")?;
       assert!(!piv.is_updated());
       let neiner =
-         recompute_pivot(&test_mk_quotes(&[("HBAR",0.15)]), false)(piv);
+         recompute_pivot(&test_mk_quotes(&[("BTC",65000.0)]), false)(piv);
       assert!(neiner.is_ok());
       assert!(!neiner.unwrap().is_updated());
       Ok(())
    }
 
-   #[test]
-   fn test_recompute_virtual_pivot_ok() -> ErrStr<()> {
-      let piv = mk_hbar_usdc_piv(0.2, mk_amt(0.0, 500.0), 0, "virtual_pivot")?;
+   #[test] fn test_recompute_virtual_pivot_ok() -> ErrStr<()> {
+      let piv = mk_btc_usdc_piv(78408.88,mk_amt(0.0, 500.0),0,"virtual_pivot")?;
       assert!(!piv.is_updated());
       let neiner =
-         recompute_pivot(&test_mk_quotes(&[("HBAR",0.25)]), false)(piv);
+         recompute_pivot(&test_mk_quotes(&[("BTC",85000.0)]), false)(piv);
       assert!(neiner.is_ok());
       assert!(neiner.unwrap().is_updated());
       Ok(())
    }
 
-   #[test]
-   fn test_next_close_id() -> ErrStr<()> {
+   #[test] fn test_next_close_id() -> ErrStr<()> {
       let pivs = btc_eth_pivots()?;
       assert_eq!(2, next_close_id(&pivs));
+      Ok(())
+   }
+
+   #[test] fn test_pivot_assets_ok() -> ErrStr<()> {
+      let pivs = btc_eth_pivots()?;
+      let assets = pivot_assets(&pivs);
+      assert!(assets.is_ok());
+      Ok(())
+   }
+
+   #[test] fn test_pivot_assets_btc_eth_2_rows() -> ErrStr<()> {
+      let pivs = btc_eth_pivots()?;
+      let pivots = pivot_assets(&pivs)?;
+      let assets = pivots.assets();
+      assert_eq!(2, assets.len());
+      Ok(())
+   }
+
+   #[test] fn test_pivot_assets_btc_eth_amounts() -> ErrStr<()> {
+      let pivs = btc_eth_pivots()?;
+      let pivots = pivot_assets(&pivs)?;
+      let assets = pivots.assets();
+      for asset in assets {
+         assert!(asset.sz() > 0.0, "{} is zero.", asset.as_csv());
+      }
       Ok(())
    }
 }

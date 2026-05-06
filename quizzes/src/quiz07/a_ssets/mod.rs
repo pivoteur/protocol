@@ -2,7 +2,7 @@ use book::{
    date_utils::parse_date,
    err_utils::ErrStr,
    num_utils::parse_or,
-   utils::get_env
+   utils::{get_env,get_args}
 };
 
 use libs::{
@@ -45,26 +45,34 @@ where
    "Needs arguments <protocol> <date>, optionally [min=1000]".to_string()
 }
 
+pub async fn runoff_with_args() -> ErrStr<()> {
+   let args = get_args();
+   if args.len() < 2 {
+      Err(usage())
+   } else {
+      list_quotes_and_assets(args).await
+   }
+}
+
 // ----- TESTS -------------------------------------------------------
 
+#[cfg(test)]
 #[cfg(not(tarpaulin_include))]
 pub mod functional_tests {
    use super::*;
-   use book::{date_utils::yesterday, string_utils::words, utils::get_args};
+   use paste::paste;
+   use book::{
+      create_testing,
+      date_utils::yesterday,
+      string_utils::words,
+      utils::now
+   };
 
-   pub async fn runoff_with_args() -> ErrStr<()> {
-      let args = get_args();
-      if args.len() < 2 {
-         Err(usage())
-      } else {
-         list_quotes_and_assets(args).await
-      }
-   }
+   create_testing!("quiz07::a_ssets");
 
-   pub async fn runoff() -> ErrStr<usize> {
+   run!("list_quotes_and_assets", {
       let yday = yesterday();
-      let _ = list_quotes_and_assets(words(&format!("pivot {yday}"))).await?;
-      Ok(1)
-   }
+      let _ = now(list_quotes_and_assets(words(&format!("pivot {yday}"))));
+   });
 }
 

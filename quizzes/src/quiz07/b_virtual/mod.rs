@@ -3,8 +3,9 @@ use book::{
    csv_utils::{CsvWriter,CsvHeader},
    date_utils::parse_date,
    err_utils::ErrStr,
+   list_utils::tail,
    tuple_utils::Partition,
-   utils::get_env
+   utils::{get_env,get_args}
 };
 
 use libs::{
@@ -145,39 +146,46 @@ where
    "Needs arguments <protocol> <date> <prim> <piv>".to_string()
 }
 
+pub async fn runoff_with_args() -> ErrStr<()> {
+   let args = get_args();
+   if let Some(arg) = args.first() {
+      let (args1, debug) = if arg == "--debug" || arg == "-d" {
+         (tail(&args), true)
+      } else { (args.clone(), false) };
+      if let [protocol, dt, path] = args1.as_slice() {
+         update_virtual_pivots(&protocol, &dt, path, debug).await
+      } else { Err(usage()) }
+   } else { Err(usage()) }
+}
+
 // ----- TESTS -------------------------------------------------------
 
+#[cfg(test)]
 #[cfg(not(tarpaulin_include))]
 pub mod functional_tests {
    use super::*;
-   use libs::paths::functional_tests::path_to_btc_eth_pivot_pool;
-   use book::{ date_utils::yesterday, list_utils::tail, utils::get_args };
+   use paste::paste;
+   use libs::paths::paths_test_helpers::path_to_btc_eth_pivot_pool;
+   use book::{
+      date_utils::yesterday,
+      utils::now,
+      create_testing
+   };
 
-   pub async fn runoff_with_args() -> ErrStr<()> {
-      let args = get_args();
-      if let Some(arg) = args.first() {
-         let (args1, debug) = if arg == "--debug" || arg == "-d" {
-            (tail(&args), true)
-         } else { (args.clone(), false) };
-         if let [protocol, dt, path] = args1.as_slice() {
-            update_virtual_pivots(&protocol, &dt, path, debug).await
-         } else { Err(usage()) }
-      } else { Err(usage()) }
-   }
+   create_testing!("quiz07::b_virtual");
 
-   pub async fn runoff() -> ErrStr<usize> {
+   run!("update_virtual_pivots", {
       let yday = format!("{}", yesterday());
-      let _ = update_virtual_pivots("pivot", &yday,
-                     &path_to_btc_eth_pivot_pool(), true).await?;
-      Ok(1)
-   }
+      let _ = now(update_virtual_pivots("pivot", &yday,
+                     &path_to_btc_eth_pivot_pool(), true));
+   });
 }
 
 #[cfg(test)]
 mod tests {
    use super::*;
    use book::{ date_utils::yesterday, tuple_utils::fst };
-   use libs::fetchers::functional_tests::btc_eth_pivots;
+   use libs::fetchers::fetchers_test_helpers::btc_eth_pivots;
 
    async fn virts_n_opns() -> ErrStr<(Vec<Pivot>, Partition<Pivot>)> {
       let (pivots, _mx) = btc_eth_pivots().await?;

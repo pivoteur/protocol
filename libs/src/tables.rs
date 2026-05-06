@@ -55,12 +55,21 @@ fn tabify(row: &Vec<String>) -> String {
 
 // ----- TESTS -------------------------------------------------------
 
+#[cfg(test)]
 #[cfg(not(tarpaulin_include))]
 pub mod functional_tests {
 
    use super::*;
+   use paste::paste;
 
-   use book::{csv_utils::CsvWriter,string_utils::to_string};
+   use book::{
+      create_testing,
+      csv_utils::CsvWriter,
+      string_utils::s,
+      utils::{composer,deref}
+   };
+
+   create_testing!("tables");
 
    pub fn some_rows() -> Vec<String> {
       vec![
@@ -72,23 +81,11 @@ pub mod functional_tests {
           ].into_iter().map(to_string).collect()
    }
 
-   fn run_underscore() -> ErrStr<usize> {
-      println!("\ntables::underscore functional test\n");
-      let pb = "peanut butter".to_string();
-      println!("\t{pb} is {}", underscore(pb.clone()));
-      println!("\ntables::underscore:...ok");
-      Ok(1)
-   }
-   pub fn runoff() -> ErrStr<usize> {
-      println!("\ntables functional tests\n");
-      let table = index_table(some_rows())?;
-      println!("Indexed table is:\n\n{}", table.as_csv());
-
-      println!("\nTable without indices as TSV:\n");
-      println!("{}", sans_index(&table).join("\n"));
-      let a = run_underscore()?;
-      Ok(2+a)
-   }
+   fn rows(v: Vec<String>) -> String { v.join("\n") }
+   fn table() -> IxTable { index_table(some_rows()).unwrap() }
+   run_with!("underscore", s("peanut butter"), underscore);
+   run_with!("indexed_table", &table(), CsvWriter::as_csv);
+   run_with!("sans_index", table(), composer(rows, deref(sans_index)));
 }
 
 #[cfg(test)]

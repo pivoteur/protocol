@@ -1,6 +1,9 @@
 use reqwest::header::HeaderMap;
 
-use book::err_utils::{ErrStr,err_or};
+use book:: {
+   err_utils:: { ErrStr, err_or }, 
+   utils::get_args
+};
 
 async fn fetch_opens(auth: &str) -> ErrStr<()> {
    let json = fetch_opens_json(auth).await?;
@@ -19,16 +22,23 @@ async fn read_rest_with(hm: HeaderMap, url: &str) -> ErrStr<String> {
             .headers(hm.clone())
             .send()
             .await, 
-      &format!("Could not get a response from {url} with headers {hm:?}"))?;
-
-   if response.status().is_success() {
-            let body = err_or(response.text().await, "no text in response")?;
+            &format!("Could not get a response from {url} with headers {hm:?}"))?;
+            
+            if response.status().is_success() {
+               let body = err_or(response.text().await, "no text in response")?;
             Ok(body)
    } else {
       let status = response.status();
       let error_body = err_or(response.text().await, "no error in text")?;
       Err(format!("Error status: {status}; Error body: {error_body}"))
    }
+}
+
+pub async fn runoff_with_args() -> ErrStr<()> {
+   let args = get_args();
+   let auth =
+      args.first().ok_or("Need <auth> token to fetch open pivot info")?;
+   fetch_opens(&auth).await
 }
 
 // we create a module within this module to ensure the only function called
@@ -47,27 +57,27 @@ mod header_builder {
       let url = mk_url(&ownr, &rep, path);
       Ok((header, url))
    }
-
-   fn owner(auth: &str) -> ErrStr<String> {
+   
+   pub fn owner(auth: &str) -> ErrStr<String> {
       match auth {
          "PIVOT" => Ok("pivoteur".to_string()),
          "LG" => Ok("logicalgraphs".to_string()),
          _    => Err(format!("No owner for protocol {auth}"))
       }
    }
-
+   
    /* We're aiming for this:
-
+   
       Accept: application/vnd.github.object
       "Authorization: Bearer <YOUR-TOKEN>
       "X-GitHub-Api-Version: 2022-11-28
-   */
-
-   fn build_header_with(auth: &str) -> ErrStr<HeaderMap> {
-      fn bearer(tok: &str) -> HeaderValue {
-         HeaderValue::from_str(&format!("BEARER {tok}")).unwrap()
-      }
-      let mut hm = HeaderMap::new();
+      */
+      
+      pub fn build_header_with(auth: &str) -> ErrStr<HeaderMap> {
+         fn bearer(tok: &str) -> HeaderValue {
+            HeaderValue::from_str(&format!("BEARER {tok}")).unwrap()
+         }
+         let mut hm = HeaderMap::new();
       let git_obj = "application/vnd.github.object";
       hm.insert(ACCEPT, HeaderValue::from_static(git_obj));
       let tok = get_env(&format!("{auth}_GIT_TOKEN"))?;
@@ -76,17 +86,23 @@ mod header_builder {
       hm.insert(USER_AGENT, HeaderValue::from_static("PivotProtocol"));
       Ok(hm)
    }
-
+   
    fn mk_url(owner: &str, repo: &str, path: &str) -> String {
       format!("https://api.github.com/repos/{owner}/{repo}/contents/{path}")
    }
 
    fn repo(owner: &str) -> String { format!("{owner}.github.io") }
-
+   
+}
+   // ----- TESTS -------------------------------------------------------
    #[cfg(not(tarpaulin_include))]
    #[cfg(test)]
    mod tests {
       use super::*;
+      use header_builder::build_header_with;
+      use reqwest::header:: { HeaderValue, USER_AGENT };
+      use crate::quiz04::a_git_json::header_builder::owner;
+
 
       #[test]
       fn fail_build_header_with() {
@@ -99,7 +115,7 @@ mod header_builder {
          let ans = build_header_with("PIVOT");
          assert!(ans.is_ok());
       }
-
+      
       #[test]
       fn test_build_header_with() -> ErrStr<()> {
          let ans = build_header_with("PIVOT")?;
@@ -115,8 +131,16 @@ mod header_builder {
          assert_eq!("pivoteur", &own);
          Ok(())
       }
+
+      #[tokio::test]
+      async fn fail_fetch_opens() { assert!(fetch_opens("asdf").await.is_err()); }
+      
+      #[tokio::test]
+      async fn test_fetch_opens_ok() {
+         assert!(fetch_opens("PIVOT").await.is_ok());
+      }
+
    }
-}
 
 use header_builder::hdr_url;
 
@@ -126,43 +150,16 @@ async fn fetch_opens_json(auth: &str) -> ErrStr<String> {
 }
 
 // ------ TESTS -------------------------------------------------------
-
+#[cfg(test)]
 #[cfg(not(tarpaulin_include))]
 pub mod functional_tests {
    use super::*;
-   use book::{ test_utils::preamble, utils::get_args };
+   use paste::paste;
+   use book::{ create_testing, utils::now };
 
-   fn module() -> String { "quiz04::a_git_json".to_string() }
+   create_testing! ( "quiz04::a_git_json" );
 
-   async fn run_fetch_opens() -> ErrStr<usize> {
-      fetch_opens("pivot").await?;
-      Ok(1)
-   }
-   pub async fn runoff() -> ErrStr<usize> {
-      preamble(&module());
-      let a = run_fetch_opens().await?;
-      Ok(a)
-   }
-
-   pub async fn runoff_with_args() -> ErrStr<()> {
-      let args = get_args();
-      let auth =
-         args.first().ok_or("Need <auth> token to fetch open pivot info")?;
-      fetch_opens(&auth).await
-   }
+   run!( "fetch_opens" , {
+      let _ = now(fetch_opens("pivot"));
+   });
 }
-
-#[cfg(not(tarpaulin_include))]
-#[cfg(test)]
-mod tests {
-   use super::*;
-
-   #[tokio::test]
-   async fn fail_fetch_opens() { assert!(fetch_opens("asdf").await.is_err()); }
-
-   #[tokio::test]
-   async fn test_fetch_opens_ok() {
-      assert!(fetch_opens("PIVOT").await.is_ok());
-   }
-}
-

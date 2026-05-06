@@ -4,7 +4,8 @@ use book::{
    err_utils::ErrStr,
    file_utils::subdirs,
    string_utils::plural,
-   tuple_utils::Partition
+   tuple_utils::Partition,
+   utils::get_args
 };
 
 fn app_name() -> String { "itr".to_string() }
@@ -70,48 +71,37 @@ is the directory where cargo build will be executed in each dapp-directory.
    "dapps <dir> argument required".to_string()
 }
 
+pub fn runoff_get_args() -> ErrStr<()> {
+   let args = get_args();
+   let _ = build_dapps_and_report(args.first().as_deref().map(|s| s.as_str()))?;
+   Ok(())
+}
+
+fn build_dapps_and_report(mb_dir: Option<&str>) -> ErrStr<usize> {
+   print_heading();
+   let dir = mb_dir.ok_or_else(|| usage())?;
+   let res = build_dapps(dir);
+   report_build_results(res)
+}
+
+fn version() -> String { "1.01".to_string() }
+fn print_heading() { println!("{}, version: {}\n", app_name(), version()); }
+
 // ----- TESTS -------------------------------------------------------
 
+#[cfg(test)]
 #[cfg(not(tarpaulin_include))]
 pub mod functional_tests {
    use super::*;
+   use paste::paste;
+   use book::create_testing;
 
-   use book::utils::get_args;
+   create_testing!("quiz09::a_itr");
 
-   fn version() -> String { "1.00".to_string() }
-   fn print_heading() { println!("{}, version: {}\n", app_name(), version()); }
-
-   pub fn runoff_get_args() -> ErrStr<()> {
-      let args = get_args();
-      let _ = do_it(args.first().as_deref().map(|s| s.as_str()))?;
-      Ok(())
-   }
-
-   fn do_it(mb_dir: Option<&str>) -> ErrStr<usize> {
-      print_heading();
-      let dir = mb_dir.ok_or_else(|| usage())?;
-      let res = build_dapps(dir);
-      report_build_results(res)
-   }
-
-   fn runoff1() -> ErrStr<usize> {
-      println!("\nquiz09: a_itr build successes\n");
-      do_it(Some("data/sample_dapps"))
-   }
-
-   fn runoff2() -> ErrStr<usize> {
-      println!("\nquiz09: a_itr build FAILURE!\n");
-      match do_it(Some("data/sample_broken_dapp")) {
-         Ok(_) => Err("No build failures detected!".to_string()),
-         Err(_) => Ok(1)
-      }
-   }
-
-   pub fn runoff() -> ErrStr<usize> {
-      let n1 = runoff1()?;
-      let n2 = runoff2()?;
-      Ok(n1+n2)
-   }
+   run!("build_dapps_success", " (successes)",
+        build_dapps_and_report(Some("data/sample_dapps")));
+   run!("build_dapps_failure", " (build FAILURE!)",
+        build_dapps_and_report(Some("data/sample_broken_dapp")));
 }
 
 #[cfg(test)]

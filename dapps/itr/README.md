@@ -11,5 +11,6 @@ Integration test-suite that runs `cargo build` over each sub-directory in
 
 ## Revisions
 
+* 1.01, 2026-05-06: using new functional test framework
 * 1.00, 2026-01-28: released!
 

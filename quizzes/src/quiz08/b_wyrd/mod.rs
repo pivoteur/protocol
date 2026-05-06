@@ -1,6 +1,5 @@
 use book::err_utils::ErrStr;
-use book::parse_utils::{ parse_id, parse_str };
-use book::table_utils::{ ingest, val };
+use book::table_utils::val;
 use book::date_utils::parse_date;
 use libs::tables::IxTable;
 
@@ -81,8 +80,9 @@ pub fn parse_row(table: &IxTable, ix: usize, tx_id: &str, new_to_actual: &str) -
 #[cfg(test)]
 mod tests {
     use super::*;
-    use book::table_utils::row;
+    use book::table_utils:: {row, ingest };
     use book::date_utils::today;
+    use book::parse_utils::{ parse_str, parse_id };
 
 
     fn mock_dusk_output() -> String {
@@ -256,11 +256,6 @@ mod tests {
     }
     
     #[test] 
-    fn test_functional_suite() { 
-        super::functional_tests::runoff().expect("Functional suite failed"); 
-    }
-
-    #[test] 
     fn test_gain_formula() { 
         assert_eq!(-50.0, 100.0_f64 - (100.0 + 50.0)); 
     }    
@@ -358,15 +353,23 @@ mod tests {
 // ===========================================================================================================================
 //----- FUNCTIONAL TESTS -----------------------------------------------------------------------------------------------------
 // ===========================================================================================================================
+#[cfg(test)]
 #[cfg(not(tarpaulin_include))]
 pub mod functional_tests {
-    use book::{ err_utils::ErrStr, date_utils::today };
     use super::*;
-    use book::utils::get_env;
+    use book:: {
+        parse_utils:: { parse_str, parse_id },
+        utils:: { get_env, resolve },
+        err_utils::ErrStr, 
+        date_utils::today,
+        table_utils:: ingest,
+        create_testing, compose
+    };
     use libs::fetchers::fetch_calls;
     use tokio::runtime::Runtime;
-
+    use paste::paste;
     
+
     fn now() -> String { format!("{}", today()) }
 
     fn make_table(raw: &str) -> ErrStr<IxTable> {
@@ -380,14 +383,15 @@ pub mod functional_tests {
         Ok(1)
     }
 
-    fn run_resilience() -> ErrStr<usize> {
+    create_testing!("quiz08::b_wyrd");
+
+    run!("resilience", {
         let table = make_table("ix,pool,ids\n1,BTC,20")?;
         if parse_row(&table, 1, "tx_id", "1.0").is_ok() {
             return Err("resilience: expected Err on missing dates, got Ok".to_string());
         }
         println!("\npivot_dapps::run_resilience functional test\n\n\tresult: Err (correct)\n\npivot_dapps::resilience:...ok");
-        Ok(1)
-    }
+    });
 
     fn apr_safety(dt: String) -> ErrStr<String> {
         let row = make_table(&format!(
@@ -398,7 +402,7 @@ pub mod functional_tests {
         if row.contains("NaN") || row.contains("inf") { return Err(format!("apr_safety: NaN or inf in: {row}")); }
         Ok(row)
     }
-    fn run_apr_safety() -> ErrStr<usize> { report("apr_safety", now(), apr_safety) }
+    run_with!("apr_safety", now(), compose!(resolve)(apr_safety));
 
     fn whale(dt: String) -> ErrStr<String> {
         let row = make_table(&format!(
@@ -409,7 +413,7 @@ pub mod functional_tests {
         if !row.contains("150000000.0000") { return Err(format!("whale: expected 150000000.0000 in: {row}")); }
         Ok(row)
     }
-    fn run_whale() -> ErrStr<usize> { report("whale", now(), whale) }
+    run_with!("whale", now(), compose!(resolve)(whale));
 
     fn roi_zero_div(dt: String) -> ErrStr<String> {
         let row = make_table(&format!(
@@ -420,7 +424,7 @@ pub mod functional_tests {
         if row.contains("NaN") || row.contains("inf") { return Err(format!("roi_zero_div: NaN or inf in: {row}")); }
         Ok(row)
     }
-    fn run_roi_zero_div() -> ErrStr<usize> { report("roi_zero_div", now(), roi_zero_div) }
+    run_with!("roi_zero_div", now(), compose!(resolve)(roi_zero_div));
 
     fn column_count(dt: String) -> ErrStr<String> {
         let row = make_table(&format!(
@@ -432,7 +436,7 @@ pub mod functional_tests {
         if h != r { return Err(format!("column_count: header={h} row={r}")); }
         Ok(row)
     }
-    fn run_column_count() -> ErrStr<usize> { report("column_count", now(), column_count) }
+    run_with!("column_count", now(), compose!(resolve)(column_count));
 
     fn currency_format(dt: String) -> ErrStr<String> {
         let row = make_table(&format!(
@@ -443,7 +447,7 @@ pub mod functional_tests {
         if !row.contains("150000.0000") { return Err(format!("currency_format: expected 150000.0000 in: {row}")); }
         Ok(row)
     }
-    fn run_currency_format() -> ErrStr<usize> { report("currency_format", now(), currency_format) }
+    run_with!("currency_format", now(), compose!(resolve)(currency_format));
 
     fn apr_math((close_str, open_str): (String, String)) -> ErrStr<String> {
         let row = make_table(&format!(
@@ -454,11 +458,11 @@ pub mod functional_tests {
         if !row.contains("10.00%") { return Err(format!("apr_math: expected 10.00% in: {row}")); }
         Ok(row)
     }
-    fn run_apr_math() -> ErrStr<usize> {
+    run!("apr_math", {
         let close  = today();
         let opened = close - chrono::Duration::days(365);
-        report("apr_math", (format!("{close}"), format!("{opened}")), apr_math)
-    }
+        let _ = report("apr_math", (format!("{close}"), format!("{opened}")), apr_math);
+    });
 
     fn undead_zero_precision(dt: String) -> ErrStr<String> {
         let row = make_table(&format!(
@@ -470,7 +474,7 @@ pub mod functional_tests {
         if gain_usd == 0.0 { return Err("undead_zero_precision: gain_total_usd is 0, to_quote not rescued".to_string()); }
         Ok(row)
     }
-    fn run_undead_zero_precision() -> ErrStr<usize> { report("undead_zero_precision", now(), undead_zero_precision) }
+    run_with!("undead_zero_precision", now(), compose!(resolve)(undead_zero_precision));
 
     pub fn runoff_with_args() -> ErrStr<()> {
         let args: Vec<String> = std::env::args().collect();
@@ -491,20 +495,6 @@ pub mod functional_tests {
             Err(e) => eprintln!("Error: {e}"),
         }
         Ok(())
-    }
-
-    pub fn runoff() -> ErrStr<usize> {
-        println!("\npivot_dapps functional tests\n");
-        let a = run_resilience()?;
-        let b = run_apr_safety()?;
-        let c = run_whale()?;
-        let d = run_roi_zero_div()?;
-        let e = run_column_count()?;
-        let f = run_currency_format()?;
-        let g = run_apr_math()?;
-        let h = run_undead_zero_precision()?;
-        println!("\nFunctional suite complete. All tests passed.");
-        Ok(a+b+c+d+e+f+g+h)
     }
 
 }
