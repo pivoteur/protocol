@@ -126,7 +126,7 @@ async fn fetch_opens_json(auth: &str) -> ErrStr<String> {
 }
 
 // ------ TESTS -------------------------------------------------------
-
+#[cfg(test)]
 #[cfg(not(tarpaulin_include))]
 pub mod functional_tests {
    use super::*;
