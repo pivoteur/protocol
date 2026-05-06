@@ -1,8 +1,14 @@
-use book::err_utils::ErrStr;
-use book::table_utils::val;
-use book::date_utils::parse_date;
-use libs::tables::IxTable;
+use tokio::runtime::Runtime;
 
+use book::{
+   err_utils::ErrStr,
+   table_utils::val,
+   date_utils::parse_date,
+   parse_utils::parse_id,
+   utils::get_env
+};
+
+use libs::{ fetchers::fetch_calls, tables::IxTable };
 
 // ===========================================================================================================================
 //----- pub fn header --------------------------------------------------------------------------------------------------------
@@ -350,6 +356,28 @@ mod tests {
     }
 
 }
+
+pub fn runoff_with_args() -> ErrStr<()> {
+    let args: Vec<String> = std::env::args().collect();
+    if args.len() < 4 {
+        eprintln!("Error: not enough arguments.");
+        eprintln!("Usage: `wyrd` <ix> <tx_id> <new_to_actual>");
+        eprintln!("Example: `wyrd` 5 \"asdf\" \"1250.75\"");
+        std::process::exit(1);
+    }
+    let ix       = parse_id(&args[1])?;
+    let root_url = get_env("PIVOT_URL")?;
+    let rt       = Runtime::new().map_err(|e| e.to_string())?;
+    match rt.block_on(fetch_calls(&root_url)) {
+        Ok(t)  => {
+            println!("{}", header());
+            println!("{}", parse_row(&t, ix, &args[2], &args[3])?);
+        }
+        Err(e) => eprintln!("Error: {e}"),
+    }
+    Ok(())
+}
+
 // ===========================================================================================================================
 //----- FUNCTIONAL TESTS -----------------------------------------------------------------------------------------------------
 // ===========================================================================================================================
@@ -358,17 +386,14 @@ mod tests {
 pub mod functional_tests {
     use super::*;
     use book:: {
-        parse_utils:: { parse_str, parse_id },
-        utils:: { get_env, resolve },
-        err_utils::ErrStr, 
+        create_testing,
+        compose,
+        parse_utils::parse_str,
+        utils::resolve,
         date_utils::today,
-        table_utils:: ingest,
-        create_testing, compose
+        table_utils:: ingest
     };
-    use libs::fetchers::fetch_calls;
-    use tokio::runtime::Runtime;
     use paste::paste;
-    
 
     fn now() -> String { format!("{}", today()) }
 
@@ -474,27 +499,7 @@ pub mod functional_tests {
         if gain_usd == 0.0 { return Err("undead_zero_precision: gain_total_usd is 0, to_quote not rescued".to_string()); }
         Ok(row)
     }
+
     run_with!("undead_zero_precision", now(), compose!(resolve)(undead_zero_precision));
-
-    pub fn runoff_with_args() -> ErrStr<()> {
-        let args: Vec<String> = std::env::args().collect();
-        if args.len() < 4 {
-            eprintln!("Error: not enough arguments.");
-            eprintln!("Usage: `wyrd` <ix> <tx_id> <new_to_actual>");
-            eprintln!("Example: `wyrd` 5 \"asdf\" \"1250.75\"");
-            std::process::exit(1);
-        }
-        let ix       = parse_id(&args[1])?;
-        let root_url = get_env("PIVOT_URL")?;
-        let rt       = Runtime::new().map_err(|e| e.to_string())?;
-        match rt.block_on(fetch_calls(&root_url)) {
-            Ok(t)  => {
-                println!("{}", header());
-                println!("{}", parse_row(&t, ix, &args[2], &args[3])?);
-            }
-            Err(e) => eprintln!("Error: {e}"),
-        }
-        Ok(())
-    }
-
 }
+
