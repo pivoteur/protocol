@@ -46,10 +46,17 @@ async fn new_opens(auth: &str, date: NaiveDate, path: &str)
 
 // ----- TESTS -------------------------------------------------------
 
+#[cfg(test)]
 #[cfg(not(tarpaulin_include))]
 pub mod functional_tests {
    use super::*;
-   use book::{date_utils::{yesterday,parse_date}, utils::get_args};
+   use paste::paste;
+   use book::{
+      create_testing,
+      date_utils::{yesterday,parse_date},
+      create_testing,
+      utils::{get_args,now}
+   };
 
    pub async fn runoff_with_args() -> ErrStr<()> {
       let args = get_args();
@@ -62,11 +69,12 @@ pub mod functional_tests {
       }
    }
 
-   pub async fn runoff() -> ErrStr<usize> {
+   create_testing!("quiz07::c_open");
+
+   run!("new_opens", {
       let yday = yesterday();
-      let _pivs = new_opens("pivot", yday, BTC_ETH_PATH).await?;
-      Ok(1)
-   }
+      let _pivs = now(new_opens("pivot", yday, BTC_ETH_PATH));
+   });
 }
 
 #[cfg(test)]

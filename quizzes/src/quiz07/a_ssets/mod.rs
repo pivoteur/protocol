@@ -47,10 +47,17 @@ where
 
 // ----- TESTS -------------------------------------------------------
 
+#[cfg(test)]
 #[cfg(not(tarpaulin_include))]
 pub mod functional_tests {
    use super::*;
-   use book::{date_utils::yesterday, string_utils::words, utils::get_args};
+   use paste::paste;
+   use book::{
+      create_testing,
+      date_utils::yesterday,
+      string_utils::words,
+      utils::{get_args,now}
+   };
 
    pub async fn runoff_with_args() -> ErrStr<()> {
       let args = get_args();
@@ -61,10 +68,11 @@ pub mod functional_tests {
       }
    }
 
-   pub async fn runoff() -> ErrStr<usize> {
+   create_testing!("quiz07::a_ssets");
+
+   run!("list_quotes_and_assets", {
       let yday = yesterday();
-      let _ = list_quotes_and_assets(words(&format!("pivot {yday}"))).await?;
-      Ok(1)
-   }
+      let _ = now(list_quotes_and_assets(words(&format!("pivot {yday}"))));
+   });
 }
 

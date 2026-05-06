@@ -151,8 +151,13 @@ where
 #[cfg(not(tarpaulin_include))]
 pub mod functional_tests {
    use super::*;
+   use paste::paste;
    use libs::paths::functional_tests::path_to_btc_eth_pivot_pool;
-   use book::{ date_utils::yesterday, list_utils::tail, utils::get_args };
+   use book::{
+      date_utils::yesterday,
+      list_utils::tail,
+      utils::{get_args,now}
+   };
 
    pub async fn runoff_with_args() -> ErrStr<()> {
       let args = get_args();
@@ -166,12 +171,13 @@ pub mod functional_tests {
       } else { Err(usage()) }
    }
 
-   pub async fn runoff() -> ErrStr<usize> {
+   create_testing!("quiz07::b_virtual");
+
+   run!("update_virtual_pivots", {
       let yday = format!("{}", yesterday());
-      let _ = update_virtual_pivots("pivot", &yday,
-                     &path_to_btc_eth_pivot_pool(), true).await?;
-      Ok(1)
-   }
+      let _ = now(update_virtual_pivots("pivot", &yday,
+                     &path_to_btc_eth_pivot_pool(), true));
+   });
 }
 
 #[cfg(test)]
