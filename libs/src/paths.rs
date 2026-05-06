@@ -62,19 +62,23 @@ pub fn quotes_url() -> String {
 
 // ----- TESTS -------------------------------------------------------
 
-#[cfg(test)]
 #[cfg(not(tarpaulin_include))]
-pub mod functional_tests {
-   use super::*;
-   use paste::paste;
-   use book::create_testing;
-
+pub mod path_test_helpers {
    fn pool_file() -> String { format!("btc-eth.tsv") }
    fn opens_path() -> String { format!("protocol/data/pivots/open/raw") }
 
    pub fn path_to_btc_eth_pivot_pool() -> String {
       format!("{}/{}", opens_path(), pool_file())
    }
+}
+
+#[cfg(test)]
+#[cfg(not(tarpaulin_include))]
+pub mod functional_tests {
+   use super::*;
+   use paste::paste;
+   use book::create_testing;
+   use super::path_test_helpers::path_to_btc_eth_pivot_pool;
 
    create_testing!("paths");
 

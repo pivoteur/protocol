@@ -115,7 +115,7 @@ pub mod functional_tests {
 #[cfg(not(tarpaulin_include))]
 mod tests {
    use super::*;
-   use crate::fetchers::functional_tests::marshall;
+   use crate::fetchers::fetchers_test_helpers::marshall;
    use book::date_utils::yesterday;
 
    fn yday() -> String { format!("{}", yesterday()) }

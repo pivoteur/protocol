@@ -4,7 +4,8 @@ use book::{
    date_utils::parse_date,
    err_utils::ErrStr,
    tuple_utils::Partition,
-   utils::get_env
+   utils::get_env,
+   create_testing
 };
 
 use libs::{
@@ -152,7 +153,10 @@ where
 pub mod functional_tests {
    use super::*;
    use paste::paste;
-   use libs::paths::functional_tests::path_to_btc_eth_pivot_pool;
+   use libs::{
+      paths::path_test_helpers::path_to_btc_eth_pivot_pool,
+      fetchers::fetcher_test_helpers::btc_eth_pivots
+   };
    use book::{
       date_utils::yesterday,
       list_utils::tail,

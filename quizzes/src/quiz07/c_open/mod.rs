@@ -39,8 +39,8 @@ async fn new_opens(auth: &str, date: NaiveDate, path: &str)
    let quotes = fetch_quotes(&date).await?;
    let aliases = &quotes.aliases;
    let (prim, piv) = pivot_pool_from_file(path)?;
-   let pool_assets = fetch_assets(&root_url, &prim, &piv, aliases).await?;
-   let (opens, closes) = fetch_pivots(&root_url, &prim, &piv, aliases).await?;
+   let _pool_assets = fetch_assets(&root_url, &prim, &piv, aliases).await?;
+   let (_opens, _closes) = fetch_pivots(&root_url, &prim, &piv, aliases).await?;
    not_implemented("new_opens")
 }
 
@@ -54,7 +54,6 @@ pub mod functional_tests {
    use book::{
       create_testing,
       date_utils::{yesterday,parse_date},
-      create_testing,
       utils::{get_args,now}
    };
 

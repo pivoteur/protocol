@@ -210,20 +210,10 @@ pub async fn fetch_quotes(date: &NaiveDate) -> ErrStr<Quotes> {
 
 // ----- TESTS -------------------------------------------------------
 
-#[cfg(test)]
 #[cfg(not(tarpaulin_include))]
-pub mod functional_tests {
+pub mod fetchers_test_helpers {
    use super::*;
-   use paste::paste;
-   use book::{
-      create_testing,
-      csv_utils::{CsvWriter},
-      date_utils::yesterday,
-      utils::{get_env,now}
-   };
-   use crate::reports::print_tsv_table_d;
-
-   create_testing!("fetchers");
+   use book::utils::{get_env,now};
 
    pub fn marshall() -> ErrStr<(String, Aliases)> {
       let root_url = get_env("PIVOT_URL")?;
@@ -235,6 +225,23 @@ pub mod functional_tests {
       let (root_url, a) = marshall()?;
       now(fetch_pivots(&root_url, "btc", "eth", &a))
    }
+}
+
+#[cfg(test)]
+#[cfg(not(tarpaulin_include))]
+pub mod functional_tests {
+   use super::*;
+   use paste::paste;
+   use book::{
+      create_testing,
+      csv_utils::{CsvWriter},
+      date_utils::yesterday,
+      utils::now
+   };
+   use super::fetchers_test_helpers::{marshall,btc_eth_pivots};
+   use crate::reports::print_tsv_table_d;
+
+   create_testing!("fetchers");
 
    run!("fetch_pool_names", {
       let (root_url, _aliases) = marshall()?;
