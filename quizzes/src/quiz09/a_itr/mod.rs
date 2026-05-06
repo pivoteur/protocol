@@ -72,11 +72,12 @@ is the directory where cargo build will be executed in each dapp-directory.
 
 // ----- TESTS -------------------------------------------------------
 
+#[cfg(test)]
 #[cfg(not(tarpaulin_include))]
 pub mod functional_tests {
    use super::*;
-
-   use book::utils::get_args;
+   use paste::paste;
+   use book::{create_testing, utils::get_args };
 
    fn version() -> String { "1.00".to_string() }
    fn print_heading() { println!("{}, version: {}\n", app_name(), version()); }
@@ -94,24 +95,12 @@ pub mod functional_tests {
       report_build_results(res)
    }
 
-   fn runoff1() -> ErrStr<usize> {
-      println!("\nquiz09: a_itr build successes\n");
-      do_it(Some("data/sample_dapps"))
-   }
+   create_testing!("quiz09::a_itr");
 
-   fn runoff2() -> ErrStr<usize> {
-      println!("\nquiz09: a_itr build FAILURE!\n");
-      match do_it(Some("data/sample_broken_dapp")) {
-         Ok(_) => Err("No build failures detected!".to_string()),
-         Err(_) => Ok(1)
-      }
-   }
-
-   pub fn runoff() -> ErrStr<usize> {
-      let n1 = runoff1()?;
-      let n2 = runoff2()?;
-      Ok(n1+n2)
-   }
+   run!("build_dapps_success", " (successes)",
+        do_it(Some("data/sample_dapps")));
+   run!("build_dapps_failure", " (build FAILURE!)",
+        do_it(Some("data/sample_broken_dapp")));
 }
 
 #[cfg(test)]
