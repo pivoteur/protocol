@@ -1,3 +1,5 @@
+use std::ops::AddAssign;
+
 use chrono::NaiveDate;
 
 use book::{
@@ -13,13 +15,19 @@ use crate::types::{
 // ----- ASSETS ----------------------------------------------------------
 
 /// A Coin (an element of Assets) is a Token distinguished by Blockchain
-#[derive(Debug, Clone)]
+#[derive(Default, Debug, Clone)]
 pub struct Coin {
    blockchain: Blockchain,
    token: Token,
-   pub amount: f32,
-   pub quote: USD,
+   amount: f32,
+   quote: USD,
    pub date: NaiveDate
+}
+
+impl AddAssign<f32> for Coin {
+   fn add_assign(&mut self, rhs: f32) {
+      self.amount += rhs;
+   }
 }
 
 impl Measurable for Coin {
@@ -82,5 +90,38 @@ impl Measurable for PivotCoin {
 
 impl PivotCoin {
    pub fn key(&self) -> Token { self.asset.token.clone() }
+   pub fn coin(&self) -> Coin { self.asset.clone() }
+}
+
+// ----- TESTS -------------------------------------------------------
+
+#[cfg(test)]
+#[cfg(not(tarpaulin_include))]
+pub mod functional_tests {
+   use super::*;
+   use paste::paste;
+   use book::{
+      create_testing,
+      currency::usd::mk_usd,
+      date_utils::yesterday,
+      err_utils::ErrStr,
+      string_utils::s,
+      utils::{now,deref,composer}
+   };
+   use crate::fetchers::fetch_quotes;
+
+   pub fn coin(tok: &str, amt: f32) -> ErrStr<Coin> {
+      let t = s(tok);
+      let yday = yesterday();
+      let quotes = now(fetch_quotes(&yday))?;
+      let qt = quotes.lookup(&t)?;
+      Ok(mk_coin(&(s("Avalanche"), t), amt, &mk_usd(qt), &yday))
+   }
+
+   create_testing!("types::coins");
+
+   run_with!("mk_coin", &coin("BTC", 0.1)?, CsvWriter::as_csv);
+   run_with!("mk_pivot_coin", coin("ETH", 3.4)?,
+             composer(deref(CsvWriter::as_csv), mk_pivot_coin));
 }
 

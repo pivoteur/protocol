@@ -52,7 +52,8 @@ pub struct Proposal {
     proposal: Propose,
 }
 
-pub fn mk_proposal(pool: &Pool, max_date: NaiveDate, opens: usize, p: Propose) -> Proposal {
+pub fn mk_proposal(pool: &Pool, max_date: NaiveDate, opens: usize, p: Propose)
+       -> Proposal {
     let (prim, piv) = pool;
     Proposal {
         pool: header(prim, piv),
@@ -103,7 +104,8 @@ pub fn print_table<T: CsvHeader + CsvWriter>(header: &str, v: &[T]) {
     print_table_d(header, v, true);
 }
 
-pub fn print_table_d<T: CsvHeader + CsvWriter>(header: &str, v: &[T], debug: bool) {
+pub fn print_table_d<T: CsvHeader + CsvWriter>(header: &str, v: &[T],
+                                               debug: bool) {
     fn printer(s: &String) {
         println!("{s}");
     }
@@ -116,7 +118,8 @@ pub fn print_table_d<T: CsvHeader + CsvWriter>(header: &str, v: &[T], debug: boo
     }
 }
 
-pub fn print_tsv_table_d<T: CsvHeader + CsvWriter>(header: &str, v: &[T], debug: bool) {
+pub fn print_tsv_table_d<T: CsvHeader + CsvWriter>(header: &str, v: &[T],
+                                                   debug: bool) {
     fn printer(s: &String) {
         println!("{s}");
     }
@@ -136,7 +139,8 @@ pub fn report_proposes(proposes: &[Proposal], no_closers: &[Pool], min: bool) {
         }
         "analyzed"
     } else {
-        let ix_props: Vec<_> = proposes.iter().enumerate().map(mk_idx_offset(1)).collect();
+        let ix_props: Vec<_> =
+           proposes.iter().enumerate().map(mk_idx_offset(1)).collect();
         print_table_d("Close Pivot Calls", &ix_props, !min);
         "with no closes"
     };
@@ -173,7 +177,8 @@ fn print_compact<T: CsvWriter>(
     propose: Option<&T>,
     default: usize,
 ) {
-    if let Some(ncols) = propose.and_then(|p| Some(p.ncols())).or(Some(default)) {
+    if let Some(ncols) =
+           propose.and_then(|p| Some(p.ncols())).or(Some(default)) {
         let len = no_closers.len();
         let nrows: usize = len * 2 / ncols + 1; // each entry takes two columns
         let entries_per_row: usize = len / nrows;

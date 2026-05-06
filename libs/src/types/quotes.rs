@@ -6,6 +6,7 @@ use book::{
    currency::usd::mk_usd,
    csv_utils::{CsvHeader,CsvWriter},
    err_utils::ErrStr,
+   string_utils::s,
    table_utils::{Table,from_map}
 };
 
@@ -47,9 +48,10 @@ pub fn mk_quotes(date: NaiveDate, quotes: HashMap<Token, f32>) -> Quotes {
 }
 
 impl Quotes {
-   pub fn lookup(&self, key: &Token) -> ErrStr<f32> {
-      self.quotes.get(&self.aliases.alias(key))
-              .ok_or(format!("Unable to find quote for {key}"))
+   pub fn lookup(&self, key: &str) -> ErrStr<f32> {
+      let k = s(key);
+      self.quotes.get(&self.aliases.alias(&k))
+              .ok_or(format!("Unable to find quote for {k}"))
               .copied()
    }
    pub fn as_table(&self) -> Table<usize,Token,f32> {
@@ -80,7 +82,7 @@ mod tests {
    use super::functional_tests::test_mk_quotes;
 
    fn looking(token: &str) -> ErrStr<f32> {
-      test_mk_quotes(&[("BTC", 68732.0)]).lookup(&token.to_string())
+      test_mk_quotes(&[("BTC", 68732.0)]).lookup(token)
    }
 
    #[test]

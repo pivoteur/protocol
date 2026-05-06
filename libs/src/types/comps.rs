@@ -5,9 +5,11 @@ use book::{
    csv_utils::{CsvHeader,CsvWriter}
 };
 
+use crate::collections::assets::{Assets,mk_assets};
 use super::{
    coins::{Coin,PivotCoin,mk_pivot_coin},
-   measurable::{Measurable,size,tvl}
+   measurable::{Measurable,size,tvl},
+   util::pool_name as pool_nm
 };
 
 #[derive(Debug,Clone)]
@@ -21,13 +23,19 @@ pub fn mk_composition(primary: Coin, pivot: Coin) -> Composition {
 }
 
 impl Composition {
-   pub fn pool_name(&self) -> String {
+   pub fn pool_name(&self) -> String { 
       let (_, pri) = self.primary.key();
       let piv = self.pivot.key();
-      format!("{pri}+{piv}")
+      pool_nm(&(pri, piv))
    }
 
    pub fn tvl(&self) -> USD { tvl(&self.primary) + tvl(&self.pivot) }
+   pub fn as_assets(&self) -> Assets {
+      let mut assets = mk_assets();
+      assets.add(self.primary.clone());
+      assets.add(self.pivot.coin());
+      assets
+   }
 }
 
 impl Measurable for Composition {
@@ -80,5 +88,29 @@ fn contextualize(p: PoolCoin, hdr: &str) -> String {
    hdr.split(",").map(|s| format!("{}_{}", p.kind(), s))
       .collect::<Vec<_>>()
       .join(",")
+}
+
+// ----- TESTS -------------------------------------------------------
+
+#[cfg(test)]
+#[cfg(not(tarpaulin_include))]
+pub mod functional_tests {
+   use super::*;
+   use paste::paste;
+   use book::{ create_testing, err_utils::ErrStr };
+   use crate::types::coins::functional_tests::coin;
+
+   create_testing!("types::comps");
+
+   fn mk_btc_eth() -> ErrStr<Composition> {
+      let btc = coin("BTC", 0.1)?;
+      let eth = coin("ETH", 3.4)?;
+      Ok(mk_composition(btc, eth))
+   }
+
+   run_with!("mk_composition", " (BTC+ETH pivot pool)",
+             &mk_btc_eth()?, CsvWriter::as_csv);
+   run_with!("as_assets", " (BTC+ETH pivot pool)",
+             &mk_btc_eth()?.as_assets(), CsvWriter::as_csv);
 }
 
