@@ -1,9 +1,19 @@
-use book::err_utils::ErrStr;
-
-use libs::{
-    collections::assets::{assets_by_tvl, mk_assets},
+use book:: { 
+    err_utils::ErrStr,
+    utils::get_args
+};
+use libs:: {
     processors::process_pools,
-    reports::{Proposal, print_table, proposal, report_proposes},
+    collections::assets:: { 
+        assets_by_tvl, 
+        mk_assets
+    },
+    reports:: {
+        Proposal, 
+        print_table, 
+        proposal, 
+        report_proposes
+    },
 };
 
 fn version() -> String {
@@ -20,14 +30,10 @@ fn usage() -> ErrStr<()> {
 $ {} [--min] <protocol> <date>
 
 where:
-
 * <protocol> is the protocol to be analyzed, e.g.: PIVOT
 * <date> is the date to propose pivots, e.g. 2025-12-18
-* --min (optional) outputs only the proposals table
-",
-        app_name()
-    );
-    Err("Need <protocol> and <date> arguments".to_string())
+* --min (optional) outputs only the proposals table", app_name());
+Err("Need <protocol> and <date> arguments".to_string())
 }
 
 pub async fn propose(auth: &str, dt: &str, min: bool) -> ErrStr<usize> {
@@ -49,13 +55,12 @@ fn tokens_to_pivot(proposals: Vec<Proposal>) {
     print_table("Assets to pivot", &assets_by_tvl(&tokens));
 }
 
-// ----- TESTS -----------------------------------------------------
-
 // ----- UNIT TESTS ------------------------------------------------
 
 #[cfg(test)]
 mod unit_tests {
     use super::*;
+
 
     #[test]
     fn test_app_name() {
@@ -75,29 +80,34 @@ mod unit_tests {
     }
 }
 
+pub async fn runoff_with_args() -> ErrStr<()> {
+    let args = get_args();
+    let min = args.contains(&"--min".to_string());
+    let args: Vec<String> =
+       args.into_iter().filter(|a| a != "--min").collect();
+    if !min {
+        println!("\n{}, version: {}\n", app_name(), version());
+    }
+    if let [auth, dt] = args.as_slice() {
+        let _ = propose(auth, dt, min).await?;
+        Ok(())
+    } else {
+        usage()
+    }
+}
+
 // ----- FUNCTIONAL TESTS ------------------------------------------
 
+#[cfg(test)]
 #[cfg(not(tarpaulin_include))]
 pub mod functional_tests {
     use super::*;
-    use book::date_utils::yesterday;
-    use book::utils::get_args;
-
-    pub async fn runoff_with_args() -> ErrStr<()> {
-        let args = get_args();
-        let min = args.contains(&"--min".to_string());
-        let args: Vec<String> =
-           args.into_iter().filter(|a| a != "--min").collect();
-        if !min {
-            println!("\n{}, version: {}\n", app_name(), version());
-        }
-        if let [auth, dt] = args.as_slice() {
-            let _ = propose(auth, dt, min).await?;
-            Ok(())
-        } else {
-            usage()
-        }
-    }
+    use paste::paste;
+    use book:: { 
+        date_utils::yesterday,
+        create_testing
+    };
+    
 
     async fn run_full_dusk() -> ErrStr<usize> {
         println!("quiz05:b_dusk_min full functional test\n");
@@ -113,10 +123,12 @@ pub mod functional_tests {
         Ok(1)
     }
 
-    pub async fn runoff() -> ErrStr<usize> {
+    create_testing!("quiz05::b_dusk_min");
+
+    run!("full_and_min_dusk", {
         println!("quiz05::b_dusk_min functional tests\n");
-        let a = run_full_dusk().await?;
-        let b = run_min_dusk().await?;
-        Ok(a + b)
-    }
+        let _a = run_full_dusk();
+        let _b = run_min_dusk();
+    });
+
 }
