@@ -101,31 +101,54 @@ mod tests {
    };
    use libs::types::measurable::tvl;
 
-   #[tokio::test]
-   async fn test_enfetchify_ok() {
+   async fn fetchme() -> ErrStr<(Composition, Vec<Pivot>)> {
       let yday = yesterday();
-      let fetchèð = enfetchify("pivot", yday, BTC_ETH_PATH).await;
-      assert!(fetchèð.is_ok());
+      enfetchify("pivot", yday, BTC_ETH_PATH).await
    }
 
    #[tokio::test]
-   async fn test_enfetchify_assets_and_pivots() -> ErrStr<()> {
-      let yday = yesterday();
-      let (comp, pivs) = enfetchify("pivot", yday, BTC_ETH_PATH).await?;
-      let pivs_tvls: USD = pivs.iter().map(composer(deref(tvl), composer(Result::unwrap, Pivot::committed))).sum();
-      assert!(comp.tvl() > no_monay(), "BTC+ETH Pool composition zero!");
-      assert!(!pivs.is_empty(), "No BTC+ETH pivots?");
-      assert!(pivs_tvls > no_monay(), "Pivots have no value");
+   async fn test_enfetchify_ok() {
+      let fetchèð = fetchme().await;
+      assert!(fetchèð.is_ok());
+   }
 
+   fn tvlr() -> impl Fn(Pivot) -> USD {
+      composer(deref(tvl), composer(Result::unwrap, deref(Pivot::committed)))
+   }
+
+   #[tokio::test]
+   async fn test_enfetchify_assets() -> ErrStr<()> {
+      let (comp, _pivs) = fetchme().await?;
+      assert!(comp.tvl() > no_monay(), "BTC+ETH Pool composition zero!");
+      Ok(())
+   }
+   #[tokio::test]
+   async fn test_enfetchify_has_pivots() -> ErrStr<()> {
+      let (_comp, pivs) = fetchme().await?;
+      assert!(!pivs.is_empty(), "No BTC+ETH pivots?");
+      Ok(())
+   }
+   #[tokio::test]
+   async fn test_enfetchify_pivots() -> ErrStr<()> {
+      let (_comp, pivs) = fetchme().await?;
+      let pivs_tvls: USD = pivs.into_iter().map(tvlr()).sum();
+      assert!(pivs_tvls > no_monay(), "BTC+ETH pivots amount to $0.00?");
+      Ok(())
+   }
 /* this is saying there are more pivots than assets $20k, but new_opens reports
    $350 $BTC available and $150 $ETH available
+
+   #[tokio::test]
+   async fn test_enfetchify_assets_and_pivots() -> ErrStr<()> {
+      let (_comp, _pivs) = fetchme().await?;
+      let pivs_tvls: USD = pivs.iter().map(tvlr()).sum();
 
       assert!(comp.tvl() - pivs_tvls.clone() > no_monay(),
               "More pivots {pivs_tvls} than assets {}
 (comp tvl is {})", comp.as_csv(), comp.tvl());
-*/
 
       Ok(())
    }
+*/
 }
 
