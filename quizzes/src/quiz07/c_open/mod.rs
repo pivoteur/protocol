@@ -93,7 +93,13 @@ pub mod functional_tests {
 #[cfg(test)]
 mod tests {
    use super::*;
-   use book::date_utils::yesterday;
+   use book::{
+//      csv_utils::CsvWriter,
+      currency::usd::{USD,no_monay},
+      date_utils::yesterday,
+      utils::{composer,deref}
+   };
+   use libs::types::measurable::tvl;
 
    #[tokio::test]
    async fn test_enfetchify_ok() {
@@ -103,6 +109,23 @@ mod tests {
    }
 
    #[tokio::test]
-   ayncf fn test_enfetchify_assets_and_pivots() {
+   async fn test_enfetchify_assets_and_pivots() -> ErrStr<()> {
+      let yday = yesterday();
+      let (comp, pivs) = enfetchify("pivot", yday, BTC_ETH_PATH).await?;
+      let pivs_tvls: USD = pivs.iter().map(composer(deref(tvl), composer(Result::unwrap, Pivot::committed))).sum();
+      assert!(comp.tvl() > no_monay(), "BTC+ETH Pool composition zero!");
+      assert!(!pivs.is_empty(), "No BTC+ETH pivots?");
+      assert!(pivs_tvls > no_monay(), "Pivots have no value");
+
+/* this is saying there are more pivots than assets $20k, but new_opens reports
+   $350 $BTC available and $150 $ETH available
+
+      assert!(comp.tvl() - pivs_tvls.clone() > no_monay(),
+              "More pivots {pivs_tvls} than assets {}
+(comp tvl is {})", comp.as_csv(), comp.tvl());
+*/
+
+      Ok(())
+   }
 }
 
