@@ -10,7 +10,7 @@ path = "../../quizzes/src/quiz10/c_local_pools/src/main.rs"
 [dependencies]
 chrono = "0.4.38"
 
-tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
+tokio = { version = "1.52.2", features = ["macros", "rt-multi-thread"] }
 
 book = { path = "../../../crypto-n-rust/src/libs/book" }
 
