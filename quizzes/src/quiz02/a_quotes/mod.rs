@@ -45,23 +45,14 @@ async fn parse_quotes() -> ErrStr<(HashMap<String, f32>, NaiveDate)> {
    Ok((quotes, max_date.clone()))
 }
 
-// ----- TESTS -------------------------------------------------------
-
-#[cfg(not(tarpaulin_include))]
-pub mod functional_tests {
-
-   use super::*;
-
-   pub async fn runoff() -> ErrStr<usize> {
-
-      println!("quiz02: a_quotes functional test\n");
-
-      let (quotes, max_date) = parse_quotes().await?;
-      println!("Quotes are {quotes:?} for date: {}", max_date);
-      Ok(1)
-   }
+pub async fn runoff() -> ErrStr<usize> {
+   println!("quiz02: a_quotes functional test\n");
+   let (quotes, max_date) = parse_quotes().await?;
+   println!("Quotes are {quotes:?} for date: {}", max_date);
+   Ok(1)
 }
 
+// ----- TESTS -------------------------------------------------------
 #[cfg(test)]
 mod tests {
 
@@ -89,4 +80,3 @@ mod tests {
       Ok(())
    }
 }
-

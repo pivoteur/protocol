@@ -7,24 +7,14 @@ pub async fn reader() -> ErrStr<String> {
    read_rest(&btc_eth).await
 }
 
-// ----- TESTS -------------------------------------------------------
-
-#[cfg(not(tarpaulin_include))]
-pub mod functional_tests {
-
-   use book::err_utils::ErrStr;
-
-   use super::reader;
-
-   pub async fn runoff() -> ErrStr<usize> {
-      println!("quiz01: a_read functional test.\n");
-
-      let body = reader().await?;
-      println!("I got {body}");
-      Ok(1)
-   }
+pub async fn runoff() -> ErrStr<usize> {
+   println!("quiz01: a_read functional test.\n");
+   let body = reader().await?;
+   println!("I got {body}");
+   Ok(1)
 }
 
+// ----- TESTS -------------------------------------------------------
 #[cfg(test)]
 mod tests {
    use super::*;

@@ -3,7 +3,8 @@ use chrono::NaiveDate;
 use book::{
    csv_utils::{CsvHeader,print_csv},
    date_utils::parse_date,
-   err_utils::ErrStr
+   err_utils::ErrStr,
+   utils::get_args
 };
 
 use libs::{
@@ -87,44 +88,45 @@ Open pivots are stored as raw-CSV files in git at protocol <root URL>.
    Err("Needs <root URL> <primary> <pivot> <date> arguments".to_string())
 }
 
-// ----- TESTS -------------------------------------------------------
+pub async fn runoff_get_args() -> ErrStr<()> {
+   let args = get_args();
+   report_calls(args).await
+}
 
+async fn report_calls(args: Vec<String>) -> ErrStr<()> {
+   print_heading();
+   if let [root_url, prim, piv, date] = args.as_slice() {
+      let dt = parse_date(&date)?;
+      let report = compute_closes(root_url, prim, piv, dt).await?;
+      report_proposes(report);
+      Ok(())
+   } else {
+      usage()
+   }
+}
+
+// ----- TESTS -------------------------------------------------------
+#[cfg(test)]
 #[cfg(not(tarpaulin_include))]
 pub mod functional_tests {
-
    use super::*;
-
-   use book::{
+   use paste::paste;
+   use book:: {
       string_utils::to_string,
-      utils::{get_args,get_env}
+      utils:: { get_env, now },
+      create_testing, 
    };
 
-   pub async fn runoff_get_args() -> ErrStr<()> {
-      let args = get_args();
-      do_it(args).await
-   }
+   create_testing!("quiz02::b_compute_close");
 
-   async fn do_it(args: Vec<String>) -> ErrStr<()> {
-      print_heading();
-      if let [root_url, prim, piv, date] = args.as_slice() {
-         let dt = parse_date(&date)?;
-         let report = compute_closes(root_url, prim, piv, dt).await?;
-         report_proposes(report);
-         Ok(())
-      } else {
-         usage()
-      }
-   }
-
-   pub async fn runoff() -> ErrStr<usize> {
-
+   run!("report_calls", {
       println!("\nquiz02: b_compute_close functional test\n");
-
       let pivot_url = get_env("PIVOT_URL")?;
       let args: Vec<String> = [&pivot_url, "AVAX", "UNDEAD", "2026-01-25"]
          .into_iter().map(to_string).collect();
-      match do_it(args).await { Ok(()) => Ok(1), Err(x) => Err(x) }
-   }
+      match now(report_calls(args)) { Ok(()) => Ok(1), Err(x) => Err(x) }
+   });
+
 }
 
 #[cfg(test)]
