@@ -1,6 +1,6 @@
 use book::err_utils::ErrStr;
 
-use quizzes::quiz03::b_aggregate::functional_tests::runoff_get_args;
+use quizzes::quiz03::b_aggregate::runoff_get_args;
 
 #[cfg(not(tarpaulin_include))]
 #[tokio::main]
