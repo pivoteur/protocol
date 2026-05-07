@@ -1,6 +1,30 @@
-use book::csv_utils::{CsvHeader,print_csv};
+use book:: { 
+   err_utils::ErrStr,
+   csv_utils:: { CsvHeader, print_csv },
+   utils::get_args
+};
+use libs:: { 
+   fetchers::fetch_pivots,
+   types:: { 
+      pivots::Pivot,
+      aliases::aliases,
+      pivots::partition_on
+   }
+};
 
-use libs::types::pivots::Pivot;
+fn usage() -> ErrStr<()> {
+   println!("Usage:
+
+$ cargo run <root URL> <primary asset> <pivot asset>
+
+Partitions open pivots.
+
+The pivot pools are reposed (in git, currently) at <root URL>.
+
+Open pivots are stored as raw-CSV files in git at protocol <root URL>.
+");
+    Err("Needs <root URL> <primary> <pivot> arguments".to_string())
+}
 
 fn list_open_pivots(piv: &str, opens: Vec<Pivot>) {
    if opens.is_empty() {
@@ -19,65 +43,45 @@ fn list_open_pivots(piv: &str, opens: Vec<Pivot>) {
    }
 }
 
-// ----- TESTS -------------------------------------------------------
+pub async fn runoff_get_args() -> ErrStr<()> {
+   if let [root_url, prim, piv] = get_args().as_slice() {
+      fetch_and_list_open_pivots(root_url, prim, piv).await
+   } else {
+      usage()
+   }
+}
 
+async fn fetch_and_list_open_pivots(root_url: &str, prim: &str, piv: &str) -> ErrStr<()> {
+   let a = aliases();
+   let ((opens, _closes), _max_date) =
+      fetch_pivots(root_url, prim, piv, &a).await?;
+   let (lefts, rights) = partition_on(prim, opens);
+   list_open_pivots(prim, lefts);
+   list_open_pivots(piv, rights);
+   Ok(())
+}
+
+// ----- TESTS -------------------------------------------------------
+#[cfg(test)]
 #[cfg(not(tarpaulin_include))]
 pub mod functional_tests {
-
+   use super::*;
+   use paste::paste;
    use book::{
       err_utils::ErrStr,
-      utils::{get_args,get_env}
+      utils:: { get_env, now },
+      create_testing
    };
 
-   use libs::{
-      fetchers::fetch_pivots,
-      types::{ aliases::aliases, pivots::partition_on }
-   };
-
-   use super::*;
-
-   pub async fn runoff_get_args() -> ErrStr<()> {
-      if let [root_url, prim, piv] = get_args().as_slice() {
-         do_it(root_url, prim, piv).await
-      } else {
-         usage()
-      }
-   }
-
-   pub async fn run_partition() -> ErrStr<usize> {
+   
+   create_testing!("quiz03::a_partition");
+   
+   run!("partition", {
       let root_url = get_env("PIVOT_URL")?;
-      match do_it(&root_url, "BTC", "ETH").await {
+      match now(fetch_and_list_open_pivots(&root_url, "BTC", "ETH")) {
          Ok(_) => Ok(1),
          Err(x) => Err(x)
       }
-   }
+   });
    
-   pub async fn runoff() -> ErrStr<usize> {
-      println!("\nquiz03: a_partition\n");
-      run_partition().await
-   }
-
-   async fn do_it(root_url: &str, prim: &str, piv: &str) -> ErrStr<()> {
-      let a = aliases();
-      let ((opens, _closes), _max_date) =
-         fetch_pivots(root_url, prim, piv, &a).await?;
-      let (lefts, rights) = partition_on(prim, opens);
-      list_open_pivots(prim, lefts);
-      list_open_pivots(piv, rights);
-      Ok(())
-   }
-
-   fn usage() -> ErrStr<()> {
-      println!("Usage:
-
-	$ cargo run <root URL> <primary asset> <pivot asset>
-
-Partitions open pivots.
-
-The pivot pools are reposed (in git, currently) at <root URL>.
-
-Open pivots are stored as raw-CSV files in git at protocol <root URL>.
-");
-       Err("Needs <root URL> <primary> <pivot> arguments".to_string())
-   }
 }
