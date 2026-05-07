@@ -1,10 +1,14 @@
 use std::collections::HashMap;
 
-use book::csv_utils::{CsvWriter,CsvHeader};
+use book::{
+   csv_utils::{CsvWriter,CsvHeader},
+   err_utils::ErrStr
+};
 
 use crate::types::{
    coins::Coin,
    measurable::{Measurable,sort_by_tvl,sort_by_weight},
+   quotes::Quotes,
    util::{Token,Blockchain}
 };
 
@@ -32,6 +36,12 @@ impl Assets {
       } else {
          panic!("No asset {:?} to remove!", asset)
       }
+   }
+   pub fn update_prices(&mut self, qs: &Quotes) -> ErrStr<()> {
+      for coin in self.map.values_mut() {
+         coin.update_price(qs)?;
+      }
+      Ok(())
    }
    pub fn is_empty(&self) -> bool { self.map.is_empty() }
    pub fn assets(&self) -> Vec<Coin> { self.map.values().cloned().collect() }
