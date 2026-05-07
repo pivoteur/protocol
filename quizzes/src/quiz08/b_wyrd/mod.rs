@@ -1,14 +1,15 @@
 use tokio::runtime::Runtime;
-
-use book::{
+use book:: {
    err_utils::ErrStr,
    table_utils::val,
    date_utils::parse_date,
    parse_utils::parse_id,
    utils::get_env
 };
-
-use libs::{ fetchers::fetch_calls, tables::IxTable };
+use libs:: { 
+    fetchers::fetch_calls, 
+    tables::IxTable 
+};
 
 // ===========================================================================================================================
 //----- pub fn header --------------------------------------------------------------------------------------------------------
@@ -370,7 +371,7 @@ pub fn runoff_with_args() -> ErrStr<()> {
     let rt       = Runtime::new().map_err(|e| e.to_string())?;
     match rt.block_on(fetch_calls(&root_url)) {
         Ok(t)  => {
-            println!("{}", header());
+            // println!("{}", header());
             println!("{}", parse_row(&t, ix, &args[2], &args[3])?);
         }
         Err(e) => eprintln!("Error: {e}"),
