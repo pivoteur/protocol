@@ -4,11 +4,13 @@ use chrono::NaiveDate;
 
 use book::{
    csv_utils::{CsvHeader,CsvWriter},
-   currency::usd::USD
+   currency::usd::{USD,mk_usd},
+   err_utils::ErrStr
 };
 
 use crate::types::{
    measurable::{Measurable,tvl},
+   quotes::Quotes,
    util::{Blockchain,Token}
 };
 
@@ -48,6 +50,12 @@ impl CsvWriter for Coin {
 impl Coin {
    pub fn key(&self) -> (Blockchain, Token) {
       (self.blockchain.clone(), self.token.clone())
+   }
+   pub fn update_price(&mut self, qts: &Quotes) -> ErrStr<()> {
+      let quote = qts.lookup(&self.token)?;
+      self.date = qts.date.clone();
+      self.quote = mk_usd(quote);
+      Ok(())
    }
 }
 
@@ -104,7 +112,6 @@ pub mod functional_tests {
       create_testing,
       currency::usd::mk_usd,
       date_utils::yesterday,
-      err_utils::ErrStr,
       string_utils::s,
       utils::{now,deref,composer}
    };
