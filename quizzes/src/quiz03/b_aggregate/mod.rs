@@ -1,15 +1,37 @@
 use chrono::NaiveDate;
-
-use book::{
+use book:: {
    date_utils::parse_date,
    err_utils::ErrStr,
+   utils::get_args
+};
+use libs::{
+   reports::print_table,
+   fetchers:: { 
+      fetch_pivots, 
+      fetch_quotes 
+   },
+   types:: { 
+      proposals::proposes::propose, 
+      pivots:: { 
+         partition_on, 
+         next_close_id 
+      }
+   }
 };
 
-use libs::{
-   fetchers::{fetch_pivots,fetch_quotes},
-   reports::print_table,
-   types::{ pivots::{partition_on,next_close_id}, proposals::proposes::propose }
-};
+
+fn app_name() -> String { "basset".to_string() }
+fn version() -> String { "1.00".to_string() }
+
+fn usage() -> ErrStr<()> {
+   println!("Usage:
+   $ {} <root URL> <primary asset> <pivot asset> <date>
+
+         Partitions open pivots then aggregates proposed close pivots.
+         The pivot pools are reposed (in git, currently) at <root URL>.
+         Open pivots are stored as raw-CSV files in git at protocol <root URL>.", app_name());
+   Err("Needs <root URL> <primary> <pivot> <date> arguments".to_string())
+}
 
 async fn aggregate(root_url: &str, prim: &str, piv: &str, date: NaiveDate)
       -> ErrStr<()> {
@@ -19,7 +41,6 @@ async fn aggregate(root_url: &str, prim: &str, piv: &str, date: NaiveDate)
    let next_close = next_close_id(&cls);
    preamble(prim, piv, opns.len(), &max_date, &date);
    let proposer = propose(&quotes);
-
    let (lefts, rights) = partition_on(prim, opns);
    let mut props = Vec::new();
    let follow = if let Some((prop, nxt)) = proposer((lefts, next_close))? {
@@ -48,47 +69,35 @@ fn preamble(prim: &str, piv: &str, len: usize,
    println!("Recommendations are made for token quotes on {date}.\n");
 }
 
-fn app_name() -> String { "basset".to_string() }
-fn version() -> String { "1.00".to_string() }
-
-fn usage() -> ErrStr<()> {
-   println!("Usage:
-
-	$ {} <root URL> <primary asset> <pivot asset> <date>
-
-Partitions open pivots then aggregates proposed close pivots.
-
-The pivot pools are reposed (in git, currently) at <root URL>.
-
-Open pivots are stored as raw-CSV files in git at protocol <root URL>.
-", app_name());
-   Err("Needs <root URL> <primary> <pivot> <date> arguments".to_string())
+pub async fn runoff_get_args() -> ErrStr<()> {
+   println!("{}, version: {}", app_name(), version());
+   if let [root_url, prim, piv, date] = get_args().as_slice() {
+      let dt = parse_date(&date)?;
+      aggregate(root_url, prim, piv, dt).await
+   } else {
+      usage()
+   }
 }
 
 // ----- TESTS -------------------------------------------------------
-
+#[cfg(test)]
 #[cfg(not(tarpaulin_include))]
 pub mod functional_tests {
    use super::*;
+   use paste::paste;
+   use book:: { 
+      utils::get_env,
+      create_testing 
+   };
 
-   use book::utils::{get_args,get_env};
 
-   pub async fn runoff() -> ErrStr<usize> {
+   create_testing!("quiz03::b_aggregate");
+
+   run!("aggregate", {
       println!("\nquiz03: b_aggregate functional test\n");
       let piv = get_env("PIVOT_URL")?;
       let dt = parse_date("2026-02-02")?;
-      let _ = aggregate(&piv, "BTC", "ETH", dt).await?;
-      Ok(1)
-   }
+      let _ = aggregate(&piv, "BTC", "ETH", dt);
+   });
 
-   pub async fn runoff_get_args() -> ErrStr<()> {
-      println!("{}, version: {}", app_name(), version());
-      if let [root_url, prim, piv, date] = get_args().as_slice() {
-         let dt = parse_date(&date)?;
-         aggregate(root_url, prim, piv, dt).await
-      } else {
-         usage()
-      }
-   }
 }
-
