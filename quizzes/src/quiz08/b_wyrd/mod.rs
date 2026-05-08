@@ -1,14 +1,14 @@
 use tokio::runtime::Runtime;
+use libs::{ 
+    fetchers::fetch_calls, 
+    tables::IxTable 
+};
 use book::{
    err_utils::ErrStr,
    table_utils::val,
    date_utils::parse_date,
    parse_utils::parse_id,
    utils::get_env
-};
-use libs::{ 
-    fetchers::fetch_calls, 
-    tables::IxTable 
 };
 
 // ===========================================================================================================================
@@ -80,6 +80,20 @@ pub fn parse_row(table: &IxTable, ix: usize, tx_id: &str, new_to_actual: &str) -
                         roi_val * 100.0, apr_val * 100.0);
     Ok(format!("{line1},{line2},{line3}"))
 }
+//----- fn pool_path ------------------------------------------------------------------------------------------------------
+pub fn pool_path(table: &IxTable, ix: usize) -> ErrStr<String> {
+    let pivot_token = val(table, &ix, &"pivot_token".to_string()).unwrap_or_default();
+    let from        = val(table, &ix, &"from".to_string()).unwrap_or_default();
+    if pivot_token.is_empty() || from.is_empty() {
+        return Err("missing pivot_token or from column/data".to_string());
+    }
+    let a = pivot_token.to_lowercase();
+    let b = from.to_lowercase();
+    let (left, right) = if a <= b { (&a, &b) } else { (&b, &a) };
+    Ok(format!(
+        "pivoteur.github.io/data/pivots/close/raw/{left}-{right}.tsv"
+    ))
+}
 // ===========================================================================================================================
 //----- UNIT TESTS -----------------------------------------------------------------------------------------------------------
 // ===========================================================================================================================
@@ -87,9 +101,17 @@ pub fn parse_row(table: &IxTable, ix: usize, tx_id: &str, new_to_actual: &str) -
 #[cfg(test)]
 mod tests {
     use super::*;
-    use book::table_utils:: {row, ingest };
-    use book::date_utils::today;
-    use book::parse_utils::{ parse_str, parse_id };
+    use book::{
+        date_utils::today,
+        parse_utils::{ 
+        parse_str, 
+        parse_id 
+        },
+        table_utils::{
+        row, 
+        ingest 
+        }
+    };
 
 
     fn mock_dusk_output() -> String {
@@ -356,8 +378,65 @@ mod tests {
         assert!(result.is_err(), "expected Err when proposed_close_price is empty, got Ok");
     }
 
+    #[test]
+    fn test_pool_path_format() {
+        let raw_data = mock_trade_row();
+        let table = ingest(parse_id, parse_str, parse_str,
+            &raw_data.lines().map(|s| s.to_string()).collect::<Vec<_>>(), ",")
+            .expect("Failed to ingest");
+        let path = pool_path(&table, 1).unwrap();
+        assert_eq!(path, "pivoteur.github.io/data/pivots/close/raw/btc-undead.tsv");
+    }
+
+    #[test]
+fn test_pool_path_eth_undead() {
+    let raw = format!(
+        "ix,close_date,opened,ids,close_id,pivot_token,from,\
+        pivot_amount,amount1,virtual,pivot_close_price,proposed_close_price\n\
+        1,{dt},{dt},20,99,ETH,UNDEAD,0,0,0,0.00,0.00",
+        dt = today()
+    );
+    let table = ingest(parse_id, parse_str, parse_str,
+        &raw.lines().map(|s| s.to_string()).collect::<Vec<_>>(), ",")
+        .expect("ingest");
+    assert_eq!(pool_path(&table, 1).unwrap(),
+        "pivoteur.github.io/data/pivots/close/raw/eth-undead.tsv");
 }
 
+#[test]
+fn test_pool_path_btc_eth_alphabetical_order() {
+    // Even if the row has pivot_token=ETH and from=BTC,
+    // btc sorts before eth so the file must still be btc-eth.tsv
+    let raw = format!(
+        "ix,close_date,opened,ids,close_id,pivot_token,from,\
+        pivot_amount,amount1,virtual,pivot_close_price,proposed_close_price\n\
+        1,{dt},{dt},20,99,ETH,BTC,0,0,0,0.00,0.00",
+        dt = today()
+    );
+    let table = ingest(parse_id, parse_str, parse_str,
+        &raw.lines().map(|s| s.to_string()).collect::<Vec<_>>(), ",")
+        .expect("ingest");
+    assert_eq!(pool_path(&table, 1).unwrap(),
+        "pivoteur.github.io/data/pivots/close/raw/btc-eth.tsv");
+}
+
+#[test]
+fn test_pool_path_undead_usdc_alphabetical_order() {
+    let raw = format!(
+        "ix,close_date,opened,ids,close_id,pivot_token,from,\
+        pivot_amount,amount1,virtual,pivot_close_price,proposed_close_price\n\
+        1,{dt},{dt},20,99,USDC,UNDEAD,0,0,0,0.00,0.00",
+        dt = today()
+    );
+    let table = ingest(parse_id, parse_str, parse_str,
+        &raw.lines().map(|s| s.to_string()).collect::<Vec<_>>(), ",")
+        .expect("ingest");
+    assert_eq!(pool_path(&table, 1).unwrap(),
+        "pivoteur.github.io/data/pivots/close/raw/undead-usdc.tsv");
+}
+
+}
+//----- fn runoff_with_args ---------------------------------------------------------------------------------------------------
 pub fn runoff_with_args() -> ErrStr<()> {
     let args: Vec<String> = std::env::args().collect();
     if args.len() < 4 {
@@ -372,12 +451,12 @@ pub fn runoff_with_args() -> ErrStr<()> {
     match rt.block_on(fetch_calls(&root_url)) {
         Ok(t)  => {
             println!("{}", parse_row(&t, ix, &args[2], &args[3])?);
+            println!("{}", pool_path(&t, ix)?);
         }
         Err(e) => eprintln!("Error: {e}"),
     }
     Ok(())
 }
-
 // ===========================================================================================================================
 //----- FUNCTIONAL TESTS -----------------------------------------------------------------------------------------------------
 // ===========================================================================================================================
@@ -385,15 +464,16 @@ pub fn runoff_with_args() -> ErrStr<()> {
 #[cfg(not(tarpaulin_include))]
 pub mod functional_tests {
     use super::*;
-    use book:: {
-        create_testing,
-        compose,
-        parse_utils::parse_str,
-        utils::resolve,
-        date_utils::today,
-        table_utils:: ingest
-    };
     use paste::paste;
+    use book::{
+        parse_utils::parse_str,
+        table_utils:: ingest,
+        date_utils::today,
+        utils::resolve,
+        create_testing,
+        compose
+    };
+
 
     fn now() -> String { format!("{}", today()) }
 
@@ -502,4 +582,3 @@ pub mod functional_tests {
 
     run_with!("undead_zero_precision", now(), compose!(resolve)(undead_zero_precision));
 }
-
