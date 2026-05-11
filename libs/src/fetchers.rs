@@ -19,7 +19,13 @@ use book::{
 };
 
 use super::{
-   paths::{open_pivot_path,quotes_url,pool_assets_url,tsv_url,pivots_dir},
+   paths::{
+      open_pivot_path,
+      quotes_url,
+      pool_assets_url,
+      csv_url,
+      tsv_url,
+      pivots_dir},
    tables::{IxTable,index_table},
    types::{
       aliases::{Aliases,aliases},
@@ -65,12 +71,12 @@ pub async fn fetch_wallets(root_url: &str) -> ErrStr<IxTable> {
 }
 
 pub async fn fetch_asset_table_tvls(root_url: &str) -> ErrStr<TVLs> {
-   let url = tsv_url(root_url, "assets");
+   let url = csv_url(root_url, "assets");
    let lines = fetch_lines(&url).await?;
    let hdrs: Vec<Token> =
-      lines.first().unwrap().split("\t").map(to_string).collect();
+      lines.first().unwrap().split(",").map(to_string).collect();
    let first_line: Vec<String> =
-      tail(&lines).first().unwrap().split("\t").map(to_string).collect();
+      tail(&lines).first().unwrap().split(",").map(to_string).collect();
    let amts: Vec<USD> =
       filter_map_or(str2strf(parse_usd), tail(&first_line))?;
    let ans: TVLs = tail(&hdrs).into_iter().zip(amts.into_iter()).collect();
