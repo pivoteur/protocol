@@ -9,7 +9,6 @@ use book::{
 use libs::{
    fetchers::{fetch_quotes,fetch_assets,fetch_pivots},
    paths::pivot_pool_from_file,
-   reports::header,
    types::{ comps::Composition, pivots::{Pivot,pivot_assets}, coins::Coin }
 };
 
@@ -40,9 +39,6 @@ async fn enfetchify(auth: &str, date: NaiveDate, path: &str)
    let quotes = fetch_quotes(&date).await?;
    let aliases = &quotes.aliases;
    let (prim, piv) = pivot_pool_from_file(path)?;
-
-println!("*** For pivot pool: {}", header(&prim, &piv));
-
    let pool_assets = fetch_assets(&root_url, &prim, &piv, aliases).await?;
    let ((opens, _closes), _max_date) =
       fetch_pivots(&root_url, &prim, &piv, aliases).await?;
