@@ -104,12 +104,12 @@ mod tests {
     use book::{
         date_utils::today,
         parse_utils::{ 
-        parse_str, 
-        parse_id 
+            parse_str, 
+            parse_id 
         },
         table_utils::{
-        row, 
-        ingest 
+            row, 
+            ingest 
         }
     };
 
