@@ -238,6 +238,5 @@ Standalone dapps that also support `dawn` include:
 
 * [chihuahua](chihuahua): close recommendations on one pivot pool
 * [basset](basset): close-pivot recommendations condensed to one trade per asset
-* hound: close pivots for all pivot pools (removed: we do business more 
-modernly-like now)
+* hound: close pivots for all pivot pools. *OBE*: First attempt using github.
 
