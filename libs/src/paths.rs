@@ -16,6 +16,10 @@ pub fn tsv_url(root_url: &str, tsv: &str) -> String {
    format!("{}/{}.tsv", data_dir(root_url), tsv)
 }
 
+pub fn csv_url(root_url: &str, csv: &str) -> String {
+   format!("{}/{}.csv", data_dir(root_url), csv)
+}
+
 fn open_pivots_url(root_url: &str) -> String {
    format!("{}/open/raw", pivots_dir(root_url))
 }

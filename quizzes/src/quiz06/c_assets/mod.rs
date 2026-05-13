@@ -17,7 +17,7 @@ use libs::{
    types::{ quotes::Quotes, util::{Token, TVLs} }
 };
 
-fn version() -> String { "1.07".to_string() }
+fn version() -> String { "1.08".to_string() }
 fn app_name() -> String { "assets".to_string() }
 
 fn usage() -> ErrStr<()> { println!("
@@ -87,7 +87,7 @@ fn amt(wallets: &IxTable) -> impl Fn(&(Token, USD)) -> Option<(Token, f32)> {
 
 fn output_line(dt: &NaiveDate, row: &Vec<USD>) -> String {
    let dollaz: Vec<String> = row.into_iter().map(|d| format!("{d}")).collect();
-   format!("{dt}\t{}", dollaz.join("\t"))
+   format!("{dt},{}", dollaz.join(","))
 }
 
 async fn print_assets(auth: &str, dt: &str) -> ErrStr<usize> {
