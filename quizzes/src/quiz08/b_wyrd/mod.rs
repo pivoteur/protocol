@@ -91,7 +91,7 @@ pub fn pool_path(table: &IxTable, ix: usize) -> ErrStr<String> {
     let b = from.to_lowercase();
     let (left, right) = if a <= b { (&a, &b) } else { (&b, &a) };
     Ok(format!(
-        "pivoteur.github.io/data/pivots/close/raw/{left}-{right}.tsv"
+        "data/pivots/close/raw/{left}-{right}.tsv"
     ))
 }
 // ===========================================================================================================================
@@ -385,7 +385,7 @@ mod tests {
             &raw_data.lines().map(|s| s.to_string()).collect::<Vec<_>>(), ",")
             .expect("Failed to ingest");
         let path = pool_path(&table, 1).unwrap();
-        assert_eq!(path, "pivoteur.github.io/data/pivots/close/raw/btc-undead.tsv");
+        assert_eq!(path, "data/pivots/close/raw/btc-undead.tsv");
     }
 
     #[test]
@@ -400,7 +400,7 @@ fn test_pool_path_eth_undead() {
         &raw.lines().map(|s| s.to_string()).collect::<Vec<_>>(), ",")
         .expect("ingest");
     assert_eq!(pool_path(&table, 1).unwrap(),
-        "pivoteur.github.io/data/pivots/close/raw/eth-undead.tsv");
+        "data/pivots/close/raw/eth-undead.tsv");
 }
 
 #[test]
@@ -417,7 +417,7 @@ fn test_pool_path_btc_eth_alphabetical_order() {
         &raw.lines().map(|s| s.to_string()).collect::<Vec<_>>(), ",")
         .expect("ingest");
     assert_eq!(pool_path(&table, 1).unwrap(),
-        "pivoteur.github.io/data/pivots/close/raw/btc-eth.tsv");
+        "data/pivots/close/raw/btc-eth.tsv");
 }
 
 #[test]
@@ -432,7 +432,7 @@ fn test_pool_path_undead_usdc_alphabetical_order() {
         &raw.lines().map(|s| s.to_string()).collect::<Vec<_>>(), ",")
         .expect("ingest");
     assert_eq!(pool_path(&table, 1).unwrap(),
-        "pivoteur.github.io/data/pivots/close/raw/undead-usdc.tsv");
+        "data/pivots/close/raw/undead-usdc.tsv");
 }
 
 }
@@ -450,6 +450,7 @@ pub fn runoff_with_args() -> ErrStr<()> {
     let rt       = Runtime::new().map_err(|e| e.to_string())?;
     match rt.block_on(fetch_calls(&root_url)) {
         Ok(t)  => {
+            println!("{}", header());
             println!("{}", parse_row(&t, ix, &args[2], &args[3])?);
             println!("{}", pool_path(&t, ix)?);
         }
