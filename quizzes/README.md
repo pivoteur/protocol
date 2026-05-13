@@ -8,7 +8,9 @@
 * [01](src/quiz01): read and parse a set of open pivots reposed on github
 * [02](src/quiz02): With today's (fetched) prices, identify pivots to close
 * [03](src/quiz03): Partition and aggregate the close-pivots
-* [04](src/quiz04): Find the pivot pools; iterate over the pivot pools
+* quiz04: Find the pivot pools; iterate over the pivot pools. *OBE*: we used
+github-fetch to get the pivot pools. Now we fetch the open pivot pools from the
+directory directly, locally.
 * [05](src/quiz05): Aggregate pivot-assets by blockchain
 
 ## `dawn` evolution
