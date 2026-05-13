@@ -1,6 +1,5 @@
 [workspace]
 members = [
-    "hound",
     "chihuahua",
     "basset",
     "old_dusk",
