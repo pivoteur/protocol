@@ -6,5 +6,5 @@ Calculates the closed pivot calls.
 
 ## Revisions
 
-* 1.00, 2026-01-15: release
+* 1.00, 2026-05-05: release
 
