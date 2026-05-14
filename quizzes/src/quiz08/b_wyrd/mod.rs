@@ -8,6 +8,7 @@ use book::{
    table_utils::val,
    date_utils::parse_date,
    parse_utils::parse_id,
+   num_utils::parse_num,
    utils::get_env
 };
 
@@ -33,19 +34,18 @@ pub fn parse_row(table: &IxTable, ix: usize, tx_id: &str, new_to_actual: &str) -
         }
     };    
     let col_num = |name: &str| -> ErrStr<f64> {
-        let raw   = col(name)?;
-        let strip = raw.replace('$', "").replace(',', "");
-        let strip   = strip.trim();
-        if strip.is_empty() {
-            Err("missing table's data".to_string())
-        } else {
-            strip.parse::<f64>().map_err(|_| "missing table's data".to_string())
-        }
+        let raw = col(name)?;
+        let stripped = raw.replace('$', "");
+        parse_num(stripped.trim())
+            .map(|v| v as f64)
+            .map_err(|_| "missing table's data".to_string())
     };
     let col_opt = |name: &str| -> ErrStr<f64> {
-        let raw   = col(name)?;
-        let strip = raw.replace('$', "").replace(',', "");
-        strip.trim().parse::<f64>().map_err(|_| format!("invalid value for '{name}' "))
+        let raw = col(name)?;
+        let stripped = raw.replace('$', "");
+        parse_num(stripped.trim())
+            .map(|v| v as f64)
+            .map_err(|e| format!("invalid value for '{name}': {e}"))
     };
     //----- truth values -----------------------------------------------------------------
     let date   = parse_date(&col("close_date")?)?;
