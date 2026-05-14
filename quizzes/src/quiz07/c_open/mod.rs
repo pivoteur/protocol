@@ -101,6 +101,7 @@ pub mod functional_tests {
       println!("\nAvailable BTC+ETH assets\n{}", comp.as_csv());
    });
 
+   #[cfg(test)]
    mod tests {
       use super::*;
       use book::{

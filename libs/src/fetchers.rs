@@ -37,6 +37,8 @@ use super::{
    }
 };
 
+// ----- POOL NAMES --------------------------------------------------
+
 pub async fn fetch_pool_names(root_url: &str) -> ErrStr<Vec<Pool>> {
    let url = format!("{root_url}/refs/heads/main/libs/pool-assets.js");
    let lines = fetch_lines(&url).await?;
@@ -63,6 +65,8 @@ fn pool(line: &str) -> ErrStr<Pool> {
 fn alphanum(input: &str) -> String {
     input.chars().filter(|c| c.is_alphanumeric()).collect()
 }
+
+// ----- WALLETS ----------------------------------------------------
 
 pub async fn fetch_wallets(root_url: &str) -> ErrStr<IxTable> {
    let url = tsv_url(root_url, "wallets");
@@ -186,6 +190,7 @@ pub async fn fetch_open_pivots(root_url: &str, primary: &str, pivot: &str,
    Ok((fst(part), max_date))
 }
 
+// ----- UTILITY FUNCTIONS --------------------------------------------------
 async fn fetch_lines(url: &str) -> ErrStr<Vec<String>> {
    let daters = read_rest(url).await?;
    let lines: Vec<String> =
