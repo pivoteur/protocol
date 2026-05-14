@@ -74,6 +74,8 @@ pub async fn fetch_wallets(root_url: &str) -> ErrStr<IxTable> {
    index_table(lines)
 }
 
+// ----- PROTOCOL ASSETS --------------------------------------------
+
 pub async fn fetch_asset_table_tvls(root_url: &str) -> ErrStr<TVLs> {
    let url = csv_url(root_url, "assets");
    let lines = fetch_lines(&url).await?;
@@ -86,6 +88,8 @@ pub async fn fetch_asset_table_tvls(root_url: &str) -> ErrStr<TVLs> {
    let ans: TVLs = tail(&hdrs).into_iter().zip(amts.into_iter()).collect();
    Ok(ans)
 }
+
+// ----- POOL ASSETS ------------------------------------------------
 
 pub async fn fetch_assets(root_url: &str, primary: &str, pivot: &str,
                           aliases: &Aliases) -> ErrStr<Composition> {
@@ -127,11 +131,15 @@ fn buidl_asset<'a>(amount: &str, q: impl Fn(&'a Token) -> ErrStr<USD>,
    Ok(mk_coin(&(blk.clone(), t.clone()), amt, &quote, dt))
 }
 
+// ----- CALLS -------------------------------------------------------
+
 pub async fn fetch_calls(root_url: &str) -> ErrStr<IxTable> {
    let calls_url = format!("{}/calls.csv", pivots_dir(root_url));
    let lines = fetch_lines(&calls_url).await?;
    ingest(parse_id, parse_str, parse_str, &lines, ",")
 }
+
+// ----- PIVOTS -------------------------------------------------------
 
 /// Fetch the pivots for pivot pool A+B; open pivots are reposed in git
 pub async fn fetch_pivots(root_url: &str, primary: &str,
