@@ -89,7 +89,7 @@ async fn update_virtual_pivots(protocol: &str, dt: &str, path: &str,
          let abp = assets_by_price(&asts);
 
          if let [pr, pv] = abp.as_slice() {
-            let comp = mk_composition(pr.clone(), pv.clone());
+            let comp = mk_composition(pr, pv);
             report_on_assets(&[comp], &virts);
          } else {
             panic!("Not two assets in {pool_name} Assets: {:?}", abp)

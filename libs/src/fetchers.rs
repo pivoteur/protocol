@@ -103,7 +103,7 @@ pub async fn fetch_assets(root_url: &str, primary: &str, pivot: &str,
    let s_amt = &top.get(*h_s).expect(&format!("No value at index {}", h_s));
    let f = qt_f(&top, &hdrs);
    let pivot = buidl_asset(s_amt, f, &blk, &s, &max_date)?;
-   Ok(mk_composition(primary, pivot))
+   Ok(mk_composition(&primary, &pivot))
 }
 
 fn qt_f<'a>(v: &'a Vec<String>, hdrs: &'a HashMap<String, usize>)
