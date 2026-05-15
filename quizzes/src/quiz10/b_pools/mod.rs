@@ -1,6 +1,6 @@
 use chrono::NaiveDate;
 
-use libs::fetchers::fetch_pool_names;
+use libs::fetchers::pool_names::fetch_pool_names;
 
 use book::{ err_utils::ErrStr, utils::get_env };
 

@@ -8,7 +8,7 @@ use book::{
 };
 
 use libs::{
-   fetchers::{fetch_pivots,fetch_quotes},
+   fetchers::{ pivots::fetch_pivots, quotes::fetch_quotes},
    types::{ pivots::next_close_id, proposals::proposes::{propose,Propose} }
 };
 

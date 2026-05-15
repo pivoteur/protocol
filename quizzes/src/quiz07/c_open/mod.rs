@@ -8,7 +8,11 @@ use book::{
 };
 
 use libs::{
-   fetchers::{fetch_quotes,fetch_assets,fetch_pivots},
+   fetchers::{
+      quotes::fetch_quotes,
+      assets::pool::fetch_assets,
+      pivots::fetch_pivots
+   },
    types::{
       comps::{Composition,from_assets},
       pivots::{Pivot,pivot_assets},

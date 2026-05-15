@@ -1,6 +1,6 @@
 use tokio::runtime::Runtime;
 use libs::{ 
-    fetchers::fetch_calls, 
+    fetchers::calls::fetch_calls, 
     tables::IxTable 
 };
 use book::{

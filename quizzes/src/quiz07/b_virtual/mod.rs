@@ -10,7 +10,7 @@ use book::{
 
 use libs::{
    collections::assets::{Assets,mk_assets,assets_by_price},
-   fetchers::{fetch_quotes,fetch_pivots},
+   fetchers::{ quotes::fetch_quotes, pivots::fetch_pivots},
    paths::pivot_pool_from_file,
    reports::{header,total_line,print_tsv_table_d},
    types::{
@@ -186,7 +186,7 @@ pub mod functional_tests {
 mod tests {
    use super::*;
    use book::{ date_utils::yesterday, tuple_utils::fst };
-   use libs::fetchers::fetchers_test_helpers::btc_eth_pivots;
+   use libs::fetchers::test_helpers::test_functions::btc_eth_pivots;
 
    async fn virts_n_opns() -> ErrStr<(Vec<Pivot>, Partition<Pivot>)> {
       let (pivots, _mx) = btc_eth_pivots().await?;

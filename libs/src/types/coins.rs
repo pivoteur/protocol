@@ -115,7 +115,7 @@ pub mod functional_tests {
       string_utils::s,
       utils::{now,deref,composer}
    };
-   use crate::fetchers::fetch_quotes;
+   use crate::fetchers::quotes::fetch_quotes;
 
    pub fn coin(tok: &str, amt: f32) -> ErrStr<Coin> {
       let t = s(tok);
