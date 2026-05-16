@@ -8,8 +8,8 @@ use book::{
 };
  
 
-fn version()  -> String { "1.00".to_string() }
-fn app_name() -> String { "reinvest".to_string() }
+fn version()  -> &'static str { "1.00" }
+fn app_name() -> &'static str { "reinvest" }
  
 const CHAT_ID: i64 = 5889599932;
  
@@ -69,13 +69,6 @@ pub async fn runoff_with_args() -> ErrStr<()> {
         _ => usage(),
     }
 }
-//----- fn main -------------------------------------------------------------
-//#[tokio::main]
-//async fn main() -> ErrStr<()> {
-//    eprintln!("{}, version: {}", app_name(), version());
-//    runoff_with_args().await
-//}
- 
 // ===========================================================================
 //----- UNIT TESTS -----------------------------------------------------------
 // ===========================================================================
@@ -118,8 +111,24 @@ mod unit_tests {
     fn test_usage_returns_err() {
         assert!(usage().is_err());
     }
+
+    #[test]
+    fn test_singular_pivot_count() {
+        let msg = build_message("AVAX", "BTC", "1", "0.25", "https://x.com/test");
+        assert!(msg.contains("I closed 1 AVAX-on-BTC pivots"),
+            "singular count should interpolate cleanly: {msg}");
+    }
+
+    #[test]
+    fn test_degenerate_empty_inputs() {
+        let msg = build_message("", "", "0", "0", "");
+        assert!(msg.contains("I closed 0"),         "pivot_count slot present");
+        assert!(msg.contains("-on-"),               "separator present even with empty tokens");
+        assert!(msg.contains("pivot pool for you"), "tail of message intact");
+        assert!(msg.contains("tweet:"),             "url label present");
+    }
+
 }
- 
 // ===========================================================================
 //----- FUNCTIONAL TESTS -----------------------------------------------------
 // ===========================================================================
