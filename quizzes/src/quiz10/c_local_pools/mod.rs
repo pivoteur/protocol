@@ -72,12 +72,11 @@ const poolAssets = {{
       ]
 }};
 ",  assets.join(",\n      "))
-}
-
-
+   }
 }
 
 // ----- TESTS -------------------------------------------------------
+
 #[cfg(not(tarpaulin_include))]
 #[cfg(test)]
 mod tests {

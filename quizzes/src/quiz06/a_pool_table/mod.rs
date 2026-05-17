@@ -1,6 +1,6 @@
 use book::{err_utils::ErrStr,utils::{get_env,get_args}};
 use libs::{
-   fetchers::fetch_assets,
+   fetchers::assets::pool::fetch_assets,
    reports::{print_table,header},
    types::aliases::aliases
 };
