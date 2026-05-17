@@ -10,4 +10,6 @@ the EMA20 and the δ, but that's for a later quiz.
 
 * [a_ssets](a_ssets): fetching quotes, assets, open pivots
 * [b_virtual](b_virtual): computes assets committed to virtual swaps
+* [c_open](c_open): Computes available assets for a pivot pool
+* [d_health](d_health): status of all pivot pools: an health-check.
 

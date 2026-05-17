@@ -8,21 +8,22 @@ use book::{
    table_utils::val,
    date_utils::parse_date,
    parse_utils::parse_id,
-   utils::get_env
+   utils::{ get_args, get_env }
 };
 
-// ===========================================================================================================================
-//----- pub fn header --------------------------------------------------------------------------------------------------------
-// ===========================================================================================================================
+// ====================================================
+//----- pub fn header ---------------------------------
+// ====================================================
 pub fn header() -> String {
     let line1 = "date,pivot,close,tx_id,from,from_quote";
     let line2 = "to,to_quote,trade,vol,gain_10_percent";
     let line3 = "new_to_actual,gain,gain_total_usd,roi,apr";
     format!("{line1},{line2},{line3}")
 }
-// ===========================================================================================================================
-//----- pub fn parse_row -----------------------------------------------------------------------------------------------------
-// ===========================================================================================================================
+
+// ====================================================
+//----- pub fn parse_row ------------------------------
+// ====================================================
 pub fn parse_row(table: &IxTable, ix: usize, tx_id: &str, new_to_actual: &str) -> ErrStr<String> {
     let col = |name: &str| -> ErrStr<String> {
         let v = val(&table, &ix, &name.to_string()).unwrap_or_default();
@@ -47,7 +48,7 @@ pub fn parse_row(table: &IxTable, ix: usize, tx_id: &str, new_to_actual: &str) -
         let strip = raw.replace('$', "").replace(',', "");
         strip.trim().parse::<f64>().map_err(|_| format!("invalid value for '{name}' "))
     };
-    //----- truth values -----------------------------------------------------------------
+    //----- truth values -------------------------------
     let date   = parse_date(&col("close_date")?)?;
     let opened = parse_date(&col("opened")?)?;
     let pivot     = col("ids")?;
@@ -61,7 +62,7 @@ pub fn parse_row(table: &IxTable, ix: usize, tx_id: &str, new_to_actual: &str) -
                             .map_err(|_| format!("invalid new_to_actual: '{new_to_actual}' is not a number"))?;
     let from_quote   = col_num("pivot_close_price")?;
     let to_quote     = col_opt("proposed_close_price")?;
-    //----- formulas for the correct headers ---------------------------------------------
+    //----- formulas for the correct headers -----------
     let sum_amt_virt    = amount1 + virtual_;
     let vol             = trade * from_quote;
     let gain_10_percent = sum_amt_virt * 1.1;
@@ -73,15 +74,17 @@ pub fn parse_row(table: &IxTable, ix: usize, tx_id: &str, new_to_actual: &str) -
         return Err(format!("opened date '{opened}' is after close date '{date}', cannot compute APR"));
     }
     let apr_val         = if days > 0 { (roi_val * 365.0) / days as f64 } else { 0.0 };
-    //----- formatting the actual output -------------------------------------------------
+    //----- formatting the actual output ---------------
     let line1 = format!("{date},{pivot},{close},{tx_id},{from},${from_quote}");
     let line2 = format!("{to},${to_quote},{trade},${vol:.4},{gain_10_percent:.4}");
     let line3 = format!("{new_to_actual},{gain:.4},${gain_total_usd:.2},{:.2}%,{:.2}%",
                         roi_val * 100.0, apr_val * 100.0);
     Ok(format!("{line1},{line2},{line3}"))
 }
-//----- fn pool_path ------------------------------------------------------------------------------------------------------
-pub fn pool_path(table: &IxTable, ix: usize) -> ErrStr<String> {
+
+//----- fn pool_path ----------------------------------
+
+pub fn pool_path(close_dir: &str, table: &IxTable, ix: usize) -> ErrStr<String> {
     let pivot_token = val(table, &ix, &"pivot_token".to_string()).unwrap_or_default();
     let from        = val(table, &ix, &"from".to_string()).unwrap_or_default();
     if pivot_token.is_empty() || from.is_empty() {
@@ -90,13 +93,13 @@ pub fn pool_path(table: &IxTable, ix: usize) -> ErrStr<String> {
     let a = pivot_token.to_lowercase();
     let b = from.to_lowercase();
     let (left, right) = if a <= b { (&a, &b) } else { (&b, &a) };
-    Ok(format!(
-        "data/pivots/close/raw/{left}-{right}.tsv"
-    ))
+    Ok(format!("{close_dir}/{left}-{right}.tsv"))
 }
-// ===========================================================================================================================
-//----- UNIT TESTS -----------------------------------------------------------------------------------------------------------
-// ===========================================================================================================================
+
+// =====================================================
+//----- UNIT TESTS -------------------------------------
+// =====================================================
+
 #[cfg(not(tarpaulin_include))]
 #[cfg(test)]
 mod tests {
@@ -112,7 +115,6 @@ mod tests {
             ingest 
         }
     };
-
 
     fn mock_dusk_output() -> String {
         "ix,pool,ids\n\
@@ -375,7 +377,8 @@ mod tests {
             &raw.lines().map(|s| s.to_string()).collect::<Vec<_>>(), ",")
             .expect("Failed to ingest");
         let result = parse_row(&table, 1, "tx1", "160.0");
-        assert!(result.is_err(), "expected Err when proposed_close_price is empty, got Ok");
+        assert!(result.is_err(),
+                "expected Err when proposed_close_price is empty, got Ok");
     }
 
     #[test]
@@ -384,12 +387,12 @@ mod tests {
         let table = ingest(parse_id, parse_str, parse_str,
             &raw_data.lines().map(|s| s.to_string()).collect::<Vec<_>>(), ",")
             .expect("Failed to ingest");
-        let path = pool_path(&table, 1).unwrap();
-        assert_eq!(path, "data/pivots/close/raw/btc-undead.tsv");
+        let path = pool_path("close_pivots", &table, 1).unwrap();
+        assert_eq!(path, "close_pivots/btc-undead.tsv");
     }
 
     #[test]
-fn test_pool_path_eth_undead() {
+    fn test_pool_path_eth_undead() {
     let raw = format!(
         "ix,close_date,opened,ids,close_id,pivot_token,from,\
         pivot_amount,amount1,virtual,pivot_close_price,proposed_close_price\n\
@@ -399,9 +402,9 @@ fn test_pool_path_eth_undead() {
     let table = ingest(parse_id, parse_str, parse_str,
         &raw.lines().map(|s| s.to_string()).collect::<Vec<_>>(), ",")
         .expect("ingest");
-    assert_eq!(pool_path(&table, 1).unwrap(),
-        "data/pivots/close/raw/eth-undead.tsv");
-}
+    assert_eq!(pool_path("cp", &table, 1).unwrap(), "cp/eth-undead.tsv");
+       
+    }
 
 #[test]
 fn test_pool_path_btc_eth_alphabetical_order() {
@@ -416,8 +419,8 @@ fn test_pool_path_btc_eth_alphabetical_order() {
     let table = ingest(parse_id, parse_str, parse_str,
         &raw.lines().map(|s| s.to_string()).collect::<Vec<_>>(), ",")
         .expect("ingest");
-    assert_eq!(pool_path(&table, 1).unwrap(),
-        "data/pivots/close/raw/btc-eth.tsv");
+    assert_eq!(pool_path("geophf_is_grate", &table, 1).unwrap(),
+        "geophf_is_grate/btc-eth.tsv");
 }
 
 #[test]
@@ -431,36 +434,44 @@ fn test_pool_path_undead_usdc_alphabetical_order() {
     let table = ingest(parse_id, parse_str, parse_str,
         &raw.lines().map(|s| s.to_string()).collect::<Vec<_>>(), ",")
         .expect("ingest");
-    assert_eq!(pool_path(&table, 1).unwrap(),
-        "data/pivots/close/raw/undead-usdc.tsv");
+    assert_eq!(pool_path("dpcr", &table, 1).unwrap(),
+        "dpcr/undead-usdc.tsv");
 }
 
 }
-//----- fn runoff_with_args ---------------------------------------------------------------------------------------------------
+
+//----- fn runoff_with_args ----------------------------
+
 pub fn runoff_with_args() -> ErrStr<()> {
-    let args: Vec<String> = std::env::args().collect();
+    let args = get_args();
     if args.len() < 4 {
         eprintln!("Error: not enough arguments.");
-        eprintln!("Usage: `wyrd` <ix> <tx_id> <new_to_actual>");
-        eprintln!("Example: `wyrd` 5 \"asdf\" \"1250.75\"");
+        eprintln!("Usage: `wyrd` <auth> <ix> <tx_id> <new_to_actual>");
+        eprintln!("Example: wyrd PIVOT 5 \"asdf\" \"1250.75\"");
         std::process::exit(1);
     }
+    let protocol = &args[0];
+    let protocol_up = protocol.to_uppercase();
     let ix       = parse_id(&args[1])?;
-    let root_url = get_env("PIVOT_URL")?;
+    let close_dir = get_env("CLOSE_PIVOT_DIR")
+        .expect("CLOSE_PIVOT_DIR must be set!");
+    let root_url = get_env(&format!("{protocol_up}_URL"))?;
     let rt       = Runtime::new().map_err(|e| e.to_string())?;
     match rt.block_on(fetch_calls(&root_url)) {
         Ok(t)  => {
             println!("{}", header());
             println!("{}", parse_row(&t, ix, &args[2], &args[3])?);
-            println!("{}", pool_path(&t, ix)?);
+            println!("{}", pool_path(&close_dir, &t, ix)?);
         }
         Err(e) => eprintln!("Error: {e}"),
     }
     Ok(())
 }
-// ===========================================================================================================================
-//----- FUNCTIONAL TESTS -----------------------------------------------------------------------------------------------------
-// ===========================================================================================================================
+
+// =====================================================
+//----- FUNCTIONAL TESTS -------------------------------
+// =====================================================
+
 #[cfg(test)]
 #[cfg(not(tarpaulin_include))]
 pub mod functional_tests {

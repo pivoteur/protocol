@@ -1,0 +1,18 @@
+[package]
+name = "hwaet"
+version = "0.1.0"
+edition = "2024"
+
+[[bin]]
+name = "hwaet"
+path = "../../quizzes/src/quiz07/d_health/src/main.rs"
+
+[dependencies]
+tokio = { version = "1.51.2", features = ["macros", "rt-multi-thread"] }
+
+libs = { path = "../../libs" }
+book = { path = "../../../crypto-n-rust/src/libs/book" }
+quizzes = { path = "../../quizzes" }
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(tarpaulin_include)'] }

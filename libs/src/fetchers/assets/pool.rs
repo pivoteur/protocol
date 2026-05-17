@@ -8,21 +8,29 @@ use book::{
    err_utils::{err_or,ErrStr},
    num_utils::parse_commaless,
    parse_utils::parse_str,
-   table_utils::{cols,row,rows,ingest}
+   table_utils::{cols,row,rows,ingest},
+   utils::get_env
 };
 
 use crate::{
-   fetchers::utils::{ enlowerify, enupperify, fetch_lines },
+   fetchers::{
+      pivots::fetch_pivots,
+      utils::{ enlowerify, enupperify, fetch_lines }
+   },
    paths::pool_assets_url,
    types::{
       aliases::Aliases,
       coins::{Coin,mk_coin},
-      comps::{Composition,mk_composition},
-      util::{Token,Blockchain}
+      comps::{Composition,mk_composition,from_assets},
+      pivots::{Pivot,pivot_assets},
+      quotes::Quotes,
+      util::{Token,Blockchain,Pool}
    }
 };
 
 // ----- POOL ASSETS ------------------------------------------------
+
+// this one fetches all the assets of the pool
 
 pub async fn fetch_assets(root_url: &str, primary: &str, pivot: &str,
                           aliases: &Aliases) -> ErrStr<Composition> {
@@ -64,6 +72,34 @@ fn buidl_asset<'a>(amount: &str, q: impl Fn(&'a Token) -> ErrStr<USD>,
    Ok(mk_coin(&(blk.clone(), t.clone()), amt, &quote, dt))
 }
 
+// ----- AVAILABLE ASSETS -------------------------------------------------
+
+// this gets the assets and the open pivots (so we compute available assets)
+
+async fn enfetchify(auth: &str, quotes: &Quotes, pool: &Pool)
+      -> ErrStr<(Composition, Vec<Pivot>)> {
+   let aut = auth.to_uppercase();
+   let root_url = get_env(&format!("{aut}_URL"))?;
+   let aliases = &quotes.aliases;
+   let (prim, piv) = pool;
+   let pool_assets = fetch_assets(&root_url, &prim, &piv, aliases).await?;
+   let ((opens, _closes), _max_date) =
+      fetch_pivots(&root_url, &prim, &piv, aliases).await?;
+   Ok((pool_assets, opens))
+}
+
+pub async fn fetch_available_assets(auth: &str, quotes: &Quotes, pool: &Pool)
+      -> ErrStr<Composition> {
+   let (pool_assets, opens) = enfetchify(auth, &quotes, pool).await?;
+   let mut available = pool_assets.as_assets();
+   let all_opens = pivot_assets(&opens)?;
+   for a in all_opens.assets() {
+      available.subtract(&a);
+   }
+   available.update_prices(&quotes)?;
+   from_assets(&available.assets())
+}
+
 // ----- TESTS -------------------------------------------------------
 
 #[cfg(test)]
@@ -74,9 +110,13 @@ pub mod functional_tests {
    use book::{
       create_testing,
       csv_utils::CsvWriter,
+      date_utils::yesterday,
       utils::now
    };
-   use crate::fetchers::test_helpers::test_functions::marshall;
+   use crate::{
+      fetchers::{quotes::fetch_quotes,test_helpers::test_functions::marshall},
+      types::util::pool_from_str
+   };
 
    create_testing!("fetchers::assets::pool");
 
@@ -85,13 +125,35 @@ pub mod functional_tests {
       let pa = now(fetch_assets(&root_url, "btc", "eth", &a))?;
       println!("BTC+ETH pivot pool assets are:\n{}", pa.as_csv());
    });
+
+   run!("fetch_available_assets", {
+      let yday = yesterday();
+      let quotes = now(fetch_quotes(&yday))?;
+      let pool = pool_from_str("btc-eth")?;
+      let comp = now(fetch_available_assets("pivot", &quotes, &pool))?;
+      println!("\nAvailable BTC+ETH assets\n{}", comp.as_csv());
+   });
 }
 
 #[cfg(test)]
 #[cfg(not(tarpaulin_include))]
 mod tests {
    use super::*;
-   use crate::fetchers::test_helpers::test_functions::marshall;
+   use book::{
+      currency::usd::no_monay,
+      csv_utils::CsvWriter,
+      date_utils::yesterday,
+      utils::{ composer, deref }
+   };
+   use crate::{
+      fetchers::{quotes::fetch_quotes,test_helpers::test_functions::marshall},
+      types::{
+         measurable::tvl,
+         util::pool_from_str
+      }
+   };
+
+   // ----- ALL POOL ASSETS ------------------------------------------
 
    #[tokio::test]
    async fn test_fetch_assets_ok() -> ErrStr<()> {
@@ -107,6 +169,64 @@ mod tests {
       let assets = fetch_assets(&root_url, "btc", "eth", &a).await?;
       assert!(assets.tvl().amount > 0.0);
       assert_eq!("BTC+ETH", assets.pool_name());
+      Ok(())
+   }
+
+   // ----- AVAILABLE ASSETS ----------------------------------------
+
+   async fn fetchme() -> ErrStr<Composition> {
+      let yday = yesterday();
+      let quotes = fetch_quotes(&yday).await?;
+      let pool = pool_from_str("btc-eth")?;
+      fetch_available_assets("pivot", &quotes, &pool).await
+   }
+
+   #[tokio::test]
+   async fn test_fetch_available_assets_ok() {
+      let fetchèð = fetchme().await;
+      assert!(fetchèð.is_ok());
+   }  
+
+   fn tvlr() -> impl Fn(Pivot) -> USD {
+      composer(deref(tvl), composer(Result::unwrap, deref(Pivot::committed)))
+   }  
+
+   async fn enfetchme() -> ErrStr<(Composition, Vec<Pivot>)> {
+      let yday = yesterday();
+      let pool = pool_from_str("btc-eth")?;
+      let quotes = fetch_quotes(&yday).await?;
+      enfetchify("pivot", &quotes, &pool).await
+   }  
+
+   #[tokio::test]
+   async fn test_fetch_available_assets() -> ErrStr<()> {
+      let (comp, _pivs) = enfetchme().await?;
+      assert!(comp.tvl() > no_monay(), "BTC+ETH Pool composition zero!");
+      Ok(())
+   }  
+
+   #[tokio::test]
+   async fn test_enfetchify_has_pivots() -> ErrStr<()> {
+      let (_comp, pivs) = enfetchme().await?;
+      assert!(!pivs.is_empty(), "No open BTC+ETH pivots?");
+      Ok(())
+   }
+
+   #[tokio::test]
+   async fn test_enfetchify_pivots() -> ErrStr<()> {
+      let (_comp, pivs) = enfetchme().await?;
+      let pivs_tvls: USD = pivs.into_iter().map(tvlr()).sum();
+      assert!(pivs_tvls > no_monay(), "BTC+ETH pivots amount to $0.00?");
+      Ok(())
+   }
+
+   #[tokio::test]
+   async fn test_enfetchify_assets_and_pivots() -> ErrStr<()> {
+      let comp = fetchme().await?;
+      assert!(comp.tvl() > no_monay(),
+              "BTC+ETH pivot pool:
+{}
+has negative balance: {}", comp.as_csv(), comp.tvl());
       Ok(())
    }
 }

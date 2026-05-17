@@ -33,7 +33,10 @@ impl Assets {
          let amt = a.sz() - sub;
          if amt < 0.0 { panic!("Cannot have a negative amount of {}
 Trying to subtract this amount: {sub}
-Coin: {}", a.as_csv(), asset.as_csv());
+Coin: {}
+
+assets:
+{}", a.as_csv(), asset.as_csv(), self.as_csv());
          }
          if amt == 0.0 { self.map.remove(&k); } else { *a += -sub; }
       } else {
