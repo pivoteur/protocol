@@ -6,8 +6,9 @@ DIRECTORY="$2"
 # Check if the directory argument was provided
 if [ -z "$DIRECTORY" ]; then
   echo "Error: No directory path provided."
-  echo "Usage: ./auto-virtsz.sh <path>"
-  echo "path: dir of open pivots"
+  echo "Usage: auto-virtsz.sh <protocol> <path>"
+  echo "* <protocol>: the protocol on which to adjust the virtual pivots"
+  echo "* <path>: dir of open pivots"
   exit 1
 fi 
 
