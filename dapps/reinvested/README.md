@@ -6,5 +6,5 @@ Calculates the closed pivot calls.
 
 ## Revisions
 
-* 1.00, 2026-05-18: release
+* 1.00, 2026-05-18: release, and adding into the quizzes testing framework
 

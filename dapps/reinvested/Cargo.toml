@@ -3,6 +3,10 @@ name = "reinvested"
 version = "0.1.0"
 edition = "2024"
 
+[[bin]]
+name = "reinvested"
+path = "../../quizzes/src/quiz11/a_reinvest/src/main.rs"
+
 [dependencies]
 book = { path = "../../../crypto-n-rust/src/libs/book" }
 libs = { path = "../../libs" }
