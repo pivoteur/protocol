@@ -3,15 +3,15 @@ use book::{
     err_utils::ErrStr,
     utils::{ get_args, get_env },
 };
- 
-fn version()  -> &'static str { "1.00" }
-fn app_name() -> &'static str { "distribute" }
- 
+
+
 const CHAT_ID: i64 = 5889599932;
- 
-const DEFAULT_TWEET_URL: &str = "x.com/pivocateur/status/2054570565474635869";
+const DEFAULT_TWEET_URL: &str = "x.com/pivocateur";
 const DEFAULT_TX_URL:    &str = "asdf";
- 
+
+fn version()  -> &'static str { "1.00" }
+fn app_name() -> &'static str { "distributed" }
+
 fn usage() -> ErrStr<()> {
     eprintln!(
         "Usage: {} <token_a> <token_b> <amount> [tweet_url] [tx_url]",
@@ -22,9 +22,9 @@ fn usage() -> ErrStr<()> {
     eprintln!("  amount    : amount distributed to investor         (e.g. 0.4349)");
     eprintln!("  tweet_url : tweet URL          (default: {DEFAULT_TWEET_URL})");
     eprintln!("  tx_url    : snowtrace tx URL   (default: {DEFAULT_TX_URL})");
-    Err("Need at least <token_a> <token_b> <amount> arguments".to_string())
+    Err("Missing five arguments".to_string())
 }
- 
+
 pub fn build_message(
     token_a:   &str,
     token_b:   &str,
@@ -37,7 +37,7 @@ pub fn build_message(
          I sent {amount} {token_a} to you; tx_id: {tx_url}"
     )
 }
- 
+
 pub async fn send_telegram(bot_token: &str, chat_id: i64, text: &str) -> ErrStr<()> {
     let url = format!("https://api.telegram.org/bot{bot_token}/sendMessage");
     Client::new()
@@ -53,7 +53,7 @@ pub async fn send_telegram(bot_token: &str, chat_id: i64, text: &str) -> ErrStr<
         .map_err(|e| e.to_string())?;
     Ok(())
 }
- 
+
 pub async fn runoff_with_args() -> ErrStr<()> {
     eprintln!("{}, version: {}", app_name(), version());
     let args = get_args();
@@ -72,13 +72,13 @@ pub async fn runoff_with_args() -> ErrStr<()> {
     println!("{msg}");
     Ok(())
 }
- 
-// ---------------------------------------------------------------------------
- 
+
+//----- UNIT TESTS ------------------------------------------------------------------------
 #[cfg(test)]
 mod unit_tests {
     use super::*;
- 
+
+
     #[test]
     fn test_exact_sample_message() {
         let msg = build_message(
@@ -96,7 +96,7 @@ mod unit_tests {
              tx_id: snowtrace.io/tx/0x04454ba7f8484359d821f18a5c5e1e6334fa43c416ec345d1de6df10c3e13765"
         );
     }
- 
+
     #[test]
     fn test_token_positions() {
         let msg = build_message("USDC", "UNDEAD", "tweet", "1.00", "tx");
@@ -123,10 +123,9 @@ mod unit_tests {
     fn test_usage_returns_err() {
         assert!(usage().is_err());
     }
-}
- 
-// ---------------------------------------------------------------------------
- 
+} 
+
+//----- FUNCTIONAL TESTS -------------------------------------------------------------------
 #[cfg(test)]
 #[cfg(not(tarpaulin_include))]
 pub mod functional_tests {
@@ -137,7 +136,7 @@ pub mod functional_tests {
         create_testing
     };
  
-    create_testing!("distribute::a_distribute");
+    create_testing!("quiz11::b_distributed");
  
     run!("build_and_send_message", {
         let bot_token = get_env("REINVESTED_BOT")?;

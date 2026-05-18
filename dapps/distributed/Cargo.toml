@@ -3,9 +3,13 @@ name = "distributed"
 version = "0.1.0"
 edition = "2024"
 
+[[bin]]
+name = "distributed"
+path = "../../quizzes/src/quiz11/b_distributed/src/main.rs"
+
 [dependencies]
-book = { path = "../../../../../crypto-n-rust/src/libs/book" }
-quizzes = { path = " ../../../"}
+book = { path = "../../../crypto-n-rust/src/libs/book" }
+quizzes = { path = "../../quizzes" }
 
 teloxide   = { version = "0.17.0", features = ["macros"] }
 tokio      = { version = "1.52.3", features = ["full"] }
