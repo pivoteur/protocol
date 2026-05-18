@@ -402,7 +402,7 @@ mod tests {
     let table = ingest(parse_id, parse_str, parse_str,
         &raw.lines().map(|s| s.to_string()).collect::<Vec<_>>(), ",")
         .expect("ingest");
-    assert_eq!(pool_path("cp", &table, 1).unwrap(), "cp/eth-undead.tsv");
+    assert_eq!(pool_path("cpp", &table, 1).unwrap(), "cpp/eth-undead.tsv");
        
     }
 
@@ -444,23 +444,22 @@ fn test_pool_path_undead_usdc_alphabetical_order() {
 
 pub fn runoff_with_args() -> ErrStr<()> {
     let args = get_args();
-    if args.len() < 4 {
+    if args.len() < 5 {
         eprintln!("Error: not enough arguments.");
-        eprintln!("Usage: `wyrd` <auth> <ix> <tx_id> <new_to_actual>");
-        eprintln!("Example: wyrd PIVOT 5 \"asdf\" \"1250.75\"");
+        eprintln!("Usage: `wyrd` <auth> <path> <ix> <tx_id> <new_to_actual>");
+        eprintln!("Example: wyrd PIVOT data/pivots/close/raw 5 \"asdf\" \"1250.75\"");
         std::process::exit(1);
     }
     let protocol = &args[0];
     let protocol_up = protocol.to_uppercase();
-    let ix       = parse_id(&args[1])?;
-    let close_dir = get_env("CLOSE_PIVOT_DIR")
-        .expect("CLOSE_PIVOT_DIR must be set!");
+    let close_dir = &args[1];
+    let ix       = parse_id(&args[2])?;
     let root_url = get_env(&format!("{protocol_up}_URL"))?;
     let rt       = Runtime::new().map_err(|e| e.to_string())?;
     match rt.block_on(fetch_calls(&root_url)) {
         Ok(t)  => {
             println!("{}", header());
-            println!("{}", parse_row(&t, ix, &args[2], &args[3])?);
+            println!("{}", parse_row(&t, ix, &args[3], &args[4])?);
             println!("{}", pool_path(&close_dir, &t, ix)?);
         }
         Err(e) => eprintln!("Error: {e}"),
