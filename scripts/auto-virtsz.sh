@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# Assign the first argument to a variable named 'target_dir'
-DIRECTORY="$1"
+PROTOCOL=$1
+DIRECTORY="$2"
 
 # Check if the directory argument was provided
 if [ -z "$DIRECTORY" ]; then
@@ -17,7 +17,7 @@ for file in "$DIRECTORY"/*; do
   if [ -f "$file" ]; then
     # *** Replace the following line with your specific command ***
     echo "processing file $file"
-    virtsz pivot $LE_DATE $file > $file
+    virtsz $PROTOCOL $LE_DATE $file > $file
     # Example: run a data processing command on the file
     # virtsz <protocol> <date> <path or "$file">
   fi
