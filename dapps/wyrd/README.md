@@ -6,11 +6,11 @@ Calculates a close pivot.
 
 where:
 
-	* `<protocol>` is the protocol where the close pivot is, e.g.: PIVOT
-	* `<path>` is where the close pivots are, e.g.: data/pivots/close/raw
-	* `<ix>` is the close pivot call id, e.g.: 5
-	* `<tx_id>` is the close pivot swap transaction id, e.g.: some URL
-	* `<amount>` is the amount swapped to to close the pivot, e.g.: 0.17
+* `<protocol>` is the protocol where the close pivot is, e.g.: PIVOT
+* `<path>` is where the close pivots are, e.g.: data/pivots/close/raw
+* `<ix>` is the close pivot call id, e.g.: 5
+* `<tx_id>` is the close pivot swap transaction id, e.g.: some URL
+* `<amount>` is the amount swapped to to close the pivot, e.g.: 0.17
 
 * [source](../../quizzes/src/quiz08/b_wyrd/mod.rs)
 
