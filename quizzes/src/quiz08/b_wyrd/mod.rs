@@ -7,9 +7,12 @@ use book::{
    err_utils::ErrStr,
    table_utils::val,
    date_utils::parse_date,
-   parse_utils::parse_id,
    num_utils::parse_num,
-   utils::get_env
+   utils::get_env,
+   parse_utils::{
+        parse_id,
+        parse_usd
+    }
 };
 
 // ===========================================================================================================================
@@ -28,23 +31,21 @@ pub fn parse_row(table: &IxTable, ix: usize, tx_id: &str, new_to_actual: &str) -
     let col = |name: &str| -> ErrStr<String> {
         let v = val(&table, &ix, &name.to_string()).unwrap_or_default();
         if v.is_empty() {
-            Err(format!("missing or empty column '{name}'"))
+            Err(format!("missing data or empty column '{name}'"))
         } else {
             Ok(v)
         }
     };    
     let col_num = |name: &str| -> ErrStr<f64> {
         let raw = col(name)?;
-        let stripped = raw.replace('$', "");
-        parse_num(stripped.trim())
+        parse_num(raw.trim())
             .map(|v| v as f64)
             .map_err(|_| "missing table's data".to_string())
     };
     let col_opt = |name: &str| -> ErrStr<f64> {
         let raw = col(name)?;
-        let stripped = raw.replace('$', "");
-        parse_num(stripped.trim())
-            .map(|v| v as f64)
+        parse_usd(raw.trim())
+            .map(|v| v.amount as f64)
             .map_err(|e| format!("invalid value for '{name}': {e}"))
     };
     //----- truth values -----------------------------------------------------------------
@@ -59,7 +60,7 @@ pub fn parse_row(table: &IxTable, ix: usize, tx_id: &str, new_to_actual: &str) -
     let virtual_     = col_num("virtual")?;
     let actual       = new_to_actual.parse::<f64>()
                             .map_err(|_| format!("invalid new_to_actual: '{new_to_actual}' is not a number"))?;
-    let from_quote   = col_num("pivot_close_price")?;
+    let from_quote   = col_opt("pivot_close_price")?;
     let to_quote     = col_opt("proposed_close_price")?;
     //----- formulas for the correct headers ---------------------------------------------
     let sum_amt_virt    = amount1 + virtual_;
@@ -232,40 +233,6 @@ mod tests {
         let row_str = parse_row(&table, 1, "tx1", "160.0").unwrap();
         assert!(!row_str.contains("NaN") && !row_str.contains("inf"),
             "NaN or inf in output: {row_str}");
-    }
-
-    #[test]
-    fn test_col_num_strips_dollar() {
-        let v: f64 = "$1.50".replace('$', "").replace(',', "").trim().parse().unwrap_or(0.0);
-        assert!((v - 1.50).abs() < f64::EPSILON);
-    }
-
-    #[test]
-    fn test_col_num_strips_comma() {
-        let v: f64 = "1,250.75".replace('$', "").replace(',', "").trim().parse().unwrap_or(0.0);
-        assert!((v - 1250.75).abs() < f64::EPSILON);
-    }
-
-    #[test]
-    fn test_col_num_strips_dollar_and_comma() {
-        let v: f64 = "$1,250.75".replace('$', "").replace(',', "").trim().parse().unwrap_or(0.0);
-        assert!((v - 1250.75).abs() < f64::EPSILON);
-    }
-
-    #[test]
-    fn test_col_num_empty_returns_missing_data_err() {
-        let raw = "";
-        let result: Result<f64, &str> = {
-            let cleaned = raw.replace('$', "").replace(',', "");
-            let trimmed = cleaned.trim();
-            if trimmed.is_empty() {
-                Err("missing table's data")
-            } else {
-                trimmed.parse::<f64>().map_err(|_| "missing table's data")
-            }
-        };
-        assert!(result.is_err());
-        assert_eq!(result.unwrap_err(), "missing table's data");
     }
 
     #[test]
