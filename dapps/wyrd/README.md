@@ -3,7 +3,9 @@
 Calculates a close pivot.
 
 `$ wyrd <protocol> <path> <ix> <tx_id> <amount>`
-where
+
+where:
+
 	* `<protocol>` is the protocol where the close pivot is, e.g.: PIVOT
 	* `<path>` is where the close pivots are, e.g.: data/pivots/close/raw
 	* `<ix>` is the close pivot call id, e.g.: 5
