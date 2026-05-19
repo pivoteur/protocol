@@ -1,0 +1,9 @@
+[tasks.test-flow]
+# Dependencies run sequentially in the exact order listed below
+dependencies = ["test", "after-test"]
+
+[tasks.after-test]
+script = [
+    "head -n 2 data/sample_close_pivots.tsv | sponge data/sample_close_pivots.tsv"
+]
+
