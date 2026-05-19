@@ -8,6 +8,7 @@ use book::{
     err_utils::ErrStr,
     date_utils::parse_date,
     num_utils::parse_num,
+    currency::usd::{ USD, mk_usd },
     utils::{ 
         get_env,
         get_args
@@ -43,14 +44,14 @@ pub fn parse_row(table: &IxTable, ix: usize, tx_id: &str, new_to_actual: &str) -
     let col_num = |name: &str| -> ErrStr<f32> {
         let raw = col(name)?;
         parse_num(raw.trim())
-            .map(|v| v as f32)
-            .map_err(|_| "missing table's data".to_string())
+            //.map(|v| v as f32)
+            //.map_err(|_| "missing table's data".to_string())
     };
-    let col_opt = |name: &str| -> ErrStr<f32> {
+    let col_opt = |name: &str| -> ErrStr<USD> {
         let raw = col(name)?;
         parse_usd(raw.trim())
-            .map(|v| v.amount as f32)
-            .map_err(|e| format!("invalid value for '{name}': {e}"))
+            //.map(|v| v.amount as f32)
+            //.map_err(|e| format!("invalid value for '{name}': {e}"))
     };
     //----- truth values -------------------------------
     let date   = parse_date(&col("close_date")?)?;
@@ -68,10 +69,10 @@ pub fn parse_row(table: &IxTable, ix: usize, tx_id: &str, new_to_actual: &str) -
     let to_quote     = col_opt("proposed_close_price")?;
     //----- formulas for the correct headers -----------
     let sum_amt_virt    = amount1 + virtual_;
-    let vol             = trade * from_quote;
+    let vol             = mk_usd(trade * from_quote.amount);
     let gain_10_percent = sum_amt_virt * 1.1;
     let gain            = actual - sum_amt_virt;
-    let gain_total_usd  = gain * to_quote;
+    let gain_total_usd  = mk_usd(gain * to_quote.amount);
     let roi_val         = if sum_amt_virt != 0.0 { gain / sum_amt_virt } else { 0.0 };
     let days            = (date - opened).num_days();
     if days < 0 {
@@ -79,9 +80,9 @@ pub fn parse_row(table: &IxTable, ix: usize, tx_id: &str, new_to_actual: &str) -
     }
     let apr_val         = if days > 0 { (roi_val * 365.0) / days as f32 } else { 0.0 };
     //----- formatting the actual output ---------------
-    let line1 = format!("{date},{pivot},{close},{tx_id},{from},${from_quote}");
-    let line2 = format!("{to},${to_quote},{trade},${vol:.4},{gain_10_percent:.4}");
-    let line3 = format!("{new_to_actual},{gain:.4},${gain_total_usd:.2},{:.2}%,{:.2}%",
+    let line1 = format!("{date},{pivot},{close},{tx_id},{from},{from_quote}");
+    let line2 = format!("{to},{to_quote},{trade},{vol:.4},{gain_10_percent:.4}");
+    let line3 = format!("{new_to_actual},{gain:.4},{gain_total_usd:.2},{:.2}%,{:.2}%",
                         roi_val * 100.0, apr_val * 100.0);
     Ok(format!("{line1},{line2},{line3}"))
 }
