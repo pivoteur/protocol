@@ -1,2 +1,2 @@
-pub mod a_reinvest;
-
+pub mod a_reinvested;
+pub mod b_distributed;
