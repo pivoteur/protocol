@@ -7,7 +7,11 @@ use book::{
 };
 
 use super::{
-   fetchers::{fetch_pivots,fetch_quotes,fetch_pool_names},
+   fetchers::{
+      pivots::fetch_pivots,
+      quotes::fetch_quotes,
+      pool_names::fetch_pool_names
+   },
    reports::{Proposal,mk_proposal},
    types::{
       comps::Composition,
@@ -115,7 +119,7 @@ pub mod functional_tests {
 #[cfg(not(tarpaulin_include))]
 mod tests {
    use super::*;
-   use crate::fetchers::fetchers_test_helpers::marshall;
+   use crate::fetchers::test_helpers::test_functions::marshall;
    use book::date_utils::yesterday;
 
    fn yday() -> String { format!("{}", yesterday()) }
