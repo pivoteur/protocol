@@ -118,8 +118,8 @@ stateDiagram-v2
             direction LR
 
          [*] --> pools
-         pools --> UpdateDbwithoutReporting2
-         UpdateDbwithoutReporting2 --> [*]
+         pools --> UpdateDbwithoutReporting1
+         UpdateDbwithoutReporting1 --> [*]
 
          UpdateDbwithoutReporting2: Update database
       }
