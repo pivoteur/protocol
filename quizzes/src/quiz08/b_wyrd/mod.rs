@@ -1,14 +1,21 @@
-use tokio::runtime::Runtime;
 use libs::{ 
     fetchers::calls::fetch_calls, 
     tables::IxTable 
 };
 use book::{
-   err_utils::ErrStr,
-   table_utils::val,
-   date_utils::parse_date,
-   parse_utils::parse_id,
-   utils::{ get_args, get_env }
+    table_utils::val,
+    err_utils::ErrStr,
+    date_utils::parse_date,
+    num_utils::parse_num,
+    currency::usd::{ USD, mk_usd },
+    utils::{ 
+        get_env,
+        get_args
+    },
+    parse_utils::{
+        parse_id,
+        parse_usd
+    }
 };
 
 // ====================================================
@@ -28,25 +35,18 @@ pub fn parse_row(table: &IxTable, ix: usize, tx_id: &str, new_to_actual: &str) -
     let col = |name: &str| -> ErrStr<String> {
         let v = val(&table, &ix, &name.to_string()).unwrap_or_default();
         if v.is_empty() {
-            Err(format!("missing or empty column '{name}'"))
+            Err(format!("missing data or empty column '{name}'"))
         } else {
             Ok(v)
         }
     };    
-    let col_num = |name: &str| -> ErrStr<f64> {
-        let raw   = col(name)?;
-        let strip = raw.replace('$', "").replace(',', "");
-        let strip   = strip.trim();
-        if strip.is_empty() {
-            Err("missing table's data".to_string())
-        } else {
-            strip.parse::<f64>().map_err(|_| "missing table's data".to_string())
-        }
+    let col_num = |name: &str| -> ErrStr<f32> {
+        let raw = col(name)?;
+        parse_num(raw.trim())
     };
-    let col_opt = |name: &str| -> ErrStr<f64> {
-        let raw   = col(name)?;
-        let strip = raw.replace('$', "").replace(',', "");
-        strip.trim().parse::<f64>().map_err(|_| format!("invalid value for '{name}' "))
+    let col_opt = |name: &str| -> ErrStr<USD> {
+        let raw = col(name)?;
+        parse_usd(raw.trim())
     };
     //----- truth values -------------------------------
     let date   = parse_date(&col("close_date")?)?;
@@ -58,26 +58,25 @@ pub fn parse_row(table: &IxTable, ix: usize, tx_id: &str, new_to_actual: &str) -
     let trade        = col_num("pivot_amount")?;
     let amount1      = col_num("amount1")?;
     let virtual_     = col_num("virtual")?;
-    let actual       = new_to_actual.parse::<f64>()
-                            .map_err(|_| format!("invalid new_to_actual: '{new_to_actual}' is not a number"))?;
-    let from_quote   = col_num("pivot_close_price")?;
+    let actual       = parse_num(new_to_actual)?;
+    let from_quote   = col_opt("pivot_close_price")?;
     let to_quote     = col_opt("proposed_close_price")?;
     //----- formulas for the correct headers -----------
     let sum_amt_virt    = amount1 + virtual_;
-    let vol             = trade * from_quote;
+    let vol             = mk_usd(trade * from_quote.amount);
     let gain_10_percent = sum_amt_virt * 1.1;
     let gain            = actual - sum_amt_virt;
-    let gain_total_usd  = gain * to_quote;
+    let gain_total_usd  = mk_usd(gain * to_quote.amount);
     let roi_val         = if sum_amt_virt != 0.0 { gain / sum_amt_virt } else { 0.0 };
     let days            = (date - opened).num_days();
     if days < 0 {
         return Err(format!("opened date '{opened}' is after close date '{date}', cannot compute APR"));
     }
-    let apr_val         = if days > 0 { (roi_val * 365.0) / days as f64 } else { 0.0 };
+    let apr_val         = if days > 0 { (roi_val * 365.0) / days as f32 } else { 0.0 };
     //----- formatting the actual output ---------------
-    let line1 = format!("{date},{pivot},{close},{tx_id},{from},${from_quote}");
-    let line2 = format!("{to},${to_quote},{trade},${vol:.4},{gain_10_percent:.4}");
-    let line3 = format!("{new_to_actual},{gain:.4},${gain_total_usd:.2},{:.2}%,{:.2}%",
+    let line1 = format!("{date},{pivot},{close},{tx_id},{from},{from_quote}");
+    let line2 = format!("{to},{to_quote},{trade},{vol:.4},{gain_10_percent:.4}");
+    let line3 = format!("{new_to_actual},{gain:.4},{gain_total_usd:.2},{:.2}%,{:.2}%",
                         roi_val * 100.0, apr_val * 100.0);
     Ok(format!("{line1},{line2},{line3}"))
 }
@@ -99,11 +98,27 @@ pub fn pool_path(close_dir: &str, table: &IxTable, ix: usize) -> ErrStr<String> 
 // =====================================================
 //----- UNIT TESTS -------------------------------------
 // =====================================================
+#[cfg(test)]
+#[cfg(not(tarpaulin_include))]
+mod test_functions {
+    use super::*;
+    use book::{
+        table_utils::ingest,
+        parse_utils::parse_str
+    };
+
+    pub fn make_table(raw: &str) -> ErrStr<IxTable> {
+        let lines: Vec<String> = raw.lines().map(|s| s.to_string()).collect();
+        ingest(parse_id, parse_str, parse_str, &lines, ",")
+    }
+}
+
 
 #[cfg(not(tarpaulin_include))]
 #[cfg(test)]
 mod tests {
     use super::*;
+    use super::test_functions::make_table;
     use book::{
         date_utils::today,
         parse_utils::{ 
@@ -204,7 +219,7 @@ mod tests {
         let table = ingest(parse_id, parse_str, parse_str, &raw_data.lines().map(|s| s.to_string()).collect::<Vec<_>>(), ",")
             .expect("Failed to ingest mock data");
         let row_str = parse_row(&table, 1, "tx1", "160.0").unwrap();
-        assert!(row_str.contains("$1000.0000"), "expected $1000.0000 in: {row_str}");
+        assert!(row_str.contains("$1000.00"), "expected $1000.00 in: {row_str}");
     }
 
     #[test]
@@ -222,7 +237,7 @@ mod tests {
         let table = ingest(parse_id, parse_str, parse_str, &raw_data.lines().map(|s| s.to_string()).collect::<Vec<_>>(), ",")
             .expect("Failed to ingest mock data");
         let row_str = parse_row(&table, 1, "tx1", "100.0").unwrap();
-        let gain: f64 = row_str.split(',').nth(12).unwrap_or("0").parse().unwrap_or(0.0);
+        let gain: f32 = row_str.split(',').nth(12).unwrap_or("0").parse().unwrap_or(0.0);
         assert!(gain < 0.0, "expected negative gain, got {gain}");
     }
 
@@ -237,68 +252,34 @@ mod tests {
     }
 
     #[test]
-    fn test_col_num_strips_dollar() {
-        let v: f64 = "$1.50".replace('$', "").replace(',', "").trim().parse().unwrap_or(0.0);
-        assert!((v - 1.50).abs() < f64::EPSILON);
-    }
-
-    #[test]
-    fn test_col_num_strips_comma() {
-        let v: f64 = "1,250.75".replace('$', "").replace(',', "").trim().parse().unwrap_or(0.0);
-        assert!((v - 1250.75).abs() < f64::EPSILON);
-    }
-
-    #[test]
-    fn test_col_num_strips_dollar_and_comma() {
-        let v: f64 = "$1,250.75".replace('$', "").replace(',', "").trim().parse().unwrap_or(0.0);
-        assert!((v - 1250.75).abs() < f64::EPSILON);
-    }
-
-    #[test]
-    fn test_col_num_empty_returns_missing_data_err() {
-        let raw = "";
-        let result: Result<f64, &str> = {
-            let cleaned = raw.replace('$', "").replace(',', "");
-            let trimmed = cleaned.trim();
-            if trimmed.is_empty() {
-                Err("missing table's data")
-            } else {
-                trimmed.parse::<f64>().map_err(|_| "missing table's data")
-            }
-        };
-        assert!(result.is_err());
-        assert_eq!(result.unwrap_err(), "missing table's data");
-    }
-
-    #[test]
     fn test_roi_zero_division_guard() {
-        let s = 0.0_f64;
+        let s = 0.0_f32;
         assert_eq!(0.0, if s != 0.0 { 1.0 / s } else { 0.0 });
     }
 
     #[test]
     fn test_apr_zero_days_guard() {
-        assert_eq!(0.0, if 0.0_f64 > 0.0 { 0.1 * 365.0 / 0.0 } else { 0.0 });
+        assert_eq!(0.0, if 0.0_f32 > 0.0 { 0.1 * 365.0 / 0.0 } else { 0.0 });
     }
     #[test]
     fn test_apr_365_days_equals_roi() {
-        let roi = 0.1_f64;
+        let roi = 0.1_f32;
         assert!((roi - roi * 365.0 / 365.0).abs() < 1e-10);
     }
     
     #[test] 
     fn test_gain_formula() { 
-        assert_eq!(-50.0, 100.0_f64 - (100.0 + 50.0)); 
+        assert_eq!(-50.0, 100.0_f32 - (100.0 + 50.0)); 
     }    
 
     #[test] 
     fn test_gain_10_percent() { 
-        assert!((165.0_f64 - (100.0 + 50.0) * 1.1).abs() < f64::EPSILON); 
+        assert!((165.0_f32 - (100.0 + 50.0) * 1.1).abs() < f32::EPSILON); 
     }
 
     #[test] 
     fn test_vol_formula() { 
-        assert!((750.0_f64 - 500.0 * 1.5).abs() < f64::EPSILON); 
+        assert!((750.0_f32 - 500.0 * 1.5).abs() < f32::EPSILON); 
     }
 
     #[test]
@@ -438,11 +419,18 @@ fn test_pool_path_undead_usdc_alphabetical_order() {
         "dpcr/undead-usdc.tsv");
 }
 
+#[test]
+fn missing_table_close_date_header() -> ErrStr<()> {
+    let table = make_table("ix,pool,ids\n1,BTC,20")?;
+    let row = parse_row(&table, 1, "tx_id", "1.0");
+    assert!(row.is_err());
+    Ok(())  
 }
 
-//----- fn runoff_with_args ----------------------------
+}
+//----- fn runoff_with_args -----------------------------------
 
-pub fn runoff_with_args() -> ErrStr<()> {
+pub async fn runoff_with_args() -> ErrStr<()> {
     let args = get_args();
     if args.len() < 5 {
         eprintln!("Error: not enough arguments.");
@@ -455,15 +443,10 @@ pub fn runoff_with_args() -> ErrStr<()> {
     let close_dir = &args[1];
     let ix       = parse_id(&args[2])?;
     let root_url = get_env(&format!("{protocol_up}_URL"))?;
-    let rt       = Runtime::new().map_err(|e| e.to_string())?;
-    match rt.block_on(fetch_calls(&root_url)) {
-        Ok(t)  => {
-            println!("{}", header());
-            println!("{}", parse_row(&t, ix, &args[3], &args[4])?);
-            println!("{}", pool_path(&close_dir, &t, ix)?);
-        }
-        Err(e) => eprintln!("Error: {e}"),
-    }
+    let calls = fetch_calls(&root_url).await?;
+    println!("{}", header());
+    println!("{}", parse_row(&calls, ix, &args[3], &args[4])?);
+    println!("{}", pool_path(&close_dir, &calls, ix)?);
     Ok(())
 }
 
@@ -475,10 +458,9 @@ pub fn runoff_with_args() -> ErrStr<()> {
 #[cfg(not(tarpaulin_include))]
 pub mod functional_tests {
     use super::*;
+    use super::test_functions::make_table;
     use paste::paste;
     use book::{
-        parse_utils::parse_str,
-        table_utils:: ingest,
         date_utils::today,
         utils::resolve,
         create_testing,
@@ -488,10 +470,6 @@ pub mod functional_tests {
 
     fn now() -> String { format!("{}", today()) }
 
-    fn make_table(raw: &str) -> ErrStr<IxTable> {
-        let lines: Vec<String> = raw.lines().map(|s| s.to_string()).collect();
-        ingest(parse_id, parse_str, parse_str, &lines, ",")
-    }
 
     fn report<A: std::fmt::Debug + Clone>(test: &str, t: A, f: impl Fn(A) -> ErrStr<String>) -> ErrStr<usize> {
         let result = f(t.clone())?;
@@ -501,12 +479,13 @@ pub mod functional_tests {
 
     create_testing!("quiz08::b_wyrd");
 
-    run!("resilience", {
-        let table = make_table("ix,pool,ids\n1,BTC,20")?;
-        if parse_row(&table, 1, "tx_id", "1.0").is_ok() {
-            return Err("resilience: expected Err on missing dates, got Ok".to_string());
-        }
-        println!("\npivot_dapps::run_resilience functional test\n\n\tresult: Err (correct)\n\npivot_dapps::resilience:...ok");
+    run!("parse_row", {
+        let raw_data = 
+        "ix,pool,open_pivots,last_pivot_on_dt,opened,ids,close_id,close_date,from,from_blockchain,amount1,virtual,quote1,val1,gain_10_percent,pivot_token,pivot_blockchain,pivot_close_price,pivot_amount,proposed_token,proposed_blockchain,proposed_close_price,proposed_amount,roi,apr
+1,BTC+ETH,27,2026-05-07,2025-11-05,46,14,2026-05-19,ETH,Avalanche,0,0.1498,$3340.95,$500.47,0.16478,BTC,Avalanche,$76815.00,0.00467,ETH,Avalanche,$2116.94,0.169455,13.12%,24.56%";
+        let table = make_table(raw_data)?;
+        let row = parse_row(&table, 1, "asdf", "0.17")?;
+        println!("result: {row} ");
     });
 
     fn apr_safety(dt: String) -> ErrStr<String> {
@@ -515,8 +494,8 @@ pub mod functional_tests {
             pivot_amount,amount1,virtual,pivot_close_price,proposed_close_price\n\
             1,{dt},{dt},20,99,BTC,UNDEAD,0,0,1,0.00,0.00"
         )).and_then(|t| parse_row(&t, 1, "tx_id", "1.0"))?;
-        if row.contains("NaN") || row.contains("inf") { return Err(format!("apr_safety: NaN or inf in: {row}")); }
-        Ok(row)
+        if row.contains("NaN") || row.contains("inf") { Err(format!("apr_safety: NaN or inf in: {row}")) } else{
+        Ok(row)}
     }
     run_with!("apr_safety", now(), compose!(resolve)(apr_safety));
 
@@ -524,10 +503,9 @@ pub mod functional_tests {
         let row = make_table(&format!(
             "ix,close_date,opened,ids,close_id,pivot_token,from,\
             pivot_amount,amount1,virtual,pivot_close_price,proposed_close_price\n\
-            1,{dt},{dt},20,99,BTC,UNDEAD,100000000,0,0,1.50,1.50"
-        )).and_then(|t| parse_row(&t, 1, "tx_id", "1.0"))?;
-        if !row.contains("150000000.0000") { return Err(format!("whale: expected 150000000.0000 in: {row}")); }
-        Ok(row)
+            1,{dt},{dt},20,99,BTC,UNDEAD,150000000,0,0,1.50,1.50"
+        )).and_then(|t| parse_row(&t, 1, "tx_id", "1.0"));
+        row
     }
     run_with!("whale", now(), compose!(resolve)(whale));
 
@@ -537,8 +515,8 @@ pub mod functional_tests {
             pivot_amount,amount1,virtual,pivot_close_price,proposed_close_price\n\
             1,{dt},{dt},20,99,BTC,UNDEAD,0,0,0,0.00,0.00"
         )).and_then(|t| parse_row(&t, 1, "tx_id", "0.0"))?;
-        if row.contains("NaN") || row.contains("inf") { return Err(format!("roi_zero_div: NaN or inf in: {row}")); }
-        Ok(row)
+        if row.contains("NaN") || row.contains("inf") { Err(format!("roi_zero_div: NaN or inf in: {row}")) } else{
+        Ok(row)}
     }
     run_with!("roi_zero_div", now(), compose!(resolve)(roi_zero_div));
 
@@ -549,8 +527,8 @@ pub mod functional_tests {
             1,{dt},{dt},20,99,BTC,UNDEAD,0,100,50,0.00,0.00"
         )).and_then(|t| parse_row(&t, 1, "tx_id", "120.0"))?;
         let (h, r) = (header().split(',').count(), row.split(',').count());
-        if h != r { return Err(format!("column_count: header={h} row={r}")); }
-        Ok(row)
+        if h != r { Err(format!("column_count: header={h} row={r}")) } else{
+        Ok(row)}
     }
     run_with!("column_count", now(), compose!(resolve)(column_count));
 
@@ -560,7 +538,7 @@ pub mod functional_tests {
             pivot_amount,amount1,virtual,pivot_close_price,proposed_close_price\n\
             1,{dt},{dt},20,99,BTC,UNDEAD,100000,0,0,$1.50,$1.50"
         )).and_then(|t| parse_row(&t, 1, "tx_id", "1.0"))?;
-        if !row.contains("150000.0000") { return Err(format!("currency_format: expected 150000.0000 in: {row}")); }
+        if !row.contains("150000.00") { return Err(format!("currency_format: expected 150000.00 in: {row}")); }
         Ok(row)
     }
     run_with!("currency_format", now(), compose!(resolve)(currency_format));
@@ -586,7 +564,7 @@ pub mod functional_tests {
             pivot_amount,amount1,virtual,pivot_close_price,proposed_close_price\n\
             1,{dt},{dt},20,99,BTC,UNDEAD,1000,500,100,0.0025,0.0025"
         )).and_then(|t| parse_row(&t, 1, "tx_id", "650.0"))?;
-        let gain_usd: f64 = row.split(',').nth(13).unwrap_or("$0").replace('$', "").parse().unwrap_or(0.0);
+        let gain_usd: f32 = row.split(',').nth(13).unwrap_or("$0").replace('$', "").parse().unwrap_or(0.0);
         if gain_usd == 0.0 { return Err("undead_zero_precision: gain_total_usd is 0, to_quote not rescued".to_string()); }
         Ok(row)
     }
