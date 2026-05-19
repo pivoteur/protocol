@@ -10,7 +10,7 @@ where:
 * `<amount>`      is the amount reinvested. e.g. `0.59`
 * `<url>`         is the twitter URL. e.g. `x.com/pivocateur`
 
-Calculates the closed pivot calls.
+Sends a telegram regarding the amount reinvested into pivot pools.
 
 > n.b: "REINVESTED_BOT" must be set as an environmental variable locally
 
