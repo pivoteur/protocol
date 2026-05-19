@@ -35,6 +35,8 @@ fn append_close(filename: &str, close_pivot: &str) -> ErrStr<()> {
           &format!("Cannot write to file {tfile}"))
 }
 
+pub fn runoff_with_args() -> ErrStr<()> { write_file_from_stdin() }
+
 // ----- TESTS -------------------------------------------------------
 
 #[cfg(test)]
