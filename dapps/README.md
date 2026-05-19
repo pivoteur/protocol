@@ -27,8 +27,9 @@ stateDiagram-v2
 
    class report manual
    class ReportwithoutUpdatingDatabase manual
+   class ScanOpens wip
    class UpdateDb manual
-   class UpdateDbwithoutReporting1 manual
+   class UpdateDbwithoutReporting1 inUse
    class UpdateDbwithoutReporting2 inUse
 
    class Wallets manual
@@ -210,27 +211,21 @@ Iterates `cargo build` over each subdir in `<dir>`
 
 ## Released
 
-### `dusk`: close pivots
-
 * [dusk](dusk): aggregates assets to pivot by blockchain
+* [wyrd](wyrd): closes a pivot based upon a transaction
 
-Standalone dapps that also support `dawn` include:
-
-### `assets`: state of all pools
+### Standalone dapps that also support `dawn` include:
 
 * [assets](assets): partitions pools by TVL
-
-### `virtsz`: Assets committed to virtual pivots
-
-* [virtsz](virtsz)
+* [virtsz](virtsz): Assets committed to virtual pivots
+* [hwaet](hwaet): Assesses pivot pools health
 
 ## WIP / Works in Progress
 
 ## `dawn`: open pivots
 
-... very much a WIP
-
 * [dawn](dawn): the start of a start, reading pivot pool assets
+  * ... very much a WIP
 
 ## Archived
 
