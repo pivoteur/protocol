@@ -14,7 +14,7 @@ Sends a telegram regarding the amount reinvested into pivot pools.
 
 > n.b: "REINVESTED_BOT" must be set as an environmental variable locally
 
-* [source](../../quizzes/src/quiz11/a_reinvest/mod.rs)
+* [source](../../quizzes/src/quiz11/a_reinvested/mod.rs)
 
 ## Revisions
 
