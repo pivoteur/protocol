@@ -1,11 +1,9 @@
-use reqwest::Client;
 use book::{
     err_utils::ErrStr,
-    utils::{ get_args, get_env },
+    utils::get_args
 };
 
 
-const CHAT_ID: i64 = 5889599932;
 const DEFAULT_TWEET_URL: &str = "x.com/pivocateur";
 const DEFAULT_TX_URL:    &str = "asdf";
 
@@ -38,24 +36,8 @@ pub fn build_message(
     )
 }
 
-pub async fn send_telegram(bot_token: &str, chat_id: i64, text: &str) -> ErrStr<()> {
-    let url = format!("https://api.telegram.org/bot{bot_token}/sendMessage");
-    Client::new()
-        .post(&url)
-        .json(&serde_json::json!({
-            "chat_id": chat_id,
-            "text":    text,
-        }))
-        .send()
-        .await
-        .map_err(|e| e.to_string())?
-        .error_for_status()
-        .map_err(|e| e.to_string())?;
-    Ok(())
-}
-
 pub async fn runoff_with_args() -> ErrStr<()> {
-    eprintln!("{}, version: {}", app_name(), version());
+    eprintln!("{}, version: {}\n", app_name(), version());
     let args = get_args();
     let (token_a, token_b, tweet_url, amount, tx_url) = match args.as_slice() {
         [token_a, token_b, amount] =>
@@ -67,8 +49,6 @@ pub async fn runoff_with_args() -> ErrStr<()> {
         _ => return usage(),
     };
     let msg       = build_message(token_a, token_b, tweet_url, amount, tx_url);
-    let bot_token = get_env("REINVESTED_BOT")?;
-    send_telegram(&bot_token, CHAT_ID, &msg).await?;
     println!("{msg}");
     Ok(())
 }
@@ -132,14 +112,13 @@ pub mod functional_tests {
     use super::*;
     use paste::paste;
     use book::{
-        utils::now,
+        //utils::now,
         create_testing
     };
  
     create_testing!("quiz11::b_distributed");
  
     run!("build_and_send_message", {
-        let bot_token = get_env("REINVESTED_BOT")?;
         let msg = build_message(
             "USDC",
             "UNDEAD",
@@ -147,7 +126,6 @@ pub mod functional_tests {
             "0.4349",
             "snowtrace.io/tx/0x04454ba7f8484359d821f18a5c5e1e6334fa43c416ec345d1de6df10c3e13765",
         );
-        let _ = now(send_telegram(&bot_token, CHAT_ID, &msg))?;
         println!("{msg}");
     });
 }
