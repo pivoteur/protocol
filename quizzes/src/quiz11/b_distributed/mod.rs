@@ -91,7 +91,7 @@ mod unit_tests {
         assert_eq!(
             msg,
             "I close an USDC-on-UNDEAD pivot \
-             (see tweet: x.com/pivocateur/status/2054570565474635869). \
+             (please see the twitter post: x.com/pivocateur/status/2054570565474635869). \
              I sent 0.4349 USDC to you; \
              tx_id: snowtrace.io/tx/0x04454ba7f8484359d821f18a5c5e1e6334fa43c416ec345d1de6df10c3e13765"
         );
