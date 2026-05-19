@@ -58,7 +58,8 @@ pub fn parse_row(table: &IxTable, ix: usize, tx_id: &str, new_to_actual: &str) -
     let trade        = col_num("pivot_amount")?;
     let amount1      = col_num("amount1")?;
     let virtual_     = col_num("virtual")?;
-    let actual       = parse_num(new_to_actual)?;
+    let actual_nta= new_to_actual.replace(',', "");
+    let actual       = parse_num(&actual_nta)?;
     let from_quote   = col_opt("pivot_close_price")?;
     let to_quote     = col_opt("proposed_close_price")?;
     //----- formulas for the correct headers -----------
@@ -72,11 +73,12 @@ pub fn parse_row(table: &IxTable, ix: usize, tx_id: &str, new_to_actual: &str) -
     if days < 0 {
         return Err(format!("opened date '{opened}' is after close date '{date}', cannot compute APR"));
     }
-    let apr_val         = if days > 0 { (roi_val * 365.0) / days as f32 } else { 0.0 };
+    let days_f32        = days as f32;
+    let apr_val         = if days > 0 { (roi_val * 365.0) / days_f32 } else { 0.0 };
     //----- formatting the actual output ---------------
     let line1 = format!("{date},{pivot},{close},{tx_id},{from},{from_quote}");
     let line2 = format!("{to},{to_quote},{trade},{vol:.4},{gain_10_percent:.4}");
-    let line3 = format!("{new_to_actual},{gain:.4},{gain_total_usd:.2},{:.2}%,{:.2}%",
+    let line3 = format!("{actual_nta},{gain:.4},{gain_total_usd:.2},{:.2}%,{:.2}%",
                         roi_val * 100.0, apr_val * 100.0);
     Ok(format!("{line1},{line2},{line3}"))
 }
@@ -252,34 +254,17 @@ mod tests {
     }
 
     #[test]
-    fn test_roi_zero_division_guard() {
-        let s = 0.0_f32;
-        assert_eq!(0.0, if s != 0.0 { 1.0 / s } else { 0.0 });
-    }
-
-    #[test]
-    fn test_apr_zero_days_guard() {
-        assert_eq!(0.0, if 0.0_f32 > 0.0 { 0.1 * 365.0 / 0.0 } else { 0.0 });
-    }
-    #[test]
-    fn test_apr_365_days_equals_roi() {
-        let roi = 0.1_f32;
-        assert!((roi - roi * 365.0 / 365.0).abs() < 1e-10);
-    }
-    
-    #[test] 
-    fn test_gain_formula() { 
-        assert_eq!(-50.0, 100.0_f32 - (100.0 + 50.0)); 
-    }    
-
-    #[test] 
-    fn test_gain_10_percent() { 
-        assert!((165.0_f32 - (100.0 + 50.0) * 1.1).abs() < f32::EPSILON); 
-    }
-
-    #[test] 
-    fn test_vol_formula() { 
-        assert!((750.0_f32 - 500.0 * 1.5).abs() < f32::EPSILON); 
+    fn test_parse_row_comma_formatted_new_to_actual() {
+        let raw_data = mock_trade_row();
+        let table = ingest(parse_id, parse_str, parse_str,
+            &raw_data.lines().map(|s| s.to_string()).collect::<Vec<_>>(), ",")
+            .expect("Failed to ingest");
+        let row_str = parse_row(&table, 1, "tx1", "883,619.4538")
+            .expect("parse_row should accept comma-formatted new_to_actual");
+        assert_eq!(header().split(',').count(), row_str.split(',').count(),
+            "comma in new_to_actual broke field count: {row_str}");
+        assert!(!row_str.contains("883,619"),
+            "raw comma-formatted value leaked into CSV output: {row_str}");
     }
 
     #[test]
