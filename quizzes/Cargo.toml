@@ -18,10 +18,15 @@ paste = "1.0"
 serde_json = "1.0"
 serde = { version = "1.0", features = ["derive"] }
 
-
 [lints.rust.unexpected_cfgs]
 level = "warn"
 check-cfg = [
     'cfg(tarpaulin_include)'
 ]
+
+[tasks.test-flow]
+run_task = { name = ["test", "after-test"] }
+
+[tasks.after-test]
+script = "!head -n 2 data/sample_close_pivots.tsv | sponge data/sample_close_pivots.tsv"
 
