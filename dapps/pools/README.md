@@ -13,22 +13,10 @@ where:
 
 `$ pools pivot $LE_DATE`
 
-```Javascript
-const poolAssets = {
-   generated: '2026-04-29',
-   assets: [
-      [ 'AVAX', 'UNDEAD' ],
-      [ 'BTC', 'UNDEAD' ],
-      [ 'UNDEAD', 'USDC' ],
-      [ 'ETH', 'UNDEAD' ],
-      [ 'BTC', 'AVAX' ],
-      [ 'BTC', 'ETH' ],
-      [ 'BTC', 'USDC' ]
-   ]
-};
-```
+![Pivot pools for Pivot 
+Protocol](../../quizzes/src/quiz10/b_pools/imgs/01-pools.png)
 
-* [src](mod.rs)
+* [src](../../quizzes/src/quiz10/c_local_pools/mod.rs)
 
 -----
 

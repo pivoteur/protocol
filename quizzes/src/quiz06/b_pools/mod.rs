@@ -7,7 +7,7 @@ use book::{
 };
 
 use libs::{
-   fetchers::{fetch_pool_names,fetch_assets},
+   fetchers::{ pool_names::fetch_pool_names, assets::pool::fetch_assets },
    reports::{print_table,total_line},
    types::{
       aliases::aliases,

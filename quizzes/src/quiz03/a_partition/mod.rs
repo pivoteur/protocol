@@ -4,7 +4,7 @@ use book:: {
    utils::get_args
 };
 use libs:: { 
-   fetchers::fetch_pivots,
+   fetchers::pivots::fetch_pivots,
    types:: { 
       pivots::Pivot,
       aliases::aliases,

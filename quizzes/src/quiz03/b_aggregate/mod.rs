@@ -1,16 +1,13 @@
 use chrono::NaiveDate;
-use book:: {
+use book::{
    date_utils::parse_date,
    err_utils::ErrStr,
    utils::get_args
 };
 use libs::{
    reports::print_table,
-   fetchers:: { 
-      fetch_pivots, 
-      fetch_quotes 
-   },
-   types:: { 
+   fetchers::{  pivots::fetch_pivots,  quotes::fetch_quotes },
+   types::{ 
       proposals::proposes::propose, 
       pivots:: { 
          partition_on, 
@@ -19,7 +16,6 @@ use libs::{
    }
 };
 
-
 fn app_name() -> String { "basset".to_string() }
 fn version() -> String { "1.00".to_string() }
 
@@ -27,9 +23,10 @@ fn usage() -> ErrStr<()> {
    println!("Usage:
    $ {} <root URL> <primary asset> <pivot asset> <date>
 
-         Partitions open pivots then aggregates proposed close pivots.
-         The pivot pools are reposed (in git, currently) at <root URL>.
-         Open pivots are stored as raw-CSV files in git at protocol <root URL>.", app_name());
+      Partitions open pivots then aggregates proposed close pivots.
+      The pivot pools are reposed (in git, currently) at <root URL>.
+      Open pivots are stored as raw-CSV files in git at protocol <root URL>.",
+       app_name());
    Err("Needs <root URL> <primary> <pivot> <date> arguments".to_string())
 }
 
