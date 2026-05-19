@@ -10,4 +10,5 @@ exploration starts simply, then we use it for protocol-plumbing.
 -----
 
 * [a_files](a_files): List the files in a directory.
+* [b_pools](b_pools): Lists the pivot pools for the protocol
 

@@ -18,6 +18,7 @@ Given <auth> access and <date>, {} prints a Javascript object of pool assets.
    Err("Need <auth> and <date> arguments".to_string()) 
 }     
 
+#[cfg(not(tarpaulin_include))]
 pub async fn runoff_with_args() -> ErrStr<()> {
    println!("\n// created by: {}, version: {}\n", app_name(), version());
 
@@ -41,7 +42,7 @@ mod pools_impl {
       utils::get_env
    };
    use libs::{ paths::pivot_pool_from_file, types::util::Pool };
-   
+
    pub async fn print_pools_as_js(auth: &str, date: NaiveDate) -> ErrStr<()> {
       let a = pools(auth).await?;
       let js = to_js(date, a);
@@ -113,7 +114,6 @@ pub mod functional_tests {
       err_utils::ErrStr,
       utils::now
    };
-
 
    create_testing!("quiz10::c_local_pools");
 
