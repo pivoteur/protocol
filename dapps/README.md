@@ -121,7 +121,7 @@ stateDiagram-v2
          pools --> UpdateDbwithoutReporting1
          UpdateDbwithoutReporting1 --> [*]
 
-         UpdateDbwithoutReporting2: Update database
+         UpdateDbwithoutReporting1: Update database
       }
 
       AdjustVirtualPivots: Adjust Virtual Open Pivots
