@@ -24,9 +24,3 @@ check-cfg = [
     'cfg(tarpaulin_include)'
 ]
 
-[tasks.test-flow]
-run_task = { name = ["test", "after-test"] }
-
-[tasks.after-test]
-script = "!head -n 2 data/sample_close_pivots.tsv | sponge data/sample_close_pivots.tsv"
-
