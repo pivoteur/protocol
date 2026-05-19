@@ -1,0 +1,2 @@
+date	pivot	close	tx_id	from	from_quote	to	to_quote	trade	vol	gain_10_percent	new_to_actual	gain	gain_total_usd	roi	apr
+2025-08-25	2	1	https://snowtrace.io/tx/0x7af0e16bdbe518332f80a4ca3c8ce176ac43d2ac8198898b7eed9be98cdaf312	AVAX	$24.18	BTC	$111,395.00	44.66980555	$1,080.10		0.009468	0.000885	$98.59	10.31%	198.09%
