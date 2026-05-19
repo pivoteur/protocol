@@ -33,7 +33,7 @@ pub fn build_message(
     tx_url:    &str,
 ) -> String {
     format!(
-        "I close an {token_a}-on-{token_b} pivot (see tweet: {tweet_url}). \
+        "I close an {token_a}-on-{token_b} pivot (please see the twitter post: {tweet_url}). \
          I sent {amount} {token_a} to you; tx_id: {tx_url}"
     )
 }
