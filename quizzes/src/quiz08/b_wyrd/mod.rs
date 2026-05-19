@@ -44,14 +44,10 @@ pub fn parse_row(table: &IxTable, ix: usize, tx_id: &str, new_to_actual: &str) -
     let col_num = |name: &str| -> ErrStr<f32> {
         let raw = col(name)?;
         parse_num(raw.trim())
-            //.map(|v| v as f32)
-            //.map_err(|_| "missing table's data".to_string())
     };
     let col_opt = |name: &str| -> ErrStr<USD> {
         let raw = col(name)?;
         parse_usd(raw.trim())
-            //.map(|v| v.amount as f32)
-            //.map_err(|e| format!("invalid value for '{name}': {e}"))
     };
     //----- truth values -------------------------------
     let date   = parse_date(&col("close_date")?)?;
@@ -225,7 +221,7 @@ mod tests {
         let table = ingest(parse_id, parse_str, parse_str, &raw_data.lines().map(|s| s.to_string()).collect::<Vec<_>>(), ",")
             .expect("Failed to ingest mock data");
         let row_str = parse_row(&table, 1, "tx1", "160.0").unwrap();
-        assert!(row_str.contains("$1000.0000"), "expected $1000.0000 in: {row_str}");
+        assert!(row_str.contains("$1000.00"), "expected $1000.00 in: {row_str}");
     }
 
     #[test]
@@ -549,7 +545,7 @@ pub mod functional_tests {
             pivot_amount,amount1,virtual,pivot_close_price,proposed_close_price\n\
             1,{dt},{dt},20,99,BTC,UNDEAD,100000,0,0,$1.50,$1.50"
         )).and_then(|t| parse_row(&t, 1, "tx_id", "1.0"))?;
-        if !row.contains("150000.0000") { return Err(format!("currency_format: expected 150000.0000 in: {row}")); }
+        if !row.contains("150000.00") { return Err(format!("currency_format: expected 150000.00 in: {row}")); }
         Ok(row)
     }
     run_with!("currency_format", now(), compose!(resolve)(currency_format));
