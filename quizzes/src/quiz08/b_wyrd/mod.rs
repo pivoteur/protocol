@@ -1,4 +1,3 @@
-use tokio::runtime::Runtime;
 use libs::{ 
     fetchers::calls::fetch_calls, 
     tables::IxTable 
@@ -59,8 +58,7 @@ pub fn parse_row(table: &IxTable, ix: usize, tx_id: &str, new_to_actual: &str) -
     let trade        = col_num("pivot_amount")?;
     let amount1      = col_num("amount1")?;
     let virtual_     = col_num("virtual")?;
-    let actual       = new_to_actual.parse::<f32>()
-                            .map_err(|_| format!("invalid new_to_actual: '{new_to_actual}' is not a number"))?;
+    let actual       = parse_num(new_to_actual)?;
     let from_quote   = col_opt("pivot_close_price")?;
     let to_quote     = col_opt("proposed_close_price")?;
     //----- formulas for the correct headers -----------
@@ -432,7 +430,7 @@ fn missing_table_close_date_header() -> ErrStr<()> {
 }
 //----- fn runoff_with_args -----------------------------------
 
-pub fn runoff_with_args() -> ErrStr<()> {
+pub async fn runoff_with_args() -> ErrStr<()> {
     let args = get_args();
     if args.len() < 5 {
         eprintln!("Error: not enough arguments.");
@@ -445,15 +443,10 @@ pub fn runoff_with_args() -> ErrStr<()> {
     let close_dir = &args[1];
     let ix       = parse_id(&args[2])?;
     let root_url = get_env(&format!("{protocol_up}_URL"))?;
-    let rt       = Runtime::new().map_err(|e| e.to_string())?;
-    match rt.block_on(fetch_calls(&root_url)) {
-        Ok(t)  => {
-            println!("{}", header());
-            println!("{}", parse_row(&t, ix, &args[3], &args[4])?);
-            println!("{}", pool_path(&close_dir, &t, ix)?);
-        }
-        Err(e) => eprintln!("Error: {e}"),
-    }
+    let calls = fetch_calls(&root_url).await?;
+    println!("{}", header());
+    println!("{}", parse_row(&calls, ix, &args[3], &args[4])?);
+    println!("{}", pool_path(&close_dir, &calls, ix)?);
     Ok(())
 }
 
