@@ -103,11 +103,27 @@ pub fn pool_path(close_dir: &str, table: &IxTable, ix: usize) -> ErrStr<String> 
 // =====================================================
 //----- UNIT TESTS -------------------------------------
 // =====================================================
+#[cfg(test)]
+#[cfg(not(tarpaulin_include))]
+mod test_functions {
+    use super::*;
+    use book::{
+        table_utils::ingest,
+        parse_utils::parse_str
+    };
+
+    pub fn make_table(raw: &str) -> ErrStr<IxTable> {
+        let lines: Vec<String> = raw.lines().map(|s| s.to_string()).collect();
+        ingest(parse_id, parse_str, parse_str, &lines, ",")
+    }
+}
+
 
 #[cfg(not(tarpaulin_include))]
 #[cfg(test)]
 mod tests {
     use super::*;
+    use super::test_functions::make_table;
     use book::{
         date_utils::today,
         parse_utils::{ 
@@ -408,9 +424,16 @@ fn test_pool_path_undead_usdc_alphabetical_order() {
         "dpcr/undead-usdc.tsv");
 }
 
+#[test]
+fn missing_table_close_date_header() -> ErrStr<()> {
+    let table = make_table("ix,pool,ids\n1,BTC,20")?;
+    let row = parse_row(&table, 1, "tx_id", "1.0");
+    assert!(row.is_err());
+    Ok(())  
 }
 
-//----- fn runoff_with_args ----------------------------
+}
+//----- fn runoff_with_args -----------------------------------
 
 pub fn runoff_with_args() -> ErrStr<()> {
     let args = get_args();
@@ -445,10 +468,9 @@ pub fn runoff_with_args() -> ErrStr<()> {
 #[cfg(not(tarpaulin_include))]
 pub mod functional_tests {
     use super::*;
+    use super::test_functions::make_table;
     use paste::paste;
     use book::{
-        parse_utils::parse_str,
-        table_utils:: ingest,
         date_utils::today,
         utils::resolve,
         create_testing,
@@ -458,10 +480,6 @@ pub mod functional_tests {
 
     fn now() -> String { format!("{}", today()) }
 
-    fn make_table(raw: &str) -> ErrStr<IxTable> {
-        let lines: Vec<String> = raw.lines().map(|s| s.to_string()).collect();
-        ingest(parse_id, parse_str, parse_str, &lines, ",")
-    }
 
     fn report<A: std::fmt::Debug + Clone>(test: &str, t: A, f: impl Fn(A) -> ErrStr<String>) -> ErrStr<usize> {
         let result = f(t.clone())?;
@@ -471,12 +489,13 @@ pub mod functional_tests {
 
     create_testing!("quiz08::b_wyrd");
 
-    run!("resilience", {
-        let table = make_table("ix,pool,ids\n1,BTC,20")?;
-        if parse_row(&table, 1, "tx_id", "1.0").is_ok() {
-            return Err("resilience: expected Err on missing dates, got Ok".to_string());
-        }
-        println!("\npivot_dapps::run_resilience functional test\n\n\tresult: Err (correct)\n\npivot_dapps::resilience:...ok");
+    run!("parse_row", {
+        let raw_data = 
+        "ix,pool,open_pivots,last_pivot_on_dt,opened,ids,close_id,close_date,from,from_blockchain,amount1,virtual,quote1,val1,gain_10_percent,pivot_token,pivot_blockchain,pivot_close_price,pivot_amount,proposed_token,proposed_blockchain,proposed_close_price,proposed_amount,roi,apr
+1,BTC+ETH,27,2026-05-07,2025-11-05,46,14,2026-05-19,ETH,Avalanche,0,0.1498,$3340.95,$500.47,0.16478,BTC,Avalanche,$76815.00,0.00467,ETH,Avalanche,$2116.94,0.169455,13.12%,24.56%";
+        let table = make_table(raw_data)?;
+        let row = parse_row(&table, 1, "asdf", "0.17")?;
+        println!("result: {row} ");
     });
 
     fn apr_safety(dt: String) -> ErrStr<String> {
@@ -485,8 +504,8 @@ pub mod functional_tests {
             pivot_amount,amount1,virtual,pivot_close_price,proposed_close_price\n\
             1,{dt},{dt},20,99,BTC,UNDEAD,0,0,1,0.00,0.00"
         )).and_then(|t| parse_row(&t, 1, "tx_id", "1.0"))?;
-        if row.contains("NaN") || row.contains("inf") { return Err(format!("apr_safety: NaN or inf in: {row}")); }
-        Ok(row)
+        if row.contains("NaN") || row.contains("inf") { Err(format!("apr_safety: NaN or inf in: {row}")) } else{
+        Ok(row)}
     }
     run_with!("apr_safety", now(), compose!(resolve)(apr_safety));
 
@@ -506,8 +525,8 @@ pub mod functional_tests {
             pivot_amount,amount1,virtual,pivot_close_price,proposed_close_price\n\
             1,{dt},{dt},20,99,BTC,UNDEAD,0,0,0,0.00,0.00"
         )).and_then(|t| parse_row(&t, 1, "tx_id", "0.0"))?;
-        if row.contains("NaN") || row.contains("inf") { return Err(format!("roi_zero_div: NaN or inf in: {row}")); }
-        Ok(row)
+        if row.contains("NaN") || row.contains("inf") { Err(format!("roi_zero_div: NaN or inf in: {row}")) } else{
+        Ok(row)}
     }
     run_with!("roi_zero_div", now(), compose!(resolve)(roi_zero_div));
 
@@ -518,8 +537,8 @@ pub mod functional_tests {
             1,{dt},{dt},20,99,BTC,UNDEAD,0,100,50,0.00,0.00"
         )).and_then(|t| parse_row(&t, 1, "tx_id", "120.0"))?;
         let (h, r) = (header().split(',').count(), row.split(',').count());
-        if h != r { return Err(format!("column_count: header={h} row={r}")); }
-        Ok(row)
+        if h != r { Err(format!("column_count: header={h} row={r}")) } else{
+        Ok(row)}
     }
     run_with!("column_count", now(), compose!(resolve)(column_count));
 
