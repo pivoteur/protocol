@@ -9,7 +9,7 @@ use book::{
  
 
 fn version()  -> &'static str { "1.00" }
-fn app_name() -> &'static str { "reinvest" }
+fn app_name() -> &'static str { "reinvested" }
  
 const CHAT_ID: i64 = 5889599932;
  
@@ -143,13 +143,13 @@ pub mod functional_tests {
     };
 
 
-    create_testing!("quiz11::a_reinvest");
+    create_testing!("quiz11::a_reinvested");
 
     run!("build_and_send_message", {
         let bot_token = get_env("REINVESTED_BOT")?;
         let msg = build_message(
             "AVAX", "BTC", "2", "0.59",
-            "https://x.com/pivocateur/status/2047688113024086275",
+            "https://x.com/pivocateur",
         );
         let _ = now(send_telegram(&bot_token, CHAT_ID, &msg))?;
         println!("{msg}");
