@@ -12,9 +12,7 @@ where:
 
 Creates a distribution message for investors.
 
-> n.b: "REINVESTED_BOT" must be set as an environmental variable locally
-
-* [source](../../quizzes/src/quiz11/a_reinvest/mod.rs)
+* [source](../../quizzes/src/quiz11/b_distributed/mod.rs)
 
 ## Revisions
 
