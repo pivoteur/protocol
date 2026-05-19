@@ -112,10 +112,9 @@ pub mod functional_tests {
     use super::*;
     use paste::paste;
     use book::{
-        //utils::now,
         create_testing
     };
- 
+
     create_testing!("quiz11::b_distributed");
  
     run!("build_and_send_message", {
