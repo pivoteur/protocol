@@ -58,8 +58,7 @@ pub fn parse_row(table: &IxTable, ix: usize, tx_id: &str, new_to_actual: &str) -
     let trade        = col_num("pivot_amount")?;
     let amount1      = col_num("amount1")?;
     let virtual_     = col_num("virtual")?;
-    let actual_nta= new_to_actual.replace(',', "");
-    let actual       = parse_num(&actual_nta)?;
+    let actual       = parse_num(new_to_actual)?;
     let from_quote   = col_opt("pivot_close_price")?;
     let to_quote     = col_opt("proposed_close_price")?;
     //----- formulas for the correct headers -----------
@@ -78,7 +77,7 @@ pub fn parse_row(table: &IxTable, ix: usize, tx_id: &str, new_to_actual: &str) -
     //----- formatting the actual output ---------------
     let line1 = format!("{date},{pivot},{close},{tx_id},{from},{from_quote}");
     let line2 = format!("{to},{to_quote},{trade},{vol:.4},{gain_10_percent:.4}");
-    let line3 = format!("{actual_nta},{gain:.4},{gain_total_usd:.2},{:.2}%,{:.2}%",
+    let line3 = format!("{actual},{gain:.4},{gain_total_usd:.2},{:.2}%,{:.2}%",
                         roi_val * 100.0, apr_val * 100.0);
     Ok(format!("{line1},{line2},{line3}"))
 }
