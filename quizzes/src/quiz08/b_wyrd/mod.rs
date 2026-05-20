@@ -105,11 +105,12 @@ mod test_functions {
     use super::*;
     use book::{
         table_utils::ingest,
-        parse_utils::parse_str
+        parse_utils::parse_str,
+        string_utils::s
     };
 
     pub fn make_table(raw: &str) -> ErrStr<IxTable> {
-        let lines: Vec<String> = raw.lines().map(|s| s.to_string()).collect();
+        let lines: Vec<String> = raw.lines().map(s).collect();
         ingest(parse_id, parse_str, parse_str, &lines, ",")
     }
 }
@@ -122,6 +123,7 @@ mod tests {
     use super::test_functions::make_table;
     use book::{
         date_utils::today,
+        string_utils::s,
         parse_utils::{ 
             parse_str, 
             parse_id 
@@ -168,7 +170,7 @@ mod tests {
     fn test_ix_in_bounds() -> ErrStr<()> {
         let raw_data = mock_dusk_output();
         let table = ingest(parse_id, parse_str, parse_str, &raw_data.lines()
-            .map(|s| s.to_string()).collect::<Vec<_>>(), ",")?;
+            .map(s).collect(),",")?;
         assert!(row(&table, &1).is_some());
         assert!(row(&table, &3).is_some());
         Ok(())
@@ -178,7 +180,7 @@ mod tests {
     fn test_ix_out_of_bounds() -> ErrStr<()> {
         let raw_data = mock_dusk_output();
         let table = ingest(parse_id, parse_str, parse_str, &raw_data.lines()
-            .map(|s| s.to_string()).collect::<Vec<_>>(), ",")?;
+            .map(s).collect(),",")?;
         assert!(row(&table, &99).is_none());
         Ok(())
     }
@@ -187,7 +189,7 @@ mod tests {
     fn test_parse_row_returns_ok() -> ErrStr<()> {
         let raw_data = mock_trade_row();
         let table = ingest(parse_id, parse_str, parse_str, &raw_data.lines()
-            .map(|s| s.to_string()).collect::<Vec<_>>(), ",")?;
+            .map(s).collect(), ",")?;
         assert!(parse_row(&table, 1, "tx1", "160.0").is_ok());
         Ok(())
     }
@@ -196,7 +198,7 @@ mod tests {
     fn test_parse_row_err_on_missing_dates() -> ErrStr<()> {
         let raw_data = mock_missing_dates();
         let table = ingest(parse_id, parse_str, parse_str, &raw_data.lines()
-            .map(|s| s.to_string()).collect::<Vec<_>>(), ",")?;
+            .map(s).collect(), ",")?;
         assert!(parse_row(&table, 1, "tx1", "160.0").is_err());
         Ok(())
     }
@@ -205,7 +207,7 @@ mod tests {
     fn test_parse_row_field_count_matches_header() -> ErrStr<()> {
         let raw_data = mock_trade_row();
         let table = ingest(parse_id, parse_str, parse_str, &raw_data.lines()
-            .map(|s| s.to_string()).collect::<Vec<_>>(), ",")?;
+            .map(s).collect(), ",")?;
         let row_str = parse_row(&table, 1, "tx1", "160.0").unwrap();
         assert_eq!(header().split(',').count(), row_str.split(',').count());
         Ok(())
@@ -215,7 +217,7 @@ mod tests {
     fn test_parse_row_passthrough_tx_id() -> ErrStr<()> {
         let raw_data = mock_trade_row();
         let table = ingest(parse_id, parse_str, parse_str, &raw_data.lines()
-            .map(|s| s.to_string()).collect::<Vec<_>>(), ",")?;
+            .map(s).collect(), ",")?;
         let row_str = parse_row(&table, 1, "my-tx-abc", "160.0").unwrap();
         assert!(row_str.contains("my-tx-abc"));
         Ok(())
@@ -225,7 +227,7 @@ mod tests {
     fn test_parse_row_vol_calculation() -> ErrStr<()> {
         let raw_data = mock_trade_row();
         let table = ingest(parse_id, parse_str, parse_str, &raw_data.lines()
-            .map(|s| s.to_string()).collect::<Vec<_>>(), ",")?;
+            .map(s).collect(), ",")?;
         let row_str = parse_row(&table, 1, "tx1", "160.0").unwrap();
         assert!(row_str.contains("$1000.00"), "expected $1000.00 in: {row_str}");
         Ok(())
@@ -235,7 +237,7 @@ mod tests {
     fn test_parse_row_gain_10_percent() -> ErrStr<()> {
         let raw_data = mock_trade_row();
         let table = ingest(parse_id, parse_str, parse_str, &raw_data.lines()
-            .map(|s| s.to_string()).collect::<Vec<_>>(), ",")?;
+            .map(s).collect(), ",")?;
         let row_str = parse_row(&table, 1, "tx1", "160.0").unwrap();
         assert!(row_str.contains("165.0000"), "expected 165.0000 in: {row_str}");
         Ok(())
@@ -245,7 +247,7 @@ mod tests {
     fn test_parse_row_negative_gain() -> ErrStr<()> {
         let raw_data = mock_losing_row();
         let table = ingest(parse_id, parse_str, parse_str, &raw_data.lines()
-            .map(|s| s.to_string()).collect::<Vec<_>>(), ",")?;
+            .map(s).collect(), ",")?;
         let row_str = parse_row(&table, 1, "tx1", "100.0").unwrap();
         let gain: f32 = row_str.split(',').nth(12).unwrap_or("0").parse().unwrap_or(0.0);
         assert!(gain < 0.0, "expected negative gain, got {gain}");
@@ -256,7 +258,7 @@ mod tests {
     fn test_parse_row_no_nan_or_inf() -> ErrStr<()> {
         let raw_data = mock_trade_row();
         let table = ingest(parse_id, parse_str, parse_str, &raw_data.lines()
-            .map(|s| s.to_string()).collect::<Vec<_>>(), ",")?;
+            .map(s).collect(), ",")?;
         let row_str = parse_row(&table, 1, "tx1", "160.0").unwrap();
         assert!(!row_str.contains("NaN") && !row_str.contains("inf"),
             "NaN or inf in output: {row_str}");
@@ -266,8 +268,7 @@ mod tests {
     #[test]
     fn test_parse_row_comma_formatted_new_to_actual() -> ErrStr<()> {
         let raw_data = mock_trade_row();
-        let table = ingest(parse_id, parse_str, parse_str,
-            &raw_data.lines().map(|s| s.to_string()).collect::<Vec<_>>(), ",")?;
+        let table = ingest(parse_id, parse_str, parse_str, &raw_data.lines().map(s).collect(), ",")?;
         let row_str = parse_row(&table, 1, "tx1", "883,619.4538")?;
         assert_eq!(header().split(',').count(), row_str.split(',').count(),
             "comma in new_to_actual broke field count: {row_str}");
@@ -285,8 +286,7 @@ mod tests {
             1,{dt},{dt},20,99,BTC,UNDEAD,500,100,50,2.00,3.00"
         );
         let table = ingest(
-            parse_id, parse_str, parse_str,
-            &raw.lines().map(|s| s.to_string()).collect::<Vec<_>>(), ",",)?;
+            parse_id, parse_str, parse_str, &raw.lines().map(s).collect(), ",",)?;
         let row_str = parse_row(&table, 1, "tx1", "160.0").unwrap();
         let fields: Vec<&str> = row_str.split(',').collect();
         assert!(fields[5].starts_with('$'),  "from_quote missing $: '{}'", fields[5]);
@@ -303,7 +303,7 @@ mod tests {
             1,{dt},{dt},20,99,BTC,UNDEAD,500,100,50,2.00,2.00"
         );
         let table = ingest(parse_id, parse_str, parse_str, &raw.lines()
-            .map(|s| s.to_string()).collect::<Vec<_>>(), ",")?;
+            .map(s).collect(), ",")?;
         let result = parse_row(&table, 1, "tx1", "160.0");
         assert!(result.is_ok(), "parse_row failed: {:?}", result);
         let row_str = result.unwrap();
@@ -325,7 +325,7 @@ mod tests {
             1,{close},{opened},20,99,BTC,UNDEAD,500,100,50,2.00,2.00"
         );
         let table = ingest(parse_id, parse_str, parse_str,
-            &raw.lines().map(|s| s.to_string()).collect::<Vec<_>>(), ",")?;
+            &raw.lines().map(s).collect(), ",")?;
         let result = parse_row(&table, 1, "tx1", "160.0");
         assert!(result.is_err(), "expected Err for inverted dates, got Ok");
         let msg = result.unwrap_err();
@@ -342,7 +342,7 @@ mod tests {
             1,{dt},{dt},500,100,50,2.00,"
         );
         let table = ingest(parse_id, parse_str, parse_str,
-            &raw.lines().map(|s| s.to_string()).collect::<Vec<_>>(), ",")?;
+            &raw.lines().map(s).collect(), ",")?;
         let result = parse_row(&table, 1, "tx1", "160.0");
         assert!(result.is_err(),
                 "expected Err when proposed_close_price is empty, got Ok");
@@ -353,7 +353,7 @@ mod tests {
     fn test_pool_path_format() -> ErrStr<()> {
         let raw_data = mock_trade_row();
         let table = ingest(parse_id, parse_str, parse_str,
-            &raw_data.lines().map(|s| s.to_string()).collect::<Vec<_>>(), ",")?;
+            &raw_data.lines().map(s).collect(), ",")?;
         let path = pool_path("close_pivots", &table, 1).unwrap();
         assert_eq!(path, "close_pivots/btc-undead.tsv");
         Ok(())
@@ -368,7 +368,7 @@ mod tests {
             dt = today()
         );
         let table = ingest(parse_id, parse_str, parse_str,
-            &raw.lines().map(|s| s.to_string()).collect::<Vec<_>>(), ",")?;
+            &raw.lines().map(s).collect(), ",")?;
         assert_eq!(pool_path("cpp", &table, 1).unwrap(), "cpp/eth-undead.tsv");
         Ok(())
     }
@@ -382,7 +382,7 @@ mod tests {
             dt = today()
         );
         let table = ingest(parse_id, parse_str, parse_str,
-            &raw.lines().map(|s| s.to_string()).collect::<Vec<_>>(), ",")?;
+            &raw.lines().map(s).collect(), ",")?;
         assert_eq!(pool_path("geophf_is_grate", &table, 1).unwrap(),
             "geophf_is_grate/btc-eth.tsv");
         Ok(())
@@ -397,7 +397,7 @@ mod tests {
             dt = today()
         );
         let table = ingest(parse_id, parse_str, parse_str,
-            &raw.lines().map(|s| s.to_string()).collect::<Vec<_>>(), ",")?;
+            &raw.lines().map(s).collect(), ",")?;
         assert_eq!(pool_path("dpcr", &table, 1).unwrap(),
             "dpcr/undead-usdc.tsv");
         Ok(())
