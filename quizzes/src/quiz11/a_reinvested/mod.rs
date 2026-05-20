@@ -10,19 +10,16 @@ use book::{
 //============================================================================
 //----- Telegram Configuration -----------------------------------------------
 // ===========================================================================
-fn chat_id_for(name: &str) -> ErrStr<i64> {
-    match name {
-        "Pivot_Internal_Bot" => Ok(-1003962016174),
-        "someone else 0" => Ok(694206909),
-        "someone else 1" => Ok(694206908),
-        "someone else 2" => Ok(694206907),
-        "someone else 3" => Ok(694206906),
-        "someone else 4" => Ok(694206905),
-        _ => Err(format!("unknown investor: {name}"))
-    }
+fn chat_id_for(investor: &str) -> ErrStr<i64> {
+    let raw = get_env("INVESTOR_CHAT_IDS")?;
+    let map: serde_json::Value = serde_json::from_str(&raw)
+        .map_err(|e| format!("INVESTOR_CHAT_IDS is not valid JSON: {e}"))?;
+    map.get(investor)
+        .and_then(|v| v.as_i64())
+        .ok_or_else(|| format!("unknown investor: {investor}"))
 }
-//----- Possible Errors From Trying To Send A Message -----------------------
 
+//----- Possible Errors From Trying To Send A Message -----------------------
 // * error 403 means:   bot cannot send to that specific chat ID
 // * error 400 means:   bot was kicked from chat
 
@@ -53,7 +50,7 @@ pub fn build_message(
     url:         &str,
 ) -> String {
     format!(
-        "Hey {investor}, I just closed {pivot_count} {token_a}-on-{token_b} pivots for you and reinvested \
+        "Hey {investor}, I just closed {pivot_count} {token_a}-on-{token_b} pivots and reinvested \
          {amount} ${token_a} into the {token_b}+{token_a} pivot pool for you; tweet: {url}"
     )
 }
@@ -104,7 +101,7 @@ mod unit_tests {
         );
         assert_eq!(
             msg,
-            "I closed 2 AVAX-on-BTC pivots and reinvested 0.59 $AVAX \
+            "Hey Pivot_Internal_Bot, I just closed 2 AVAX-on-BTC pivots and reinvested 0.59 $AVAX \
              into the BTC+AVAX pivot pool for you; \
              tweet: https://x.com/pivocateur/status/2047688113024086275"
         );
@@ -112,7 +109,7 @@ mod unit_tests {
  
     #[test]
     fn test_token_positions() {
-        let msg = build_message("Pivot_Internal_Bot", "ETH", "BTC", "1", "1.5", "https://x.com/test");
+        let msg = build_message("Pivot_Internal_Bot", "ETH", "BTC", "1", "1.5", "https://x.com/pivocateur");
         assert!(msg.contains("ETH-on-BTC"), "should show token_a-on-token_b");
         assert!(msg.contains("BTC+ETH"),    "should show token_b+token_a in pool name");
         assert!(msg.contains("$ETH"),       "should show $token_a as the reinvested token");
@@ -120,7 +117,7 @@ mod unit_tests {
  
     #[test]
     fn test_different_token_pair() {
-        let msg = build_message("Pivot_Internal_Bot", "SOL", "AVAX", "3", "12.5", "https://x.com/test");
+        let msg = build_message("Pivot_Internal_Bot", "SOL", "AVAX", "3", "12.5", "https://x.com/pivocateur");
         assert!(msg.contains("3 SOL-on-AVAX pivots"));
         assert!(msg.contains("AVAX+SOL pivot pool"));
         assert!(msg.contains("12.5 $SOL"));
@@ -133,20 +130,20 @@ mod unit_tests {
 
     #[test]
     fn test_singular_pivot_count() {
-        let msg = build_message("Pivot_Internal_Bot", "AVAX", "BTC", "1", "0.25", "https://x.com/test");
-        assert!(msg.contains("I closed 1 AVAX-on-BTC pivots"),
-            "singular count should interpolate cleanly: {msg}");
+        let msg = build_message("Pivot_Internal_Bot", "AVAX", "BTC", "1", "0.25", "https://x.com/pivocateur");
+        assert!(msg.contains("I just closed 1 AVAX-on-BTC pivots"),
+        "singular count should interpolate cleanly: {msg}");
     }
-
+     
     #[test]
     fn test_degenerate_empty_inputs() {
         let msg = build_message("Pivot_Internal_Bot", "", "", "0", "0", "");
-        assert!(msg.contains("I closed 0"),         "pivot_count slot present");
+        assert!(msg.contains("I just closed 0"),    "pivot_count slot present");
         assert!(msg.contains("-on-"),               "separator present even with empty tokens");
         assert!(msg.contains("pivot pool for you"), "tail of message intact");
         assert!(msg.contains("tweet:"),             "url label present");
     }
-
+    
 }
 // ===========================================================================
 //----- FUNCTIONAL TESTS -----------------------------------------------------
