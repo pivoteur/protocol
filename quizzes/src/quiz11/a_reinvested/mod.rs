@@ -26,7 +26,6 @@ fn chat_id_for(name: &str) -> ErrStr<i64> {
 // * error 403 means:   bot cannot send to that specific chat ID
 // * error 400 means:   bot was kicked from chat
 
-//const CHAT_ID: i64 = 5889599932;
 //----- Version/ App_Name/ Usage ---------------------------------------------
 fn version()  -> &'static str { "1.01" }
 fn app_name() -> &'static str { "reinvested" }
