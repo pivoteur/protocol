@@ -72,11 +72,12 @@ pub fn parse_row(table: &IxTable, ix: usize, tx_id: &str, new_to_actual: &str) -
     if days < 0 {
         return Err(format!("opened date '{opened}' is after close date '{date}', cannot compute APR"));
     }
-    let apr_val         = if days > 0 { (roi_val * 365.0) / days as f32 } else { 0.0 };
+    let days_f32        = days as f32;
+    let apr_val         = if days > 0 { (roi_val * 365.0) / days_f32 } else { 0.0 };
     //----- formatting the actual output ---------------
     let line1 = format!("{date},{pivot},{close},{tx_id},{from},{from_quote}");
     let line2 = format!("{to},{to_quote},{trade},{vol:.4},{gain_10_percent:.4}");
-    let line3 = format!("{new_to_actual},{gain:.4},{gain_total_usd:.2},{:.2}%,{:.2}%",
+    let line3 = format!("{actual},{gain:.4},{gain_total_usd:.2},{:.2}%,{:.2}%",
                         roi_val * 100.0, apr_val * 100.0);
     Ok(format!("{line1},{line2},{line3}"))
 }
@@ -104,11 +105,12 @@ mod test_functions {
     use super::*;
     use book::{
         table_utils::ingest,
-        parse_utils::parse_str
+        parse_utils::parse_str,
+        string_utils::s
     };
 
     pub fn make_table(raw: &str) -> ErrStr<IxTable> {
-        let lines: Vec<String> = raw.lines().map(|s| s.to_string()).collect();
+        let lines: Vec<String> = raw.lines().map(s).collect();
         ingest(parse_id, parse_str, parse_str, &lines, ",")
     }
 }
@@ -121,6 +123,7 @@ mod tests {
     use super::test_functions::make_table;
     use book::{
         date_utils::today,
+        string_utils::s,
         parse_utils::{ 
             parse_str, 
             parse_id 
@@ -164,126 +167,118 @@ mod tests {
     }
 
     #[test]
-    fn test_ix_in_bounds() {
+    fn test_ix_in_bounds() -> ErrStr<()> {
         let raw_data = mock_dusk_output();
-        let table = ingest(parse_id, parse_str, parse_str, &raw_data.lines().map(|s| s.to_string()).collect::<Vec<_>>(), ",")
-            .expect("Failed to ingest mock data");
+        let table = ingest(parse_id, parse_str, parse_str, &raw_data.lines()
+            .map(s).collect(),",")?;
         assert!(row(&table, &1).is_some());
         assert!(row(&table, &3).is_some());
+        Ok(())
     }
+
     #[test]
-    fn test_ix_out_of_bounds() {
+    fn test_ix_out_of_bounds() -> ErrStr<()> {
         let raw_data = mock_dusk_output();
-        let table = ingest(parse_id, parse_str, parse_str, &raw_data.lines().map(|s| s.to_string()).collect::<Vec<_>>(), ",")
-            .expect("Failed to ingest mock data");
+        let table = ingest(parse_id, parse_str, parse_str, &raw_data.lines()
+            .map(s).collect(),",")?;
         assert!(row(&table, &99).is_none());
+        Ok(())
     }
 
     #[test]
-    fn test_parse_row_returns_ok() {
+    fn test_parse_row_returns_ok() -> ErrStr<()> {
         let raw_data = mock_trade_row();
-        let table = ingest(parse_id, parse_str, parse_str, &raw_data.lines().map(|s| s.to_string()).collect::<Vec<_>>(), ",")
-            .expect("Failed to ingest mock data");
+        let table = ingest(parse_id, parse_str, parse_str, &raw_data.lines()
+            .map(s).collect(), ",")?;
         assert!(parse_row(&table, 1, "tx1", "160.0").is_ok());
+        Ok(())
     }
 
     #[test]
-    fn test_parse_row_err_on_missing_dates() {
+    fn test_parse_row_err_on_missing_dates() -> ErrStr<()> {
         let raw_data = mock_missing_dates();
-        let table = ingest(parse_id, parse_str, parse_str, &raw_data.lines().map(|s| s.to_string()).collect::<Vec<_>>(), ",")
-            .expect("Failed to ingest mock data");
+        let table = ingest(parse_id, parse_str, parse_str, &raw_data.lines()
+            .map(s).collect(), ",")?;
         assert!(parse_row(&table, 1, "tx1", "160.0").is_err());
+        Ok(())
     }
 
     #[test]
-    fn test_parse_row_field_count_matches_header() {
+    fn test_parse_row_field_count_matches_header() -> ErrStr<()> {
         let raw_data = mock_trade_row();
-        let table = ingest(parse_id, parse_str, parse_str, &raw_data.lines().map(|s| s.to_string()).collect::<Vec<_>>(), ",")
-            .expect("Failed to ingest mock data");
+        let table = ingest(parse_id, parse_str, parse_str, &raw_data.lines()
+            .map(s).collect(), ",")?;
         let row_str = parse_row(&table, 1, "tx1", "160.0").unwrap();
         assert_eq!(header().split(',').count(), row_str.split(',').count());
+        Ok(())
     }
 
     #[test]
-    fn test_parse_row_passthrough_tx_id() {
+    fn test_parse_row_passthrough_tx_id() -> ErrStr<()> {
         let raw_data = mock_trade_row();
-        let table = ingest(parse_id, parse_str, parse_str, &raw_data.lines().map(|s| s.to_string()).collect::<Vec<_>>(), ",")
-            .expect("Failed to ingest mock data");
+        let table = ingest(parse_id, parse_str, parse_str, &raw_data.lines()
+            .map(s).collect(), ",")?;
         let row_str = parse_row(&table, 1, "my-tx-abc", "160.0").unwrap();
         assert!(row_str.contains("my-tx-abc"));
+        Ok(())
     }
 
     #[test]
-    fn test_parse_row_vol_calculation() {
+    fn test_parse_row_vol_calculation() -> ErrStr<()> {
         let raw_data = mock_trade_row();
-        let table = ingest(parse_id, parse_str, parse_str, &raw_data.lines().map(|s| s.to_string()).collect::<Vec<_>>(), ",")
-            .expect("Failed to ingest mock data");
+        let table = ingest(parse_id, parse_str, parse_str, &raw_data.lines()
+            .map(s).collect(), ",")?;
         let row_str = parse_row(&table, 1, "tx1", "160.0").unwrap();
         assert!(row_str.contains("$1000.00"), "expected $1000.00 in: {row_str}");
+        Ok(())
     }
 
     #[test]
-    fn test_parse_row_gain_10_percent() {
+    fn test_parse_row_gain_10_percent() -> ErrStr<()> {
         let raw_data = mock_trade_row();
-        let table = ingest(parse_id, parse_str, parse_str, &raw_data.lines().map(|s| s.to_string()).collect::<Vec<_>>(), ",")
-            .expect("Failed to ingest mock data");
+        let table = ingest(parse_id, parse_str, parse_str, &raw_data.lines()
+            .map(s).collect(), ",")?;
         let row_str = parse_row(&table, 1, "tx1", "160.0").unwrap();
         assert!(row_str.contains("165.0000"), "expected 165.0000 in: {row_str}");
+        Ok(())
     }
 
     #[test]
-    fn test_parse_row_negative_gain() {
+    fn test_parse_row_negative_gain() -> ErrStr<()> {
         let raw_data = mock_losing_row();
-        let table = ingest(parse_id, parse_str, parse_str, &raw_data.lines().map(|s| s.to_string()).collect::<Vec<_>>(), ",")
-            .expect("Failed to ingest mock data");
+        let table = ingest(parse_id, parse_str, parse_str, &raw_data.lines()
+            .map(s).collect(), ",")?;
         let row_str = parse_row(&table, 1, "tx1", "100.0").unwrap();
         let gain: f32 = row_str.split(',').nth(12).unwrap_or("0").parse().unwrap_or(0.0);
         assert!(gain < 0.0, "expected negative gain, got {gain}");
+        Ok(())
     }
 
     #[test]
-    fn test_parse_row_no_nan_or_inf() {
+    fn test_parse_row_no_nan_or_inf() -> ErrStr<()> {
         let raw_data = mock_trade_row();
-        let table = ingest(parse_id, parse_str, parse_str, &raw_data.lines().map(|s| s.to_string()).collect::<Vec<_>>(), ",")
-            .expect("Failed to ingest mock data");
+        let table = ingest(parse_id, parse_str, parse_str, &raw_data.lines()
+            .map(s).collect(), ",")?;
         let row_str = parse_row(&table, 1, "tx1", "160.0").unwrap();
         assert!(!row_str.contains("NaN") && !row_str.contains("inf"),
             "NaN or inf in output: {row_str}");
+        Ok(())
     }
 
     #[test]
-    fn test_roi_zero_division_guard() {
-        let s = 0.0_f32;
-        assert_eq!(0.0, if s != 0.0 { 1.0 / s } else { 0.0 });
+    fn test_parse_row_comma_formatted_new_to_actual() -> ErrStr<()> {
+        let raw_data = mock_trade_row();
+        let table = ingest(parse_id, parse_str, parse_str, &raw_data.lines().map(s).collect(), ",")?;
+        let row_str = parse_row(&table, 1, "tx1", "883,619.4538")?;
+        assert_eq!(header().split(',').count(), row_str.split(',').count(),
+            "comma in new_to_actual broke field count: {row_str}");
+        assert!(!row_str.contains("883,619"),
+            "raw comma-formatted value leaked into CSV output: {row_str}");
+        Ok(())
     }
 
     #[test]
-    fn test_apr_zero_days_guard() {
-        assert_eq!(0.0, if 0.0_f32 > 0.0 { 0.1 * 365.0 / 0.0 } else { 0.0 });
-    }
-    #[test]
-    fn test_apr_365_days_equals_roi() {
-        let roi = 0.1_f32;
-        assert!((roi - roi * 365.0 / 365.0).abs() < 1e-10);
-    }
-    
-    #[test] 
-    fn test_gain_formula() { 
-        assert_eq!(-50.0, 100.0_f32 - (100.0 + 50.0)); 
-    }    
-
-    #[test] 
-    fn test_gain_10_percent() { 
-        assert!((165.0_f32 - (100.0 + 50.0) * 1.1).abs() < f32::EPSILON); 
-    }
-
-    #[test] 
-    fn test_vol_formula() { 
-        assert!((750.0_f32 - 500.0 * 1.5).abs() < f32::EPSILON); 
-    }
-
-    #[test]
-    fn test_parse_row_currency_fields_have_dollar_prefix() {
+    fn test_parse_row_currency_fields_have_dollar_prefix() -> ErrStr<()> {
         let dt = format!("{}", today());
         let raw = format!(
             "ix,close_date,opened,ids,close_id,pivot_token,from,\
@@ -291,31 +286,24 @@ mod tests {
             1,{dt},{dt},20,99,BTC,UNDEAD,500,100,50,2.00,3.00"
         );
         let table = ingest(
-            parse_id, parse_str, parse_str,
-            &raw.lines().map(|s| s.to_string()).collect::<Vec<_>>(),
-            ",",
-        )
-        .expect("Failed to ingest");
+            parse_id, parse_str, parse_str, &raw.lines().map(s).collect(), ",",)?;
         let row_str = parse_row(&table, 1, "tx1", "160.0").unwrap();
         let fields: Vec<&str> = row_str.split(',').collect();
-        // from_quote  = index 5  → "$2.00"
-        // vol         = index 9  → "$1000.0000"
-        // gain_total  = index 13 → "$..."
         assert!(fields[5].starts_with('$'),  "from_quote missing $: '{}'", fields[5]);
         assert!(fields[9].starts_with('$'),  "vol missing $: '{}'", fields[9]);
         assert!(fields[13].starts_with('$'), "gain_total_usd missing $: '{}'", fields[13]);
+        Ok(())
     }
 
     #[test]
-    fn test_truth_values_populated() {
+    fn test_truth_values_populated() -> ErrStr<()> {
         let dt = format!("{}", today());
         let raw = format!(
             "ix,close_date,opened,ids,close_id,pivot_token,from,pivot_amount,amount1,virtual,pivot_close_price,proposed_close_price\n\
             1,{dt},{dt},20,99,BTC,UNDEAD,500,100,50,2.00,2.00"
         );
         let table = ingest(parse_id, parse_str, parse_str, &raw.lines()
-            .map(|s| s.to_string()).collect::<Vec<_>>(), ",")
-            .expect("Failed to ingest");
+            .map(s).collect(), ",")?;
         let result = parse_row(&table, 1, "tx1", "160.0");
         assert!(result.is_ok(), "parse_row failed: {:?}", result);
         let row_str = result.unwrap();
@@ -324,11 +312,11 @@ mod tests {
         for (i, f) in fields.iter().enumerate() {
             assert!(!f.is_empty(), "field at index {i} is empty: full row: {row_str}");
         }
+        Ok(())
     }
     
     #[test]
-    fn test_parse_row_inverted_dates_returns_error() {
-        // "opened" is one year AFTER close_date, this should trigger the days > 0.0 guard
+    fn test_parse_row_inverted_dates_returns_error() -> ErrStr<()> {
         let close  = today();
         let opened = close + chrono::Duration::days(365);
         let raw = format!(
@@ -337,95 +325,91 @@ mod tests {
             1,{close},{opened},20,99,BTC,UNDEAD,500,100,50,2.00,2.00"
         );
         let table = ingest(parse_id, parse_str, parse_str,
-            &raw.lines().map(|s| s.to_string()).collect::<Vec<_>>(), ",")
-            .expect("Failed to ingest");
+            &raw.lines().map(s).collect(), ",")?;
         let result = parse_row(&table, 1, "tx1", "160.0");
         assert!(result.is_err(), "expected Err for inverted dates, got Ok");
         let msg = result.unwrap_err();
         assert!(msg.contains("cannot compute APR"),
             "expected APR error message, got: {msg}");
+        Ok(())
     }
 
     #[test]
-    fn test_parse_row_err_on_empty_to_quote() {
+    fn test_parse_row_err_on_empty_to_quote() -> ErrStr<()> {
         let dt = format!("{}", today());
-        // proposed_close_price is intentionally left blank
         let raw = format!(
             "ix,close_date,opened,pivot_amount,amount1,virtual,pivot_close_price,proposed_close_price\n\
             1,{dt},{dt},500,100,50,2.00,"
         );
         let table = ingest(parse_id, parse_str, parse_str,
-            &raw.lines().map(|s| s.to_string()).collect::<Vec<_>>(), ",")
-            .expect("Failed to ingest");
+            &raw.lines().map(s).collect(), ",")?;
         let result = parse_row(&table, 1, "tx1", "160.0");
         assert!(result.is_err(),
                 "expected Err when proposed_close_price is empty, got Ok");
+        Ok(())
     }
 
     #[test]
-    fn test_pool_path_format() {
+    fn test_pool_path_format() -> ErrStr<()> {
         let raw_data = mock_trade_row();
         let table = ingest(parse_id, parse_str, parse_str,
-            &raw_data.lines().map(|s| s.to_string()).collect::<Vec<_>>(), ",")
-            .expect("Failed to ingest");
+            &raw_data.lines().map(s).collect(), ",")?;
         let path = pool_path("close_pivots", &table, 1).unwrap();
         assert_eq!(path, "close_pivots/btc-undead.tsv");
+        Ok(())
     }
 
     #[test]
-    fn test_pool_path_eth_undead() {
-    let raw = format!(
-        "ix,close_date,opened,ids,close_id,pivot_token,from,\
-        pivot_amount,amount1,virtual,pivot_close_price,proposed_close_price\n\
-        1,{dt},{dt},20,99,ETH,UNDEAD,0,0,0,0.00,0.00",
-        dt = today()
-    );
-    let table = ingest(parse_id, parse_str, parse_str,
-        &raw.lines().map(|s| s.to_string()).collect::<Vec<_>>(), ",")
-        .expect("ingest");
-    assert_eq!(pool_path("cpp", &table, 1).unwrap(), "cpp/eth-undead.tsv");
-       
+    fn test_pool_path_eth_undead() -> ErrStr<()> {
+        let raw = format!(
+            "ix,close_date,opened,ids,close_id,pivot_token,from,\
+            pivot_amount,amount1,virtual,pivot_close_price,proposed_close_price\n\
+            1,{dt},{dt},20,99,ETH,UNDEAD,0,0,0,0.00,0.00",
+            dt = today()
+        );
+        let table = ingest(parse_id, parse_str, parse_str,
+            &raw.lines().map(s).collect(), ",")?;
+        assert_eq!(pool_path("cpp", &table, 1).unwrap(), "cpp/eth-undead.tsv");
+        Ok(())
     }
 
-#[test]
-fn test_pool_path_btc_eth_alphabetical_order() {
-    // Even if the row has pivot_token=ETH and from=BTC,
-    // btc sorts before eth so the file must still be btc-eth.tsv
-    let raw = format!(
-        "ix,close_date,opened,ids,close_id,pivot_token,from,\
-        pivot_amount,amount1,virtual,pivot_close_price,proposed_close_price\n\
-        1,{dt},{dt},20,99,ETH,BTC,0,0,0,0.00,0.00",
-        dt = today()
-    );
-    let table = ingest(parse_id, parse_str, parse_str,
-        &raw.lines().map(|s| s.to_string()).collect::<Vec<_>>(), ",")
-        .expect("ingest");
-    assert_eq!(pool_path("geophf_is_grate", &table, 1).unwrap(),
-        "geophf_is_grate/btc-eth.tsv");
-}
+    #[test]
+    fn test_pool_path_btc_eth_alphabetical_order() -> ErrStr<()> {
+        let raw = format!(
+            "ix,close_date,opened,ids,close_id,pivot_token,from,\
+            pivot_amount,amount1,virtual,pivot_close_price,proposed_close_price\n\
+            1,{dt},{dt},20,99,ETH,BTC,0,0,0,0.00,0.00",
+            dt = today()
+        );
+        let table = ingest(parse_id, parse_str, parse_str,
+            &raw.lines().map(s).collect(), ",")?;
+        assert_eq!(pool_path("geophf_is_grate", &table, 1).unwrap(),
+            "geophf_is_grate/btc-eth.tsv");
+        Ok(())
+    }
 
-#[test]
-fn test_pool_path_undead_usdc_alphabetical_order() {
-    let raw = format!(
-        "ix,close_date,opened,ids,close_id,pivot_token,from,\
-        pivot_amount,amount1,virtual,pivot_close_price,proposed_close_price\n\
-        1,{dt},{dt},20,99,USDC,UNDEAD,0,0,0,0.00,0.00",
-        dt = today()
-    );
-    let table = ingest(parse_id, parse_str, parse_str,
-        &raw.lines().map(|s| s.to_string()).collect::<Vec<_>>(), ",")
-        .expect("ingest");
-    assert_eq!(pool_path("dpcr", &table, 1).unwrap(),
-        "dpcr/undead-usdc.tsv");
-}
+    #[test]
+    fn test_pool_path_undead_usdc_alphabetical_order() -> ErrStr<()> {
+        let raw = format!(
+            "ix,close_date,opened,ids,close_id,pivot_token,from,\
+            pivot_amount,amount1,virtual,pivot_close_price,proposed_close_price\n\
+            1,{dt},{dt},20,99,USDC,UNDEAD,0,0,0,0.00,0.00",
+            dt = today()
+        );
+        let table = ingest(parse_id, parse_str, parse_str,
+            &raw.lines().map(s).collect(), ",")?;
+        assert_eq!(pool_path("dpcr", &table, 1).unwrap(),
+            "dpcr/undead-usdc.tsv");
+        Ok(())
+    }
 
-#[test]
-fn missing_table_close_date_header() -> ErrStr<()> {
-    let table = make_table("ix,pool,ids\n1,BTC,20")?;
-    let row = parse_row(&table, 1, "tx_id", "1.0");
-    assert!(row.is_err());
-    Ok(())  
-}
+    #[test]
+    fn missing_table_close_date_header() -> ErrStr<()> {
+        let table = make_table("ix,pool,ids\n1,BTC,20")?;
+        let row = parse_row(&table, 1, "tx_id", "1.0");
+        assert!(row.is_err());
+        Ok(())  
+    }
 
 }
 //----- fn runoff_with_args -----------------------------------
@@ -571,3 +555,4 @@ pub mod functional_tests {
 
     run_with!("undead_zero_precision", now(), compose!(resolve)(undead_zero_precision));
 }
+
