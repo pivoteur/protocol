@@ -27,6 +27,10 @@ jobs:
  
       - name: Install cargo-tarpaulin
         run: cargo install cargo-tarpaulin
+
+      - name: Adding pivot_data_dir into the env
+        run: |
+          echo "PIVOT_DATA_DIR=data" >> $GITHUB_ENV
  
       - name: Verify checkouts
         run: |
