@@ -18,7 +18,13 @@ jobs:
         with:
           repository: logicalgraphs/crypto-n-rust
           path: crypto-n-rust
- 
+          
+      - name: Verify checkouts
+        run: |
+          test -d protocol/.git      || (echo "ERROR: protocol not checked out" && exit 1)
+          test -d crypto-n-rust/.git || (echo "ERROR: crypto-n-rust not checked out" && exit 1)
+          echo "All checkouts verified."
+
       - name: Set up Rust toolchain
         uses: dtolnay/rust-toolchain@stable
  
@@ -31,12 +37,6 @@ jobs:
       - name: Adding pivot_data_dir into the env
         run: |
           echo "PIVOT_DATA_DIR=data" >> $GITHUB_ENV
- 
-      - name: Verify checkouts
-        run: |
-            test -d protocol/.git      || (echo "ERROR: protocol not checked out" && exit 1)
-            test -d crypto-n-rust/.git || (echo "ERROR: crypto-n-rust not checked out" && exit 1)
-            echo "All checkouts verified."
  
       - name: "[book] cargo test — src/libs/book"
         working-directory: crypto-n-rust/src/libs/book
