@@ -1,0 +1,83 @@
+name: rat
+ 
+on:
+  workflow_dispatch:
+ 
+jobs:
+  run_all_tests:
+    runs-on: ubuntu-latest
+ 
+    steps:
+      - name: Checkout protocol
+        uses: actions/checkout@v4
+        with:
+          path: protocol
+ 
+      - name: Checkout crypto-n-rust
+        uses: actions/checkout@v4
+        with:
+          repository: logicalgraphs/crypto-n-rust
+          path: crypto-n-rust
+ 
+      - name: Set up Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+ 
+      - name: Install cargo-make
+        run: cargo install cargo-make
+ 
+      - name: Install cargo-tarpaulin
+        run: cargo install cargo-tarpaulin
+ 
+      - name: Verify checkouts
+        run: |
+            test -d protocol/.git      || (echo "ERROR: protocol not checked out" && exit 1)
+            test -d crypto-n-rust/.git || (echo "ERROR: crypto-n-rust not checked out" && exit 1)
+            echo "All checkouts verified."
+ 
+      - name: "[book] cargo test — src/libs/book"
+        working-directory: crypto-n-rust/src/libs/book
+        run: |
+            cargo test 2>&1 | tee /tmp/book_test.txt
+            echo "--- [book] $(grep 'test result' /tmp/book_test.txt | tail -1)"
+ 
+      - name: "[book] cargo tarpaulin — src/libs/book"
+        working-directory: crypto-n-rust/src/libs/book
+        run: |
+            cargo tarpaulin 2>&1 | tee /tmp/book_tarp.txt
+            echo "--- [book] $(grep 'coverage' /tmp/book_tarp.txt | tail -1)"
+ 
+      - name: "[libs] cargo test — libs"
+        working-directory: protocol/libs
+        run: |
+            cargo test 2>&1 | tee /tmp/libs_test.txt
+            echo "--- [libs] $(grep 'test result' /tmp/libs_test.txt | tail -1)"
+ 
+      - name: "[libs] cargo tarpaulin — libs"
+        working-directory: protocol/libs
+        run: |
+            cargo tarpaulin 2>&1 | tee /tmp/libs_tarp.txt
+            echo "--- [libs] $(grep 'coverage' /tmp/libs_tarp.txt | tail -1)"
+ 
+      - name: "[quizzes] cargo make test-flow — quizzes"
+        working-directory: protocol/quizzes
+        run: |
+            cargo make test-flow 2>&1 | tee /tmp/quizzes_test.txt
+            echo "--- [quizzes] $(grep 'test result' /tmp/quizzes_test.txt | tail -1)"
+        
+      - name: "[quizzes] cargo tarpaulin — quizzes"
+        working-directory: protocol/quizzes
+        run: |
+            cargo tarpaulin 2>&1 | tee /tmp/quizzes_tarp.txt
+            echo "--- [quizzes] $(grep 'coverage' /tmp/quizzes_tarp.txt | tail -1)"
+
+      - name: Build itr
+        working-directory: protocol/dapps/itr
+        run: |
+            cargo build
+            echo "$GITHUB_WORKSPACE/protocol/dapps/itr/target/debug" >> $GITHUB_PATH       
+
+      - name: "[itr] itr . — dapps"
+        working-directory: protocol/dapps
+        run: |
+            itr . 2>&1 | tee /tmp/dapps_itr.txt
+            echo "--- [dapps] $(grep 'total:' /tmp/dapps_itr.txt | tail -1)"

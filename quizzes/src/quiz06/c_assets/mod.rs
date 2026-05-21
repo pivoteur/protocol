@@ -12,7 +12,11 @@ use book::{
 };
 
 use libs::{
-   fetchers::{fetch_quotes,fetch_asset_table_tvls,fetch_wallets},
+   fetchers::{
+      quotes::fetch_quotes,
+      assets::protocol::fetch_asset_table_tvls,
+      wallets::fetch_wallets
+   },
    tables::IxTable,
    types::{ quotes::Quotes, util::{Token, TVLs} }
 };

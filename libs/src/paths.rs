@@ -112,8 +112,8 @@ mod tests {
    #[test]
    fn test_btc_eth_pivot_pool_from_file() -> ErrStr<()> {
       let (btc,eth) = pivot_pool_from_file(&path_to_btc_eth_pivot_pool())?;
-      assert_eq!("btc", &btc);
-      assert_eq!("eth", &eth);
+      assert_eq!("BTC", &btc);
+      assert_eq!("ETH", &eth);
       Ok(())
    }
 }

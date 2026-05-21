@@ -7,11 +7,13 @@ use book::{
 fn app_name() -> String { "files".to_string() }
 fn version() -> String { "1.00".to_string() }
 
-fn print_files(dir: &str) {
+fn files_as_str(dir: &str) -> String {
    let (_dirs, files) = dirs_files(&dir);
    let names = file_names(&files);
-   names.iter().for_each(|name| { println!("{name}"); });
+   names.join("\n")
 }
+
+fn print_files(dir: &str) { println!("{}", files_as_str(dir)); }
 
 fn usage() -> ErrStr<()> {
    println!("Usage:
@@ -22,29 +24,30 @@ Lists the files in directory <dir>", app_name());
    Err("Missing <dir> argument".to_string())
 }
 
+#[cfg(not(tarpaulin_include))]
+pub fn runoff_get_args() -> ErrStr<()> {
+   println!("\n{}, version: {}\n", app_name(), version());
+   let args = get_args();
+   if let Some(dir) = args.first() {
+      print_files(&dir);
+      Ok(())
+   } else {
+      usage()
+   }
+}
+
 // ----- TESTS -------------------------------------------------------
 
+#[cfg(test)]
 #[cfg(not(tarpaulin_include))]
-pub mod functional_tests {
+mod functional_tests {
 
    use super::*;
+   use paste::paste;
+   use book::create_testing;
 
-   pub fn runoff() -> ErrStr<usize> {
-      println!("\nquiz10: a_files functional test\n");
-      let libs_dir = format!("../libs/src");
-      print_files(&libs_dir);
-      Ok(1)
-   }
+   create_testing!("quiz10::a_files");
 
-   pub fn runoff_get_args() -> ErrStr<()> {
-      println!("\n{}, version: {}\n", app_name(), version());
-      let args = get_args();
-      if let Some(dir) = args.first() {
-         print_files(&dir);
-         Ok(())
-      } else {
-         usage()
-      }
-   }
+   run_with!("files_as_str", "../libs/src", files_as_str);
 }
 

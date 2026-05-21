@@ -8,18 +8,15 @@ name = "quizzes"
 path = "src/quizzes.rs"
 
 [dependencies]
-reqwest = { version = "0.12.4", features = ["json"] }
-
+reqwest = { version = "0.13.3", features = ["json"] }
 chrono = "0.4.38"
 futures = "0.3.31"
-
-tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
-
+tokio = { version = "1.52.3", features = ["macros", "rt-multi-thread"] }
 libs = { path = "../libs" }
-
 book = { path = "../../crypto-n-rust/src/libs/book" }
-
 paste = "1.0"
+serde_json = "1.0"
+serde = { version = "1.0", features = ["derive"] }
 
 [lints.rust.unexpected_cfgs]
 level = "warn"

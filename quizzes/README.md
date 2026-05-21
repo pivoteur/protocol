@@ -40,3 +40,12 @@ The quizzes and infrastructure uses [libraries from @logicalgraphs crypto-n-rust
 project](https://github.com/logicalgraphs/crypto-n-rust/tree/main/src/libs) 
 on github.
 
+# Testing
+
+To test quizzes, run the following command:
+
+`$ cargo make test-flow`
+
+The reason for this is the test-suite needs to clean up data files after all
+testing is completed.
+

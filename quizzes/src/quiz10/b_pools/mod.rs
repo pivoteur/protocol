@@ -1,8 +1,12 @@
 use chrono::NaiveDate;
 
-use libs::fetchers::fetch_pool_names;
+use libs::fetchers::pool_names::fetch_pool_names;
 
-use book::{ err_utils::ErrStr, utils::get_env };
+use book::{
+   date_utils::parse_date,
+   err_utils::ErrStr,
+   utils::{ get_args, get_env }
+};
 
 fn app_name() -> String { "pools".to_string() }
 fn version() -> String { "1.00".to_string() }
@@ -35,36 +39,37 @@ Given <auth> access and <date>, {} prints a Javascript object of pool assets.
    Err("Need <auth> and <date> arguments".to_string())
 }
 
+#[cfg(not(tarpaulin_include))]
+pub async fn runoff_get_args() -> ErrStr<()> {
+   println!("\n// created by: {}, version: {}\n", app_name(), version());
+   let args = get_args();
+   if let [auth, dt] = args.as_slice() {
+      let date = parse_date(&dt)?;
+      print_pool_assets(&auth, &date).await
+   } else { usage() }
+}
+
 // ----- TESTS -------------------------------------------------------
 
+#[cfg(test)]
 #[cfg(not(tarpaulin_include))]
-pub mod functional_tests {
+mod functional_tests {
    use super::*;
+   use paste::paste;
 
-   use book::{
-      date_utils::{parse_date,today},
-      utils::get_args // ,get_env}
-   };
+   use book::{ create_testing, date_utils::today, utils::now };
 
-   pub async fn runoff_get_args() -> ErrStr<()> {
-      println!("\n// created by: {}, version: {}\n", app_name(), version());
-      let args = get_args();
-      if let [auth, dt] = args.as_slice() {
-         let date = parse_date(&dt)?;
-         print_pool_assets(&auth, &date).await
-      } else { usage() }
-   }
+   create_testing!("quiz10::b_pools");
 
-   pub async fn runoff() -> ErrStr<usize> {
-      println!("quiz10: b_pools functional test\n");
+   run!("pivot_pool_assets", {
       let td = today();
       let auth = "PIVOT";
-      let _ = print_pool_assets(&auth, &td).await?;
-      Ok(1)
-   }
+      let _ = now(print_pool_assets(&auth, &td))?;
+   });
 }
 
 #[cfg(test)]
+#[cfg(not(tarpaulin_include))]
 mod tests {
 
    use super::*;
