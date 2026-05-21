@@ -34,9 +34,10 @@ jobs:
       - name: Install cargo-tarpaulin
         run: cargo install cargo-tarpaulin
 
-      - name: Adding pivot_data_dir into the env
+      - name: Adding pivot_data_dir and pivot_url into the env
         run: |
           echo "PIVOT_DATA_DIR=data" >> $GITHUB_ENV
+          echo "PIVOT_URL=https://raw.githubusercontent.com/pivoteur/pivoteur.github.io" >> $GITHUB_ENV
  
       - name: "[book] cargo test — src/libs/book"
         working-directory: crypto-n-rust/src/libs/book
