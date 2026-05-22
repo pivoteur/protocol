@@ -1,6 +1,7 @@
 use reqwest::Client;
 use book::{
     err_utils::ErrStr,
+    string_utils::plural,
     utils::{ 
         get_args, 
         get_env 
@@ -16,7 +17,7 @@ fn chat_id_for(investor: &str) -> ErrStr<i64> {
         .map_err(|e| format!("INVESTOR_CHAT_IDS is not valid JSON: {e}"))?;
     map.get(investor)
         .and_then(|v| v.as_i64())
-        .ok_or_else(|| format!("unknown investor: {investor}"))
+        .ok_or_else(|| format!("unknown investor/ chat id doesn't exist: {investor}"))
 }
 
 //----- Possible Errors From Trying To Send A Message -----------------------
@@ -38,19 +39,18 @@ fn usage() -> ErrStr<()> {
     Err("Need <investor> <token_a> <token_b> <pivot_count> <amount> <url> arguments".to_string())
 }
  
-// ===========================================================================
 //----- Message Building and Sending -----------------------------------------
-// ===========================================================================
 pub fn build_message(
-    investor:    &str,
     token_a:     &str,
     token_b:     &str,
     pivot_count: &str,
     amount:      &str,
     url:         &str,
 ) -> String {
+    let n = pivot_count.parse::<usize>().unwrap_or(0);
+    let pivots = plural(n, "pivot");
     format!(
-        "Hey {investor}, I just closed {pivot_count} {token_a}-on-{token_b} pivots and reinvested \
+        "I just closed {pivots} {token_a}-on-{token_b} and reinvested \
          {amount} ${token_a} into the {token_b}+{token_a} pivot pool for you; tweet: {url}"
     )
 }
@@ -76,7 +76,7 @@ pub async fn runoff_with_args() -> ErrStr<()> {
     match args.as_slice() {
         [investor, token_a, token_b, pivot_count, amount, url] => {
             let chat_id     = chat_id_for(investor)?;
-            let msg       = build_message(investor, token_a, token_b, pivot_count, amount, url);
+            let msg       = build_message(token_a, token_b, pivot_count, amount, url);
             let bot_token = get_env("REINVESTED_BOT")?;
             send_telegram(&bot_token, chat_id, &msg).await?;
             println!("{msg}");
@@ -96,12 +96,12 @@ mod unit_tests {
     #[test]
     fn test_exact_sample_message() {
         let msg = build_message(
-          "Pivot_Internal_Bot", "AVAX", "BTC", "2", "0.59",
+          "AVAX", "BTC", "2", "0.59",
             "https://x.com/pivocateur/status/2047688113024086275",
         );
         assert_eq!(
             msg,
-            "Hey Pivot_Internal_Bot, I just closed 2 AVAX-on-BTC pivots and reinvested 0.59 $AVAX \
+            "I just closed 2 pivots AVAX-on-BTC and reinvested 0.59 $AVAX \
              into the BTC+AVAX pivot pool for you; \
              tweet: https://x.com/pivocateur/status/2047688113024086275"
         );
@@ -109,7 +109,7 @@ mod unit_tests {
  
     #[test]
     fn test_token_positions() {
-        let msg = build_message("Pivot_Internal_Bot", "ETH", "BTC", "1", "1.5", "https://x.com/pivocateur");
+        let msg = build_message("ETH", "BTC", "1", "1.5", "https://x.com/pivocateur");
         assert!(msg.contains("ETH-on-BTC"), "should show token_a-on-token_b");
         assert!(msg.contains("BTC+ETH"),    "should show token_b+token_a in pool name");
         assert!(msg.contains("$ETH"),       "should show $token_a as the reinvested token");
@@ -117,8 +117,8 @@ mod unit_tests {
  
     #[test]
     fn test_different_token_pair() {
-        let msg = build_message("Pivot_Internal_Bot", "SOL", "AVAX", "3", "12.5", "https://x.com/pivocateur");
-        assert!(msg.contains("3 SOL-on-AVAX pivots"));
+        let msg = build_message("SOL", "AVAX", "3", "12.5", "https://x.com/pivocateur");
+        assert!(msg.contains("3 pivots SOL-on-AVAX"));
         assert!(msg.contains("AVAX+SOL pivot pool"));
         assert!(msg.contains("12.5 $SOL"));
     }
@@ -130,14 +130,14 @@ mod unit_tests {
 
     #[test]
     fn test_singular_pivot_count() {
-        let msg = build_message("Pivot_Internal_Bot", "AVAX", "BTC", "1", "0.25", "https://x.com/pivocateur");
-        assert!(msg.contains("I just closed 1 AVAX-on-BTC pivots"),
+        let msg = build_message("AVAX", "BTC", "1", "0.25", "https://x.com/pivocateur");
+        assert!(msg.contains("I just closed 1 pivot AVAX-on-BTC"),
         "singular count should interpolate cleanly: {msg}");
     }
      
     #[test]
     fn test_degenerate_empty_inputs() {
-        let msg = build_message("Pivot_Internal_Bot", "", "", "0", "0", "");
+        let msg = build_message("", "", "0", "0", "");
         assert!(msg.contains("I just closed 0"),    "pivot_count slot present");
         assert!(msg.contains("-on-"),               "separator present even with empty tokens");
         assert!(msg.contains("pivot pool for you"), "tail of message intact");
@@ -165,7 +165,6 @@ pub mod functional_tests {
         let bot_token = get_env("REINVESTED_BOT")?;
         let chat_id   = chat_id_for("Pivot_Internal_Bot")?;
         let msg       = build_message(
-            "Pivot_Internal_Bot",
             "AVAX", "BTC", "2", "0.59",
             "https://x.com/pivocateur",
         );
