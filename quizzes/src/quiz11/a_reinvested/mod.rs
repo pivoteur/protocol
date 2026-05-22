@@ -69,6 +69,13 @@ pub async fn send_telegram(bot_token: &str, chat_id: i64, text: &str) -> ErrStr<
         .map_err(|e| e.to_string())?;
     Ok(())
 }
+//----- Mock Telegram (no network call) -------------------------------------
+#[cfg(test)]
+pub async fn mock_send_telegram(_bot_token: &str, chat_id: i64, text: &str) -> ErrStr<()> {
+    println!("[mock telegram] chat_id={chat_id} | text={text}");
+    Ok(())
+}
+
 //----- fn runoff_with_args ------------------------------------------------
 pub async fn runoff_with_args() -> ErrStr<()> {
     eprintln!("{}, version: {}", app_name(), version());
@@ -160,6 +167,16 @@ pub mod functional_tests {
 
 
     create_testing!("quiz11::a_reinvested");
+
+    run!("mock_build_and_send_message", {
+        let chat_id = chat_id_for("Pivot_Internal_Bot")?;
+        let msg     = build_message(
+            "AVAX", "BTC", "2", "0.59",
+            "https://x.com/pivocateur",
+        );
+        let _ = now(mock_send_telegram("mock_token", chat_id, &msg))?;
+        println!("{msg}");
+    });
 
     run!("build_and_send_message", {
         let bot_token = get_env("REINVESTED_BOT")?;
