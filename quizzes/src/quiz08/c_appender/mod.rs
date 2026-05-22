@@ -13,16 +13,6 @@ pub fn write_file_from_stdin() -> ErrStr<()> {
    write_file_from(&lines)
 }
 
-fn fst_snd<T: Clone + Debug>(list: &[T]) -> ErrStr<(T, T)> {
-   fn firstly<U: Clone + Debug>(lst: &[U]) -> ErrStr<(U, Vec<U>)> {
-      let a = lst.first().ok_or(format!("Cannot first() this list {lst:?}"))?;
-      Ok((a.clone(), tail(lst)))
-   }
-   let (a, rest) = firstly(list)?;
-   let (b, _) = firstly(&rest)?;
-   Ok((a, b))
-}
-
 fn write_file_from(lines: &[String]) -> ErrStr<()> {
    let relevant = tail(lines);
    let (line, filename) = fst_snd(&relevant)?;
