@@ -49,38 +49,38 @@ jobs:
         run: |
           echo "PIVOT_DATA_DIR=data" >> $GITHUB_ENV
           echo "PIVOT_URL=https://raw.githubusercontent.com/pivoteur/pivoteur.github.io" >> $GITHUB_ENV
-          REINVESTED_BOT: ${{ secrets.PIVOT_PROTOCOL_ROBBIE }}
- 
+          echo "REINVESTED_BOT=${{ secrets.PIVOT_PROTOCOL_ROBBIE }}" >> $GITHUB_ENV
+
       - name: "[book] cargo test — src/libs/book"
         working-directory: crypto-n-rust/src/libs/book
         run: |
             cargo test 2>&1 | tee /tmp/book_test.txt
             echo "--- [book] $(grep 'test result' /tmp/book_test.txt | tail -1)"
- 
+
       - name: "[book] cargo tarpaulin — src/libs/book"
         working-directory: crypto-n-rust/src/libs/book
         run: |
             cargo tarpaulin 2>&1 | tee /tmp/book_tarp.txt
             echo "--- [book] $(grep 'coverage' /tmp/book_tarp.txt | tail -1)"
- 
+
       - name: "[libs] cargo test — libs"
         working-directory: protocol/libs
         run: |
             cargo test 2>&1 | tee /tmp/libs_test.txt
             echo "--- [libs] $(grep 'test result' /tmp/libs_test.txt | tail -1)"
- 
+
       - name: "[libs] cargo tarpaulin — libs"
         working-directory: protocol/libs
         run: |
             cargo tarpaulin 2>&1 | tee /tmp/libs_tarp.txt
             echo "--- [libs] $(grep 'coverage' /tmp/libs_tarp.txt | tail -1)"
- 
+
       - name: "[quizzes] cargo make test-flow — quizzes"
         working-directory: protocol/quizzes
         run: |
             cargo make test-flow 2>&1 | tee /tmp/quizzes_test.txt
             echo "--- [quizzes] $(grep 'test result' /tmp/quizzes_test.txt | tail -1)"
-        
+
       - name: "[quizzes] cargo tarpaulin — quizzes"
         working-directory: protocol/quizzes
         run: |
