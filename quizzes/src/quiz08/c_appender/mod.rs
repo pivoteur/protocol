@@ -1,8 +1,8 @@
-use std::{ fs::OpenOptions, io::Write };
+use std::{ fmt::Debug, fs::OpenOptions, io::Write };
 
 use book::{
    err_utils::{ err_or, ErrStr },
-   list_utils::{ first_last, tail },
+   list_utils::tail,
    stream_utils::lines_from_stdin
 };
 
@@ -13,14 +13,20 @@ pub fn write_file_from_stdin() -> ErrStr<()> {
    write_file_from(&lines)
 }
 
+fn fst_snd<T: Clone + Debug>(list: &[T]) -> ErrStr<(T, T)> {
+   fn firstly<U: Clone + Debug>(lst: &[U]) -> ErrStr<(U, Vec<U>)> {
+      let a = lst.first().ok_or(format!("Cannot first() this list {lst:?}"))?;
+      Ok((a.clone(), tail(lst)))
+   }
+   let (a, rest) = firstly(list)?;
+   let (b, _) = firstly(&rest)?;
+   Ok((a, b))
+}
+
 fn write_file_from(lines: &[String]) -> ErrStr<()> {
    let relevant = tail(lines);
-   if let (Some(line), Some(filename)) = first_last(&relevant) {
-      append_close(&filename, &line)
-   } else {
-      Err(format!("stream must contain close pivot and filename; stream:
-{}", lines.join("\n")))
-   }
+   let (line, filename) = fst_snd(&relevant)?;
+   append_close(&filename, &line)
 }
 
 fn append_close(filename: &str, close_pivot: &str) -> ErrStr<()> {
@@ -48,7 +54,8 @@ mod sample_close_pivot {
    pub fn close_pivot(file: &str) -> Vec<String> {
       lines(&format!("date,pivot,close,tx_id,from,from_quote,to,to_quote,trade,vol,gain_10_percent,new_to_actual,gain,gain_total_usd,roi,apr
 2026-05-18,46,14,asdf,BTC,$76772,ETH,$2114.42,0.00467,$358.5252,0.1648,0.169101199810017841,0.0193,$40.81,12.88%,24.24%
-{file}"))
+{file}
+"))
    }
 }
 
