@@ -2,7 +2,7 @@ use std::{ fmt::Debug, fs::OpenOptions, io::Write };
 
 use book::{
    err_utils::{ err_or, ErrStr },
-   list_utils::tail,
+   list_utils::{ fst_snd, tail },
    stream_utils::lines_from_stdin
 };
 
@@ -30,6 +30,9 @@ fn write_file_from(lines: &[String]) -> ErrStr<()> {
 }
 
 fn append_close(filename: &str, close_pivot: &str) -> ErrStr<()> {
+   println!("Appending close pivot:
+{close_pivot}
+to file: {filename}");
    let tfile = filename.trim();
    let mut file =
       err_or(OpenOptions::new()
