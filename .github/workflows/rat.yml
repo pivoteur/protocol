@@ -25,16 +25,27 @@ jobs:
           test -d crypto-n-rust/.git || (echo "ERROR: crypto-n-rust not checked out" && exit 1)
           echo "All checkouts verified."
 
-      - name: Set up Rust toolchain
+      - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
- 
-      - name: Install cargo-make
-        run: cargo install cargo-make
- 
-      - name: Install cargo-tarpaulin
-        run: cargo install cargo-tarpaulin
+        with:
+          toolchain: stable
+          components: llvm-tools-preview # needed if tarpaulin is used/ here
 
-      - name: Adding pivot_data_dir, pivot_url into the env and other dependencies
+      - name: Cache Rust
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            crypto-n-rust/src/libs/book
+            protocol/libs
+            protocol/quizzes
+            protocol/dapps/itr
+
+      - name: Install cargo-make and cargo-tarpaulin
+        run: |
+          cargo install cargo-make
+          cargo install cargo-tarpaulin
+
+      - name: Set environmental variables
         run: |
           echo "PIVOT_DATA_DIR=data" >> $GITHUB_ENV
           echo "PIVOT_URL=https://raw.githubusercontent.com/pivoteur/pivoteur.github.io" >> $GITHUB_ENV
