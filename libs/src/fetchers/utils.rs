@@ -39,7 +39,7 @@ mod functional_tests {
 
    run!("fetch_lines", " (fetching the quotes)", {
       let qts = now(fetch_lines(&quotes_url()))?;
-      println!("\tSome quotes:\n{}", take(5, qts).join("\n"));
+      println!("\tSome quotes:\n{}", take(5, &qts).join("\n"));
    });
    run_with!("enlowerify", enlowerify("BTC", "ETH"), debug);
    run_with!("enupperify", enupperify("btc", "usdc"), debug);

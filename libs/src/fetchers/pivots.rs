@@ -82,8 +82,8 @@ pub mod functional_tests {
 
    run!("fetch_pivots", {
       let ((opn, cls), mx) = now(btc_eth_pivots())?;
-      print_tsv_table_d("Open pivots", &take(3, opn), true);
-      print_tsv_table_d("Close pivots", &take(3, cls), true);
+      print_tsv_table_d("Open pivots", &take(3, &opn), true);
+      print_tsv_table_d("Close pivots", &take(3, &cls), true);
       println!("\nmax_date is {mx}\n");
    });
 }
