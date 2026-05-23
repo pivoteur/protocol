@@ -44,8 +44,14 @@ on github.
 
 To test quizzes, run the following command:
 
-`$ cargo make test-flow`
+`$ cargo make tests
 
 The reason for this is the test-suite needs to clean up data files after all
 testing is completed.
+
+## Code coverage
+
+For code-coverage data for quizzes, run the following command:
+
+`$ cargo make coverage`
 
