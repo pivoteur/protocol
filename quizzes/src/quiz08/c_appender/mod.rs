@@ -2,7 +2,7 @@ use std::{ fs::OpenOptions, io::Write };
 
 use book::{
    err_utils::{ err_or, ErrStr },
-   list_utils::{ first_last, tail },
+   list_utils::{ fst_snd, tail },
    stream_utils::lines_from_stdin
 };
 
@@ -13,17 +13,18 @@ pub fn write_file_from_stdin() -> ErrStr<()> {
    write_file_from(&lines)
 }
 
-fn write_file_from(lines: &[String]) -> ErrStr<()> {
-   let relevant = tail(lines);
-   if let (Some(line), Some(filename)) = first_last(&relevant) {
-      append_close(&filename, &line)
-   } else {
-      Err(format!("stream must contain close pivot and filename; stream:
-{}", lines.join("\n")))
-   }
+fn write_file_from(lignes: &[String]) -> ErrStr<()> {
+   let mut lines = lignes.to_vec();
+   lines.retain(|s| !s.is_empty());
+   let relevant = tail(&lines);
+   let (line, filename) = fst_snd(&relevant)?;
+   append_close(&filename, &line)
 }
 
 fn append_close(filename: &str, close_pivot: &str) -> ErrStr<()> {
+   println!("Appending close pivot:
+{close_pivot}
+to file: {filename}");
    let tfile = filename.trim();
    let mut file =
       err_or(OpenOptions::new()
@@ -46,9 +47,11 @@ mod sample_close_pivot {
 
    pub const FILE: &str = "data/sample_close_pivots.tsv";
    pub fn close_pivot(file: &str) -> Vec<String> {
-      lines(&format!("date,pivot,close,tx_id,from,from_quote,to,to_quote,trade,vol,gain_10_percent,new_to_actual,gain,gain_total_usd,roi,apr
+      lines(&format!("
+date,pivot,close,tx_id,from,from_quote,to,to_quote,trade,vol,gain_10_percent,new_to_actual,gain,gain_total_usd,roi,apr
 2026-05-18,46,14,asdf,BTC,$76772,ETH,$2114.42,0.00467,$358.5252,0.1648,0.169101199810017841,0.0193,$40.81,12.88%,24.24%
-{file}"))
+{file}
+"))
    }
 }
 
@@ -65,7 +68,7 @@ mod functional_tests {
    run!("write_file_from", {
       let piv = &close_pivot(FILE);
       let my_closes = lines_from_file(FILE)?;
-      println!("My original close pivots:\n\n{}", my_closes.join("\n"));
+      println!("My original close pivots:\n\n'{}'", my_closes.join("\n"));
       write_file_from(piv)?;
       let more_closes = lines_from_file(FILE)?;
       println!("My new close pivots:\n\n{}", more_closes.join("\n"));
