@@ -1,8 +1,8 @@
-use std::collections::HashMap;
+use std::{ borrow::Borrow, collections::HashMap };
 
 use super::util::Token;
 
-use book::string_utils::words;
+use book::{ csv_utils::CsvWriter, string_utils::words };
 
 type Alias = HashMap<Token, Token>;
 
@@ -23,6 +23,21 @@ pub fn aliases() -> Aliases {
    inserter(&mut aliaz, "STABLE", "USDC");
    inserter(&mut aliaz, "LIQUIDITY POOLS", "USDC");
    Aliases { aliaz }
+}
+
+impl CsvWriter for Aliases {
+   fn ncols(&self) -> usize { self.aliaz.len() }
+   fn as_csv(&self) -> String {
+      fn commafy<I>(x: I) -> String
+            where I: IntoIterator, I::Item: Borrow<String> {
+         x.into_iter()
+          .map(|s| s.borrow().clone())
+          .collect::<Vec<String>>().join(",")
+      }
+      let froms = commafy(self.aliaz.keys());
+      let tos = commafy(self.aliaz.values());
+      format!("{froms}\n{tos}")
+   }
 }
 
 impl Aliases {
@@ -54,3 +69,37 @@ impl Aliases {
       hdrs
    }
 }
+
+// ---- TESTS ---------------------------------------------------------
+
+#[cfg(not(tarpaulin_include))]
+#[cfg(test)]
+mod functional_tests {
+   use super::*;
+   use paste::paste;
+   use book::{ create_testing, err_utils::ErrStr };
+
+   create_testing!("types::aliases");
+   run_with!("aliases", &aliases(), CsvWriter::as_csv);
+   run!("enum_headers", {
+      let a = aliases();
+      let hdrs = "WBTC STABLE PAXG iSOL USDt";
+      let headers = a.enum_headers(words(hdrs));
+      println!("The headers for
+{hdrs}
+are
+{headers:?}");
+   });
+}
+
+#[cfg(not(tarpaulin_include))]
+#[cfg(test)]
+mod tests {
+   use super::*;
+
+   #[test] fn test_sol_alias() {
+      let a = aliases();
+      assert_eq!("SOL", &a.alias("iSOL"));
+   }
+}
+
