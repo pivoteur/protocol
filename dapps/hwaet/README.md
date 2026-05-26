@@ -3,10 +3,11 @@
 Computes the available assets for all pivot pools and reports on the health of
 same.
 
-`$ hwaet <protocol> <date>`
+`$ hwaet [--debug] <protocol> <date>`
 
 where:
 
+* `[-d|--debug]` shows `hwaet`-processing by pivot pool
 * `<protocol>` is the pivot pool protocol, e.g.: `PIVOT`
 * `<date>` is the date to evaluate the pivot pools, e.g.: `$LE_DATE`
 
@@ -16,5 +17,6 @@ where:
 
 ## Revision history
 
+* 1.01, 2026-05-26: Added debugging-flow to pool-processing.
 * 1.00, 2026-05-17: release
 
