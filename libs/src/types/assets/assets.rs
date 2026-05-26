@@ -17,7 +17,7 @@ use super::{
 
 use crate::types::{
    measurable::{Measurable,weight},
-   coins::Coin,
+   tokens::coins::Coin,
    quotes::Quotes,
    proposals::prop_assets::{PropAsset,mk_prop_asset},
    util::{Token,Blockchain}

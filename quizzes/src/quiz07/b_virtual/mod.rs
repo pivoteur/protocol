@@ -14,7 +14,7 @@ use libs::{
    paths::pivot_pool_from_file,
    reports::{header,total_line,print_tsv_table_d},
    types::{
-      coins::{Coin,mk_coin},
+      tokens::coins::{Coin,mk_coin},
       comps::{Composition,mk_composition},
       measurable::{Measurable,tvl},
       pivots::{Pivot,recompute_pivot},

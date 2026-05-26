@@ -6,7 +6,7 @@ use book::{
 };
 
 use crate::types::{
-   coins::Coin,
+   tokens::coins::Coin,
    measurable::{Measurable,sort_by_tvl,sort_by_weight},
    quotes::Quotes,
    util::{Token,Blockchain}
@@ -92,7 +92,7 @@ pub mod functional_tests {
    use super::*;
    use paste::paste;
    use book::{ create_testing, err_utils::ErrStr };
-   use crate::types::coins::functional_tests::coin;
+   use crate::types::tokens::coins::functional_tests::coin;
 
    create_testing!("types::pivots");
 

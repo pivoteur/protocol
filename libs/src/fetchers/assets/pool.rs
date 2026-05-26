@@ -20,7 +20,7 @@ use crate::{
    paths::pool_assets_url,
    types::{
       aliases::Aliases,
-      coins::{Coin,mk_coin},
+      tokens::coins::{Coin,mk_coin},
       comps::{Composition,mk_composition,from_assets},
       pivots::{Pivot,pivot_assets},
       quotes::Quotes,
