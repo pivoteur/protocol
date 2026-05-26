@@ -34,41 +34,49 @@ jobs:
             test -d crypto-n-rust/.git || (echo "ERROR: crypto-n-rust not checked out" && exit 1)
             echo "All checkouts verified."
  
-      - name: "[book] cargo test — src/libs/book"
-        working-directory: crypto-n-rust/src/libs/book
-        run: |
-            cargo test 2>&1 | tee /tmp/book_test.txt
-            echo "--- [book] $(grep 'test result' /tmp/book_test.txt | tail -1)"
- 
       - name: "[book] cargo tarpaulin — src/libs/book"
         working-directory: crypto-n-rust/src/libs/book
         run: |
             cargo tarpaulin 2>&1 | tee /tmp/book_tarp.txt
-            echo "--- [book] $(grep 'coverage' /tmp/book_tarp.txt | tail -1)"
- 
-      - name: "[libs] cargo test — libs"
-        working-directory: protocol/libs
-        run: |
-            cargo test 2>&1 | tee /tmp/libs_test.txt
-            echo "--- [libs] $(grep 'test result' /tmp/libs_test.txt | tail -1)"
- 
+            if grep -q 'test result: FAILED' /tmp/book_tarp.txt; then
+              echo "--- [book] ❌ TESTS FAILED | $(grep 'coverage' /tmp/book_tarp.txt | tail -1)"
+              exit 1
+            else
+              echo "--- [book] ✅ All tests passed | $(grep 'coverage' /tmp/book_tarp.txt | tail -1)"
+            fi
+
       - name: "[libs] cargo tarpaulin — libs"
         working-directory: protocol/libs
         run: |
             cargo tarpaulin 2>&1 | tee /tmp/libs_tarp.txt
-            echo "--- [libs] $(grep 'coverage' /tmp/libs_tarp.txt | tail -1)"
- 
+            if grep -q 'test result: FAILED' /tmp/libs_tarp.txt; then
+              echo "--- [libs] ❌ TESTS FAILED | $(grep 'coverage' /tmp/libs_tarp.txt | tail -1)"
+              exit 1
+            else
+              echo "--- [libs] ✅ All tests passed | $(grep 'coverage' /tmp/libs_tarp.txt | tail -1)"
+            fi
+
       - name: "[quizzes] cargo make test-flow — quizzes"
         working-directory: protocol/quizzes
         run: |
             cargo make test-flow 2>&1 | tee /tmp/quizzes_test.txt
-            echo "--- [quizzes] $(grep 'test result' /tmp/quizzes_test.txt | tail -1)"
+            if grep -q 'test result: FAILED' /tmp/quizzes_test.txt; then
+              echo "--- [quizzes] ❌ TESTS FAILED | $(grep 'test result' /tmp/quizzes_test.txt | tail -1)"
+              exit 1
+            else
+              echo "--- [quizzes] ✅ All tests passed | $(grep 'test result' /tmp/quizzes_test.txt | tail -1)"
+            fi
         
       - name: "[quizzes] cargo tarpaulin — quizzes"
         working-directory: protocol/quizzes
         run: |
             cargo tarpaulin 2>&1 | tee /tmp/quizzes_tarp.txt
-            echo "--- [quizzes] $(grep 'coverage' /tmp/quizzes_tarp.txt | tail -1)"
+            if grep -q 'test result: FAILED' /tmp/quizzes_tarp.txt; then
+              echo "--- [quizzes] ❌ TESTS FAILED | $(grep 'coverage' /tmp/quizzes_tarp.txt | tail -1)"
+              exit 1
+            else
+              echo "--- [quizzes] ✅ All tests passed | $(grep 'coverage' /tmp/quizzes_tarp.txt | tail -1)"
+            fi
 
       - name: Build itr
         working-directory: protocol/dapps/itr
