@@ -42,10 +42,10 @@ jobs:
         run: |
             cargo tarpaulin 2>&1 | tee /tmp/book_tarp.txt
             if grep -q 'test result: FAILED' /tmp/book_tarp.txt; then
-              echo "--- [book] ❌ TESTS FAILED | $(grep 'coverage' /tmp/book_tarp.txt | tail -1)"
+              echo "--- [book] TESTS FAILED | $(grep 'coverage' /tmp/book_tarp.txt | tail -1)"
               exit 1
             else
-              echo "--- [book] ✅ All tests passed | $(grep 'coverage' /tmp/book_tarp.txt | tail -1)"
+              echo "--- [book] All tests passed | $(grep 'coverage' /tmp/book_tarp.txt | tail -1)"
             fi
 
       - name: "[libs] cargo tarpaulin — libs"
@@ -53,10 +53,10 @@ jobs:
         run: |
             cargo tarpaulin 2>&1 | tee /tmp/libs_tarp.txt
             if grep -q 'test result: FAILED' /tmp/libs_tarp.txt; then
-              echo "--- [libs] ❌ TESTS FAILED | $(grep 'coverage' /tmp/libs_tarp.txt | tail -1)"
+              echo "--- [libs] TESTS FAILED | $(grep 'coverage' /tmp/libs_tarp.txt | tail -1)"
               exit 1
             else
-              echo "--- [libs] ✅ All tests passed | $(grep 'coverage' /tmp/libs_tarp.txt | tail -1)"
+              echo "--- [libs] All tests passed | $(grep 'coverage' /tmp/libs_tarp.txt | tail -1)"
             fi
 
       - name: "[quizzes] cargo make test-flow — quizzes"
@@ -64,10 +64,10 @@ jobs:
         run: |
             cargo make test-flow 2>&1 | tee /tmp/quizzes_test.txt
             if grep -q 'test result: FAILED' /tmp/quizzes_test.txt; then
-              echo "--- [quizzes] ❌ TESTS FAILED | $(grep 'test result' /tmp/quizzes_test.txt | tail -1)"
+              echo "--- [quizzes] TESTS FAILED | $(grep 'test result' /tmp/quizzes_test.txt | tail -1)"
               exit 1
             else
-              echo "--- [quizzes] ✅ All tests passed | $(grep 'test result' /tmp/quizzes_test.txt | tail -1)"
+              echo "--- [quizzes] All tests passed | $(grep 'test result' /tmp/quizzes_test.txt | tail -1)"
             fi
         
       - name: "[quizzes] cargo tarpaulin — quizzes"
@@ -75,10 +75,10 @@ jobs:
         run: |
             cargo tarpaulin 2>&1 | tee /tmp/quizzes_tarp.txt
             if grep -q 'test result: FAILED' /tmp/quizzes_tarp.txt; then
-              echo "--- [quizzes] ❌ TESTS FAILED | $(grep 'coverage' /tmp/quizzes_tarp.txt | tail -1)"
+              echo "--- [quizzes] TESTS FAILED | $(grep 'coverage' /tmp/quizzes_tarp.txt | tail -1)"
               exit 1
             else
-              echo "--- [quizzes] ✅ All tests passed | $(grep 'coverage' /tmp/quizzes_tarp.txt | tail -1)"
+              echo "--- [quizzes] All tests passed | $(grep 'coverage' /tmp/quizzes_tarp.txt | tail -1)"
             fi
 
       - name: Build itr
