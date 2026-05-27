@@ -18,6 +18,12 @@ jobs:
         with:
           repository: logicalgraphs/crypto-n-rust
           path: crypto-n-rust
+
+      - name: Checkout pivoteur.github.io
+        uses: actions/checkout@v4
+        with:
+          repository: pivoteur/pivoteur.github.io
+          path: pivoteur.github.io
  
       - name: Set up Rust toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -32,6 +38,7 @@ jobs:
         run: |
             test -d protocol/.git      || (echo "ERROR: protocol not checked out" && exit 1)
             test -d crypto-n-rust/.git || (echo "ERROR: crypto-n-rust not checked out" && exit 1)
+            test -d pivoteur.github.io/.git || (echo "ERROR: pivoteur.github.io not checked out" && exit 1)
             echo "All checkouts verified."
 
       - name: Add pivot_data_dir and pivot_url to env
