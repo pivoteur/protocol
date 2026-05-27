@@ -184,14 +184,14 @@ pub mod functional_tests {
         println!("{msg}");
     });
 
-    run!("build_and_send_message", {
-        let bot_token = get_env("REINVESTED_BOT")?;
-        let chat_id   = chat_id_for("Pivot_Internal_Bot")?;
-        let msg       = build_message(
-            "AVAX", "BTC", "2", "0.59",
-            "https://x.com/pivocateur",
-        )?;
-        let _ = now(send_telegram(&bot_token, chat_id, &msg))?;
-        println!("{msg}");
-    });
+    //run!("build_and_send_message", {
+    //    let bot_token = get_env("REINVESTED_BOT")?;
+    //    let chat_id   = chat_id_for("Pivot_Internal_Bot")?;
+    //    let msg       = build_message(
+    //        "AVAX", "BTC", "2", "0.59",
+    //        "https://x.com/pivocateur",
+    //    )?;
+    //    let _ = now(send_telegram(&bot_token, chat_id, &msg))?;
+    //    println!("{msg}");
+    //});
 }
