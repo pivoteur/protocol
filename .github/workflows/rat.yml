@@ -24,9 +24,17 @@ jobs:
         with:
           repository: pivoteur/pivoteur.github.io
           path: pivoteur.github.io
- 
+          
       - name: Set up Rust toolchain
         uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Rust
+        uses: Swatinem/rust-cache@v2
+        with: 
+          workspaces: |
+            protocol/libs \
+            protocol/quizzes \
+            crypto-n-rust/src/libs/book
  
       - name: Install cargo-make
         run: cargo install cargo-make
