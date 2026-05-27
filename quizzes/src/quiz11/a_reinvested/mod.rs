@@ -175,7 +175,7 @@ pub mod functional_tests {
     create_testing!("quiz11::a_reinvested");
 
     run!("mock_build_and_send_message", {
-        let chat_id = chat_id_for("Pivot_Internal_Bot")?;
+        let chat_id = 0i64; // dummy chat id for "moak"
         let msg     = build_message(
             "AVAX", "BTC", "2", "0.59",
             "https://x.com/pivocateur",
