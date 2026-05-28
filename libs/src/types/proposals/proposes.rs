@@ -16,7 +16,7 @@ use crate::types::{
       assets::{Asset,coalesce,gain_10_percent},
       asset_types::AssetType::*
    },
-   coins::Coin,
+   tokens::coins::Coin,
    gains::Gains,
    measurable::{Measurable,weight,size},
    pivots::{Pivot,headers,froms},

@@ -9,7 +9,7 @@ use crate::types::{
    assets::asset_types::{AssetType,AssetType::*},
    util::{Token,Blockchain,Pool},
    measurable::{Measurable,weight,size},
-   coins::{Coin,mk_coin}
+   tokens::coins::{Coin,mk_coin}
 };
 
 #[derive(Debug, Clone)]
