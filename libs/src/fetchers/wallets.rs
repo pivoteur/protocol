@@ -71,9 +71,7 @@ mod functional_tests {
       utils::now
    };
    use crate::{
-      fetchers::{
-         test_helpers::test_functions::marshall
-      },
+      fetchers::test_helpers::test_functions::marshall,
       types::{ measurable::tvl, tokens::moralis::Blockchain::AVALANCHE }
    };
 
