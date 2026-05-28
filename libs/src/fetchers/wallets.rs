@@ -1,25 +1,14 @@
-use serde_json::{ json, Value };
-use reqwest::{ Client, Response, header::HeaderValue };
+use reqwest::header::{ HeaderMap, HeaderValue };
 
 use book::{
-   csv_utils::{CsvHeader,CsvWriter,enumerate_csv},
-   currency::usd::USD,
    err_utils::{ErrStr,err_or},
-   string_utils::s,
    utils::get_env
 };
 use crate::{
    paths::tsv_url,
    tables::{IxTable,index_table},
    types::{
-      measurable::tvl,
-      quotes::Quotes,
-      tokens::moralis::{
-         TokenBalance,
-         Blockchain,
-         mk_native_coin,
-         mk_rpc_request
-      }
+      tokens::moralis::{Tokens,Blockchain}
    }
 };
 use super::utils::fetch_lines;
@@ -33,113 +22,37 @@ pub async fn fetch_wallets(root_url: &str) -> ErrStr<IxTable> {
    index_table(lines)
 }
 
-/// This fetches a wallet's balances from the blockchains via API
-pub async fn fetch_wallet_balances(auth: &str, quotes: &Quotes,
-                                   ch: Blockchain, debug: bool)
-      -> ErrStr<Vec<TokenBalance>> {
-   if debug {
-      println!("RPC Fetch Wallet balances for {}", ch.blockchain());
-   }
-   let moralis_node_url = ch.url();
-   let chain = ch.blockchain().to_uppercase();
-   let aut = auth.to_uppercase();
-   let addy = get_env(&format!("{aut}_WALLET_ADDY"))?;
-   let api_key = get_env(&format!("{aut}_MORALIS_API_KEY"))?;
-   let node = get_env(&format!("{aut}_MORALIS_{chain}_NODE"))?;
-   let batch_payload = vec![
-      mk_rpc_request(1, "eth_getBalance", json!([addy,"latest"])),
-      mk_rpc_request(2, "eth_getTokenBalances", json!([{ "address": addy}] ))
-   ];
-   // Instantiate the HTTP client with Moralis Authentication headers
-   let mut headers = reqwest::header::HeaderMap::new();
+// Function to fetch native balance (e.g., ETH, MATIC)
+pub async fn fetch_wallet_balances(auth: &str, ch: Blockchain)
+      -> ErrStr<Tokens> {
 
-   let mut api_key_value =
-      err_or(HeaderValue::from_str(&api_key),
-             "Cannot make api_key HeaderValue")?;
-   api_key_value.set_sensitive(true);
+/*
+This function models the following cURL command:
 
-   headers.insert("X-API-Key", api_key_value);
-   headers.insert("accept", HeaderValue::from_static("application/json"));
+curl --request GET \
+  --url 'https://deep-index.moralis.io/api/v2.2/wallets/{address}/tokens?chain=eth' \
+  --header 'X-API-Key: test'
+*/
 
-   let client =
-      err_or(Client::builder().default_headers(headers).build(),
-             "Cannot build client with api_key header")?;
+    let chain = ch.blockchain();
+    let aut = auth.to_uppercase();
+    let address = get_env(&format!("{aut}_WALLET_ADDY"))?;
+    let api_key = get_env(&format!("{aut}_MORALIS_API_KEY"))?;
 
-   let response0: Response = err_or(client
-        .post(format!("{moralis_node_url}/{node}"))
-        .json(&batch_payload)
-        .send()
-        .await, "Could not fetch Moralis RPC response")?;
-   if debug { println!("Received response {response0:?}"); }
-   let response: Value = err_or(response0.json().await,
-        "Unable to parse JSON from Moralis RPC response")?;
-   if debug { println!("Parsed JSON to {response:?}"); }
-   let mut ans = Vec::new();
-   if let Some(responses) = response.as_array() {
-      for res in responses {
-         let id = res["id"].as_u64().unwrap_or(0);
-            
-         match id {
-            1 => { 
-               let tok = ch.protocol_token();
-               let nat = parse_native_token(&tok, res, quotes, debug)?;
-               ans.push(nat);
-            },
-            2 => ans.extend(parse_tokens(res, debug)?),
-            x => panic!("Unknown Response ID received: {x}")
-         }
-      }
-      Ok(ans)
-   } else {
-      Err(s("Unable to traverse JSON response of wallet balances"))
-   }
-}
+    let url0 = "https://deep-index.moralis.io/api/v2.2/wallets";
+    let url = format!("{url0}/{address}/tokens?chain={chain}");
+    let mut headers = HeaderMap::new();
+    let api_hdr = err_or(HeaderValue::from_str(&api_key),
+                         "Cannot insert MORALIS_API_KEY into header")?;
+    headers.insert("X-API-Key", api_hdr);
 
-fn parse_tokens(res: &Value, debug: bool) -> ErrStr<Vec<TokenBalance>> {
-   // Parse Moralis Extended ERC-20 response mapping
-   if let Ok(tokens) =
-         serde_json::from_value::<Vec<TokenBalance>>(res["result"].clone()) {
-      if debug {
-         let first = tokens.first().unwrap();
-         println!("ERC-20 Token Balances (Via Extended RPC):
-
-{}
-{}
-
-total: {}",
-first.header(), enumerate_csv(&tokens), tokens.iter().map(tvl).sum::<USD>())
-      }
-      Ok(tokens)
-   } else {
-      Err(s("Unable to parse tokens from JSON RPC response."))
-   }
-}
-
-fn parse_native_token(prot: &str, res: &Value, quotes: &Quotes, debug: bool)
-      -> ErrStr<TokenBalance> {
-   // Parse native balance hex string (e.g. "0x...")
-   if let Some(hex_bal) = res["result"].as_str() {
-      let clean_hex = hex_bal.trim_start_matches("0x");
-      if let Ok(wei_val) = u128::from_str_radix(clean_hex, 16) {
-         let val = wei_val as f64 / 10_f64.powi(18);
-         let qt = quotes.lookup(prot)?;
-         let tok = mk_native_coin(prot, wei_val, qt);
-         if debug {
-            println!("
-=======================================
-Native Balance: {:.4}
-
-{}
-{}
-=======================================", val, tok.header(), tok.as_csv());
-         }
-         Ok(tok)
-      } else {
-         Err(format!("Unable to parse hex {clean_hex}"))
-      }
-   } else {
-      Err(format!("Unable to parse json {res:?}"))
-   }
+    let client = reqwest::Client::new();
+    let res = 
+       err_or(client.get(&url).headers(headers).send().await,
+              "Failed to send reqwest to moralis.io")?;
+    let toks: Tokens =
+       err_or(res.json().await, "Cannot convert response from JSON")?;
+    Ok(toks)
 }
 
 // ----- TESTS -------------------------------------------------------
@@ -151,17 +64,17 @@ mod functional_tests {
    use paste::paste;
    use book::{
       create_testing,
-      csv_utils::CsvWriter,
-      date_utils::yesterday,
-      utils::now,
-      types::filters::{ Container, Sieve }
+      csv_utils::{CsvWriter,CsvHeader,enumerate_csv},
+      currency::usd::USD,
+      string_utils::words,
+      types::filters::{ Container, mk_whitelist, Sieve },
+      utils::now
    };
    use crate::{
       fetchers::{
-         quotes::fetch_quotes,
          test_helpers::test_functions::marshall
       },
-      types::tokens::moralis::Blockchain::AVALANCHE
+      types::{ measurable::tvl, tokens::moralis::Blockchain::AVALANCHE }
    };
 
    create_testing!("fetchers::wallets");
@@ -177,16 +90,35 @@ mod functional_tests {
       now(iter_chains_on(Sieve))
    });
 
+   run!("fetch_wallet_balances_whitelisted", {
+// removed: 0xb97ef9ef8734c71904d8002f8b6bc66dd9c48a6e
+      let whitelist = mk_whitelist(words("
+Protocol
+AVAX 0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee
+Tokens
+UNDEAD 0x5a3534720a4f29fa0dc53ce474db88973a95f65c
+WETH 0x49d5c2bdffac6ce2bfdb6640f4f80f226bc10bab
+USDt 0x9702230a8ea53601f5cd2dc00fdbc13d4df4a8c7
+USDC 0xb97ef9ef8734c71904d8002f8b6bc66dd9c48a6e"));
+      now(iter_chains_on(whitelist))
+   });
+
    async fn iter_chains_on(whitelist: impl Container<String>) -> ErrStr<()> {
       let chains = [AVALANCHE];
-      let quotes = fetch_quotes(&yesterday()).await?;
       for chain in chains {
          println!("\n=== Chain: {} ===", chain.blockchain());
-         let mut toks =
-            fetch_wallet_balances("PIVOT", &quotes, chain, true).await?;
+         let tokens =
+            match fetch_wallet_balances("pivot", chain).await {
+               Ok(x) => x,
+               Err(y) => panic!("Error: {y}")
+         };
+         let mut toks = tokens.result;
+         println!("I received {} tokens", toks.len());
          toks.retain(|t| whitelist.contains(t));
          let tok = toks.first().unwrap();
-         println!("{}\n{}", tok.header(), enumerate_csv(&toks));
+         println!("{}\n{}\n\ntotal: {}",
+                  tok.header(), enumerate_csv(&toks),
+                  toks.iter().map(tvl).sum::<USD>());
       }
       Ok(())
    }

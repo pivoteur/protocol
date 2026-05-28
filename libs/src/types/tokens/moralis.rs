@@ -91,12 +91,14 @@ impl Measurable for TokenBalance {
 }
 
 impl CsvHeader for TokenBalance {
-   fn header(&self) -> String { s("symbol,balance,quote,nav") }
+   fn header(&self) -> String { s("symbol,balance,quote,nav,address") }
 }
 impl CsvWriter for TokenBalance {
-   fn ncols(&self) -> usize { 4 }
+   fn ncols(&self) -> usize { 5 }
    fn as_csv(&self) -> String {
-      format!("{},{},{},{}",self.symbol,self.bal(),self.usd_price,tvl(self))
+      format!("{},{},{},{},{}",
+              self.symbol,self.bal(),self.usd_price,tvl(self),
+              self.token_address)
    }
 }
 
@@ -119,13 +121,7 @@ impl TokenBalance {
 
 fn parse_float_to_usd<'de, D>(deserializer: D) -> Result<USD, D::Error>
       where D: Deserializer<'de> {
-    // First, deserialize the JSON field into a standard Rust String
-    let s = String::deserialize(deserializer)?;
-    
-    // Second, parse the string using your own logic
-    let parsed_float = s.parse::<f32>().map_err(serde::de::Error::custom)?;
-    
-    // Finally, return your constructed type
-    Ok(mk_usd(parsed_float))
+   let parsed_float = f32::deserialize(deserializer)?;
+   Ok(mk_usd(parsed_float))
 }
 
