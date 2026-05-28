@@ -1,4 +1,5 @@
-use serde::{ Deserialize, Deserializer };
+use serde::{ Serialize, Deserialize, Deserializer };
+use serde_json::Value;
 
 use book::{
    currency::usd::{ USD,mk_usd },
@@ -6,7 +7,7 @@ use book::{
    string_utils::s,
    types::filters::Filter
 };
-use crate::types::measurable::Measurable;
+use crate::types::measurable::{Measurable,tvl};
 
 #[derive(Deserialize, Debug)]
 pub struct Tokens { pub result: Vec<TokenBalance> }
@@ -20,6 +21,61 @@ pub struct TokenBalance {
 
     #[serde(deserialize_with = "parse_float_to_usd")]
     usd_price: USD
+}
+
+pub fn mk_native_coin(sym: &str, bal: u128, quote: f32) -> TokenBalance {
+   TokenBalance {
+      symbol: s(sym),
+      balance: format!("{bal}"),
+      decimals: None,
+      token_address: protocol_token_address(),
+      usd_price: mk_usd(quote)
+   }
+}
+
+// a type to send the RPC request for the wallet-information
+// Generic envelope for JSON-RPC requests
+
+#[derive(Debug,Serialize)]
+pub struct RpcRequest {
+    jsonrpc: &'static str,
+    id: u32,
+    method: &'static str,
+    params: Value,
+}
+
+pub fn mk_rpc_request(id: u32, method: &'static str, params: Value)
+      -> RpcRequest {
+   let jsonrpc = "2.0";
+   // let params = vec![parms];
+   RpcRequest { jsonrpc, id, method, params }
+}
+
+pub enum Blockchain { AVALANCHE, BINANCE, ETHEREUM }
+use Blockchain::*;
+
+impl Blockchain {
+   pub fn blockchain(&self) -> String {
+      s(match self {
+         AVALANCHE => "avalanche", BINANCE => "bsc", ETHEREUM => "eth" })
+   }
+   pub fn node(&self) -> String {
+      format!("{} Mainnet", match self {
+         AVALANCHE => "Avalanche",
+         BINANCE   => "BNB Smart Chain",
+         ETHEREUM  => "Ethereum" })
+   }
+   pub fn protocol_token(&self) -> String {
+      s(match self { AVALANCHE => "AVAX", BINANCE => "BNB", ETHEREUM => "ETH" })
+   }
+   pub fn url(&self) -> String {
+      format!("https://site1.moralis-nodes.com/{}", self.blockchain())
+      // site2 is an alternative
+   }
+}
+
+fn protocol_token_address() -> String {
+   s("0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee")
 }
 
 impl Filter<String> for TokenBalance {
@@ -40,7 +96,7 @@ impl CsvHeader for TokenBalance {
 impl CsvWriter for TokenBalance {
    fn ncols(&self) -> usize { 4 }
    fn as_csv(&self) -> String {
-      format!("{},{},{},{}",self.symbol,self.bal(),self.usd_price,self.nav())
+      format!("{},{},{},{}",self.symbol,self.bal(),self.usd_price,tvl(self))
    }
 }
 
@@ -59,8 +115,6 @@ impl TokenBalance {
          Err(_) => s(raw_balance)
       }
    }
-
-   pub fn nav(&self) -> USD { mk_usd(self.sz() * self.aug()) }
 }
 
 fn parse_float_to_usd<'de, D>(deserializer: D) -> Result<USD, D::Error>
