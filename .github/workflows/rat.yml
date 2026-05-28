@@ -51,7 +51,7 @@ jobs:
 
       - name: Add pivot_data_dir and pivot_url to env
         run: |
-          echo "PIVOT_DATA_DIR=pivoteur.github.io/data" >> $GITHUB_ENV
+          echo "PIVOT_DATA_DIR=$GITHUB_WORKSPACE/pivoteur.github.io/data" >> $GITHUB_ENV
           echo "PIVOT_URL=https://raw.githubusercontent.com/pivoteur/pivoteur.github.io" >> $GITHUB_ENV
 
       - name: "[book] cargo tarpaulin — src/libs/book"
