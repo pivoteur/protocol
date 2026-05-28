@@ -5,7 +5,10 @@ on:
   schedule:
     # test the cron ("Min Hour Day Month DayofWeek" in UTC) at scheduled time 
     - cron: "23 01 * * *" # this is 9:23 PM Eastern Standard Time
- 
+
+permissions:
+  contents: write
+
 jobs:
   run_all_tests:
     runs-on: ubuntu-latest
@@ -112,3 +115,41 @@ jobs:
         run: |
             itr . 2>&1 | tee /tmp/dapps_itr.txt
             echo "--- [dapps] $(grep 'total:' /tmp/dapps_itr.txt | tail -1)"
+
+      - name: Write diagnostics log
+        run: |
+          echo "=== RAT Diagnostics: $(date -u) ===" > pivoteur.github.io/diagnostics.log
+          echo "" >> pivoteur.github.io/diagnostics.log
+
+          echo "--- [book] tarpaulin" >> pivoteur.github.io/diagnostics.log
+          grep -E 'TESTS FAILED|All tests passed' /tmp/book_tarp.txt  | tail -1 >> pivoteur.github.io/diagnostics.log || echo "  (no result)" >> pivoteur.github.io/diagnostics.log
+          grep 'coverage' /tmp/book_tarp.txt | tail -1 >> pivoteur.github.io/diagnostics.log || echo "  (no coverage)" >> pivoteur.github.io/diagnostics.log
+          echo "" >> pivoteur.github.io/diagnostics.log
+
+          echo "--- [libs] tarpaulin" >> pivoteur.github.io/diagnostics.log
+          grep -E 'TESTS FAILED|All tests passed' /tmp/libs_tarp.txt  | tail -1 >> pivoteur.github.io/diagnostics.log || echo "  (no result)" >> pivoteur.github.io/diagnostics.log
+          grep 'coverage' /tmp/libs_tarp.txt | tail -1 >> pivoteur.github.io/diagnostics.log || echo "  (no coverage)" >> pivoteur.github.io/diagnostics.log
+          echo "" >> pivoteur.github.io/diagnostics.log
+
+          echo "--- [quizzes] cargo make test-flow" >> pivoteur.github.io/diagnostics.log
+          grep -E 'TESTS FAILED|All tests passed' /tmp/quizzes_test.txt | tail -1 >> pivoteur.github.io/diagnostics.log || echo "  (no result)" >> pivoteur.github.io/diagnostics.log
+
+          echo "--- [quizzes] tarpaulin" >> pivoteur.github.io/diagnostics.log
+          grep -E 'TESTS FAILED|All tests passed' /tmp/quizzes_tarp.txt | tail -1 >> pivoteur.github.io/diagnostics.log || echo "  (no result)" >> pivoteur.github.io/diagnostics.log
+          grep 'coverage' /tmp/quizzes_tarp.txt | tail -1 >> pivoteur.github.io/diagnostics.log || echo "  (no coverage)" >> pivoteur.github.io/diagnostics.log
+          echo "" >> pivoteur.github.io/diagnostics.log
+
+          echo "--- [dapps] itr" >> pivoteur.github.io/diagnostics.log
+          grep 'total:' /tmp/dapps_itr.txt | tail -1 >> pivoteur.github.io/diagnostics.log || echo "  (no result)" >> pivoteur.github.io/diagnostics.log
+
+      - name: Commit diagnostics log to pivoteur.github.io
+        env: 
+          USER0_NAME: ${{ vars.USER0_NAME }}
+          USER0_EMAIL: ${{ secrets.USER0_EMAIL }}
+        working-directory: pivoteur.github.io
+        run: |
+          git config user.name "$USER0_NAME"
+          git config user.email "$USER0_EMAIL"
+          git add diagnostics.log
+          git commit -m "rat's diagnostic log [skip ci]" || echo "No changes to commit"
+          git push
