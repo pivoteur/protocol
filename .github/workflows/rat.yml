@@ -2,6 +2,9 @@ name: rat
  
 on:
   workflow_dispatch:
+  schedule:
+    # test the cron ("Min Hour Day Month DayofWeek" in UTC) at scheduled time 
+    - cron: "23 01 * * *" # this is 9:23 PM Eastern Standard Time
  
 jobs:
   run_all_tests:
