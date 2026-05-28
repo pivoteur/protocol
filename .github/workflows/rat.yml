@@ -145,8 +145,6 @@ jobs:
       - name: Commit diagnostics log to pivoteur.github.io
         working-directory: pivoteur.github.io
         run: |
-          git config user.name "$USER0_NAME"
-          git config user.email "$USER0_EMAIL"
           git add diagnostics.log
           git commit -m "rat's diagnostic log [skip ci]" || echo "No changes to commit"
           git push
