@@ -143,9 +143,6 @@ jobs:
           grep 'total:' /tmp/dapps_itr.txt | tail -1 >> pivoteur.github.io/diagnostics.log || echo "  (no result)" >> pivoteur.github.io/diagnostics.log
 
       - name: Commit diagnostics log to pivoteur.github.io
-        env: 
-          USER0_NAME: ${{ vars.USER0_NAME }}
-          USER0_EMAIL: ${{ secrets.USER0_EMAIL }}
         working-directory: pivoteur.github.io
         run: |
           git config user.name "$USER0_NAME"
