@@ -143,8 +143,13 @@ jobs:
           grep 'total:' /tmp/dapps_itr.txt | tail -1 >> pivoteur.github.io/diagnostics.log || echo "  (no result)" >> pivoteur.github.io/diagnostics.log
 
       - name: Commit diagnostics log to pivoteur.github.io
-        working-directory: pivoteur.github.io
+        env: 
+          USER0_NAME: ${{ vars.USER0_NAME }}
+          USER0_EMAIL: ${{ secrets.USER0_EMAIL }}
         run: |
+          cd pivoteur.github.io
+          git config user.name "$USER0_NAME"
+          git config user.email "$USER0_EMAIL"
           git add diagnostics.log
           git commit -m "rat's diagnostic log [skip ci]" || echo "No changes to commit"
           git push
