@@ -156,6 +156,7 @@ jobs:
           USER0_NAME: ${{ vars.USER0_NAME }}
           USER0_EMAIL: ${{ secrets.USER0_EMAIL }}
         run: |
+          cd protocol
           git config user.name "$USER0_NAME"
           git config user.email "$USER0_EMAIL"
           git add $LOG
