@@ -65,10 +65,10 @@ jobs:
         run: |
             cargo tarpaulin 2>&1 | tee /tmp/book_tarp.txt
             if grep -q 'test result: FAILED' /tmp/book_tarp.txt; then
-              echo "--- [book] TESTS FAILED | $(grep 'coverage' /tmp/book_tarp.txt | tail -1)" | tee -a /temp/book_tarp.txt
+              echo "--- [book] TESTS FAILED | $(grep 'coverage' /tmp/book_tarp.txt | tail -1)" | tee -a /tmp/book_tarp.txt
               exit 1
             else
-              echo "--- [book] All tests passed | $(grep 'coverage' /tmp/book_tarp.txt | tail -1)" | tee -a /temp/book_tarp.txt
+              echo "--- [book] All tests passed | $(grep 'coverage' /tmp/book_tarp.txt | tail -1)" | tee -a /tmp/book_tarp.txt
             fi
 
       - name: "[libs] cargo tarpaulin — libs"
