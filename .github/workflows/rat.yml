@@ -121,29 +121,29 @@ jobs:
           pwd
           echo "I'm writing out to $GITHUB_WORKSPACE/data/diagnostics.txt"
           ls -lRt
-          echo "=== RAT Diagnostics: $(date -u) ===" > data/diagnostics.txt
-          echo "" >> data/diagnostics.txt
+          echo "=== RAT Diagnostics: $(date -u) ===" > $GITHUB_WORKSPACE/data/diagnostics.txt
+          echo "" >> $GITHUB_WORKSPACE/data/diagnostics.txt
 
-          echo "--- [book] tarpaulin" >> data/diagnostics.txt
-          grep -E 'TESTS FAILED|All tests passed' /tmp/book_tarp.txt  | tail -1 >> data/diagnostics.txt || echo "  (no result)" >> data/diagnostics.txt
-          grep 'coverage' /tmp/book_tarp.txt | tail -1 >> data/diagnostics.txt || echo "  (no coverage)" >> data/diagnostics.txt
-          echo "" >> data/diagnostics.txt
+          echo "--- [book] tarpaulin" >> $GITHUB_WORKSPACE/data/diagnostics.txt
+          grep -E 'TESTS FAILED|All tests passed' /tmp/book_tarp.txt  | tail -1 >> $GITHUB_WORKSPACE/data/diagnostics.txt || echo "  (no result)" >> $GITHUB_WORKSPACE/data/diagnostics.txt
+          grep 'coverage' /tmp/book_tarp.txt | tail -1 >> $GITHUB_WORKSPACE/data/diagnostics.txt || echo "  (no coverage)" >> $GITHUB_WORKSPACE/data/diagnostics.txt
+          echo "" >> $GITHUB_WORKSPACE/data/diagnostics.txt
 
-          echo "--- [libs] tarpaulin" >> data/diagnostics.txt
-          grep -E 'TESTS FAILED|All tests passed' /tmp/libs_tarp.txt  | tail -1 >> data/diagnostics.txt || echo "  (no result)" >> data/diagnostics.txt
-          grep 'coverage' /tmp/libs_tarp.txt | tail -1 >> data/diagnostics.txt || echo "  (no coverage)" >> data/diagnostics.txt
-          echo "" >> data/diagnostics.txt
+          echo "--- [libs] tarpaulin" >> $GITHUB_WORKSPACE/data/diagnostics.txt
+          grep -E 'TESTS FAILED|All tests passed' /tmp/libs_tarp.txt  | tail -1 >> $GITHUB_WORKSPACE/data/diagnostics.txt || echo "  (no result)" >> $GITHUB_WORKSPACE/data/diagnostics.txt
+          grep 'coverage' /tmp/libs_tarp.txt | tail -1 >> $GITHUB_WORKSPACE/data/diagnostics.txt || echo "  (no coverage)" >> $GITHUB_WORKSPACE/data/diagnostics.txt
+          echo "" >> $GITHUB_WORKSPACE/data/diagnostics.txt
 
-          echo "--- [quizzes] cargo make test-flow" >> data/diagnostics.txt
-          grep -E 'TESTS FAILED|All tests passed' /tmp/quizzes_test.txt | tail -1 >> data/diagnostics.txt || echo "  (no result)" >> data/diagnostics.txt
+          echo "--- [quizzes] cargo make test-flow" >> $GITHUB_WORKSPACE/data/diagnostics.txt
+          grep -E 'TESTS FAILED|All tests passed' /tmp/quizzes_test.txt | tail -1 >> $GITHUB_WORKSPACE/data/diagnostics.txt || echo "  (no result)" >> $GITHUB_WORKSPACE/data/diagnostics.txt
 
-          echo "--- [quizzes] tarpaulin" >> data/diagnostics.txt
-          grep -E 'TESTS FAILED|All tests passed' /tmp/quizzes_tarp.txt | tail -1 >> data/diagnostics.txt || echo "  (no result)" >> data/diagnostics.txt
-          grep 'coverage' /tmp/quizzes_tarp.txt | tail -1 >> data/diagnostics.txt || echo "  (no coverage)" >> data/diagnostics.txt
-          echo "" >> data/diagnostics.txt
+          echo "--- [quizzes] tarpaulin" >> $GITHUB_WORKSPACE/data/diagnostics.txt
+          grep -E 'TESTS FAILED|All tests passed' /tmp/quizzes_tarp.txt | tail -1 >> $GITHUB_WORKSPACE/data/diagnostics.txt || echo "  (no result)" >> $GITHUB_WORKSPACE/data/diagnostics.txt
+          grep 'coverage' /tmp/quizzes_tarp.txt | tail -1 >> $GITHUB_WORKSPACE/data/diagnostics.txt || echo "  (no coverage)" >> $GITHUB_WORKSPACE/data/diagnostics.txt
+          echo "" >> $GITHUB_WORKSPACE/data/diagnostics.txt
 
-          echo "--- [dapps] itr" >> data/diagnostics.txt
-          grep 'total:' /tmp/dapps_itr.txt | tail -1 >> data/diagnostics.txt || echo "  (no result)" >> data/diagnostics.txt
+          echo "--- [dapps] itr" >> $GITHUB_WORKSPACE/data/diagnostics.txt
+          grep 'total:' /tmp/dapps_itr.txt | tail -1 >> $GITHUB_WORKSPACE/data/diagnostics.txt || echo "  (no result)" >> $GITHUB_WORKSPACE/data/diagnostics.txt
 
       - name: Commit diagnostics log to protocol
         env: 
@@ -152,6 +152,8 @@ jobs:
         run: |
           git config user.name "$USER0_NAME"
           git config user.email "$USER0_EMAIL"
-          git add data/diagnostics.txt
+          git add $GITHUB_WORKSPACE/data/diagnostics.txt
           git commit -m "rat's diagnostic log [skip ci]" || echo "No changes to commit"
           git push
+          echo "ur_mom"
+          
