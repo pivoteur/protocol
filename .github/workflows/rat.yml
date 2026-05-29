@@ -118,37 +118,37 @@ jobs:
 
       - name: Write diagnostics log
         run: |
-          echo "=== RAT Diagnostics: $(date -u) ===" > pivoteur.github.io/diagnostics.log
-          echo "" >> pivoteur.github.io/diagnostics.log
+          echo "=== RAT Diagnostics: $(date -u) ===" > protocol/diagnostics.txt
+          echo "" >> protocol/diagnostics.txt
 
-          echo "--- [book] tarpaulin" >> pivoteur.github.io/diagnostics.log
-          grep -E 'TESTS FAILED|All tests passed' /tmp/book_tarp.txt  | tail -1 >> pivoteur.github.io/diagnostics.log || echo "  (no result)" >> pivoteur.github.io/diagnostics.log
-          grep 'coverage' /tmp/book_tarp.txt | tail -1 >> pivoteur.github.io/diagnostics.log || echo "  (no coverage)" >> pivoteur.github.io/diagnostics.log
-          echo "" >> pivoteur.github.io/diagnostics.log
+          echo "--- [book] tarpaulin" >> protocol/diagnostics.txt
+          grep -E 'TESTS FAILED|All tests passed' /tmp/book_tarp.txt  | tail -1 >> protocol/diagnostics.txt || echo "  (no result)" >> protocol/diagnostics.txt
+          grep 'coverage' /tmp/book_tarp.txt | tail -1 >> protocol/diagnostics.txt || echo "  (no coverage)" >> protocol/diagnostics.txt
+          echo "" >> protocol/diagnostics.txt
 
-          echo "--- [libs] tarpaulin" >> pivoteur.github.io/diagnostics.log
-          grep -E 'TESTS FAILED|All tests passed' /tmp/libs_tarp.txt  | tail -1 >> pivoteur.github.io/diagnostics.log || echo "  (no result)" >> pivoteur.github.io/diagnostics.log
-          grep 'coverage' /tmp/libs_tarp.txt | tail -1 >> pivoteur.github.io/diagnostics.log || echo "  (no coverage)" >> pivoteur.github.io/diagnostics.log
-          echo "" >> pivoteur.github.io/diagnostics.log
+          echo "--- [libs] tarpaulin" >> protocol/diagnostics.txt
+          grep -E 'TESTS FAILED|All tests passed' /tmp/libs_tarp.txt  | tail -1 >> protocol/diagnostics.txt || echo "  (no result)" >> protocol/diagnostics.txt
+          grep 'coverage' /tmp/libs_tarp.txt | tail -1 >> protocol/diagnostics.txt || echo "  (no coverage)" >> protocol/diagnostics.txt
+          echo "" >> protocol/diagnostics.txt
 
-          echo "--- [quizzes] cargo make test-flow" >> pivoteur.github.io/diagnostics.log
-          grep -E 'TESTS FAILED|All tests passed' /tmp/quizzes_test.txt | tail -1 >> pivoteur.github.io/diagnostics.log || echo "  (no result)" >> pivoteur.github.io/diagnostics.log
+          echo "--- [quizzes] cargo make test-flow" >> protocol/diagnostics.txt
+          grep -E 'TESTS FAILED|All tests passed' /tmp/quizzes_test.txt | tail -1 >> protocol/diagnostics.txt || echo "  (no result)" >> protocol/diagnostics.txt
 
-          echo "--- [quizzes] tarpaulin" >> pivoteur.github.io/diagnostics.log
-          grep -E 'TESTS FAILED|All tests passed' /tmp/quizzes_tarp.txt | tail -1 >> pivoteur.github.io/diagnostics.log || echo "  (no result)" >> pivoteur.github.io/diagnostics.log
-          grep 'coverage' /tmp/quizzes_tarp.txt | tail -1 >> pivoteur.github.io/diagnostics.log || echo "  (no coverage)" >> pivoteur.github.io/diagnostics.log
-          echo "" >> pivoteur.github.io/diagnostics.log
+          echo "--- [quizzes] tarpaulin" >> protocol/diagnostics.txt
+          grep -E 'TESTS FAILED|All tests passed' /tmp/quizzes_tarp.txt | tail -1 >> protocol/diagnostics.txt || echo "  (no result)" >> protocol/diagnostics.txt
+          grep 'coverage' /tmp/quizzes_tarp.txt | tail -1 >> protocol/diagnostics.txt || echo "  (no coverage)" >> protocol/diagnostics.txt
+          echo "" >> protocol/diagnostics.txt
 
-          echo "--- [dapps] itr" >> pivoteur.github.io/diagnostics.log
-          grep 'total:' /tmp/dapps_itr.txt | tail -1 >> pivoteur.github.io/diagnostics.log || echo "  (no result)" >> pivoteur.github.io/diagnostics.log
+          echo "--- [dapps] itr" >> protocol/diagnostics.txt
+          grep 'total:' /tmp/dapps_itr.txt | tail -1 >> protocol/diagnostics.txt || echo "  (no result)" >> protocol/diagnostics.txt
 
-      - name: Commit diagnostics log to pivoteur.github.io
+      - name: Commit diagnostics log to protocol
         env: 
           USER0_NAME: ${{ vars.USER0_NAME }}
           USER0_EMAIL: ${{ secrets.USER0_EMAIL }}
         run: |
           git config user.name "$USER0_NAME"
           git config user.email "$USER0_EMAIL"
-          git add diagnostics.log
+          git add protocol/diagnostics.txt
           git commit -m "rat's diagnostic log [skip ci]" || echo "No changes to commit"
           git push
