@@ -118,29 +118,29 @@ jobs:
 
       - name: Write diagnostics log
         run: |
-          echo "=== RAT Diagnostics: $(date -u) ===" > protocol/diagnostics.txt
-          echo "" >> protocol/diagnostics.txt
+          echo "=== RAT Diagnostics: $(date -u) ===" > data/diagnostics.txt
+          echo "" >> data/diagnostics.txt
 
-          echo "--- [book] tarpaulin" >> protocol/diagnostics.txt
-          grep -E 'TESTS FAILED|All tests passed' /tmp/book_tarp.txt  | tail -1 >> protocol/diagnostics.txt || echo "  (no result)" >> protocol/diagnostics.txt
-          grep 'coverage' /tmp/book_tarp.txt | tail -1 >> protocol/diagnostics.txt || echo "  (no coverage)" >> protocol/diagnostics.txt
-          echo "" >> protocol/diagnostics.txt
+          echo "--- [book] tarpaulin" >> data/diagnostics.txt
+          grep -E 'TESTS FAILED|All tests passed' /tmp/book_tarp.txt  | tail -1 >> data/diagnostics.txt || echo "  (no result)" >> data/diagnostics.txt
+          grep 'coverage' /tmp/book_tarp.txt | tail -1 >> data/diagnostics.txt || echo "  (no coverage)" >> data/diagnostics.txt
+          echo "" >> data/diagnostics.txt
 
-          echo "--- [libs] tarpaulin" >> protocol/diagnostics.txt
-          grep -E 'TESTS FAILED|All tests passed' /tmp/libs_tarp.txt  | tail -1 >> protocol/diagnostics.txt || echo "  (no result)" >> protocol/diagnostics.txt
-          grep 'coverage' /tmp/libs_tarp.txt | tail -1 >> protocol/diagnostics.txt || echo "  (no coverage)" >> protocol/diagnostics.txt
-          echo "" >> protocol/diagnostics.txt
+          echo "--- [libs] tarpaulin" >> data/diagnostics.txt
+          grep -E 'TESTS FAILED|All tests passed' /tmp/libs_tarp.txt  | tail -1 >> data/diagnostics.txt || echo "  (no result)" >> data/diagnostics.txt
+          grep 'coverage' /tmp/libs_tarp.txt | tail -1 >> data/diagnostics.txt || echo "  (no coverage)" >> data/diagnostics.txt
+          echo "" >> data/diagnostics.txt
 
-          echo "--- [quizzes] cargo make test-flow" >> protocol/diagnostics.txt
-          grep -E 'TESTS FAILED|All tests passed' /tmp/quizzes_test.txt | tail -1 >> protocol/diagnostics.txt || echo "  (no result)" >> protocol/diagnostics.txt
+          echo "--- [quizzes] cargo make test-flow" >> data/diagnostics.txt
+          grep -E 'TESTS FAILED|All tests passed' /tmp/quizzes_test.txt | tail -1 >> data/diagnostics.txt || echo "  (no result)" >> data/diagnostics.txt
 
-          echo "--- [quizzes] tarpaulin" >> protocol/diagnostics.txt
-          grep -E 'TESTS FAILED|All tests passed' /tmp/quizzes_tarp.txt | tail -1 >> protocol/diagnostics.txt || echo "  (no result)" >> protocol/diagnostics.txt
-          grep 'coverage' /tmp/quizzes_tarp.txt | tail -1 >> protocol/diagnostics.txt || echo "  (no coverage)" >> protocol/diagnostics.txt
-          echo "" >> protocol/diagnostics.txt
+          echo "--- [quizzes] tarpaulin" >> data/diagnostics.txt
+          grep -E 'TESTS FAILED|All tests passed' /tmp/quizzes_tarp.txt | tail -1 >> data/diagnostics.txt || echo "  (no result)" >> data/diagnostics.txt
+          grep 'coverage' /tmp/quizzes_tarp.txt | tail -1 >> data/diagnostics.txt || echo "  (no coverage)" >> data/diagnostics.txt
+          echo "" >> data/diagnostics.txt
 
-          echo "--- [dapps] itr" >> protocol/diagnostics.txt
-          grep 'total:' /tmp/dapps_itr.txt | tail -1 >> protocol/diagnostics.txt || echo "  (no result)" >> protocol/diagnostics.txt
+          echo "--- [dapps] itr" >> data/diagnostics.txt
+          grep 'total:' /tmp/dapps_itr.txt | tail -1 >> data/diagnostics.txt || echo "  (no result)" >> data/diagnostics.txt
 
       - name: Commit diagnostics log to protocol
         env: 
@@ -149,6 +149,6 @@ jobs:
         run: |
           git config user.name "$USER0_NAME"
           git config user.email "$USER0_EMAIL"
-          git add protocol/diagnostics.txt
+          git add data/diagnostics.txt
           git commit -m "rat's diagnostic log [skip ci]" || echo "No changes to commit"
           git push
