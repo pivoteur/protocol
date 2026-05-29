@@ -119,7 +119,7 @@ jobs:
       - name: Write diagnostics log
         run: |
           pwd
-          echo "I'm writing out to $GITHUB_WORKSPACE/protocol/data/diagnostics.txt"
+          echo "I'm writing out to $GITHUB_WORKSPACE/data/diagnostics.txt"
           ls -lRt
           echo "=== RAT Diagnostics: $(date -u) ===" > data/diagnostics.txt
           echo "" >> data/diagnostics.txt
