@@ -34,6 +34,10 @@ directory directly, locally.
 
 * [10](src/quiz10): list files of a directory. Yes. I know
 
+## Telegram
+
+* [11](src/quiz11): Telegram bots (reinvest and distribute)
+
 # Resources
 
 The quizzes and infrastructure uses [libraries from @logicalgraphs crypto-n-rust
