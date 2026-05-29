@@ -2,26 +2,46 @@ name: rat
  
 on:
   workflow_dispatch:
- 
+  schedule:
+    # test the cron ("Min Hour Day Month DayofWeek" in UTC) at scheduled time 
+    - cron: "23 01 * * *" # this is 9:23 PM Eastern Standard Time
+
+permissions:
+  contents: write
+
 jobs:
   run_all_tests:
     runs-on: ubuntu-latest
- 
+
     steps:
       - name: Checkout protocol
         uses: actions/checkout@v4
         with:
           path: protocol
- 
+
+      - name: Set up Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Rust
+        id: rust-cache-step
+        uses: Swatinem/rust-cache@v2
+        with: 
+          workspaces: |
+            protocol/libs
+            protocol/quizzes
+
       - name: Checkout crypto-n-rust
         uses: actions/checkout@v4
         with:
           repository: logicalgraphs/crypto-n-rust
           path: crypto-n-rust
- 
-      - name: Set up Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
- 
+
+      - name: Checkout pivoteur.github.io
+        uses: actions/checkout@v4
+        with:
+          repository: pivoteur/pivoteur.github.io
+          path: pivoteur.github.io
+          
       - name: Install cargo-make
         run: cargo install cargo-make
  
@@ -32,44 +52,58 @@ jobs:
         run: |
             test -d protocol/.git      || (echo "ERROR: protocol not checked out" && exit 1)
             test -d crypto-n-rust/.git || (echo "ERROR: crypto-n-rust not checked out" && exit 1)
+            test -d pivoteur.github.io/.git || (echo "ERROR: pivoteur.github.io not checked out" && exit 1)
             echo "All checkouts verified."
- 
-      - name: "[book] cargo test — src/libs/book"
-        working-directory: crypto-n-rust/src/libs/book
+
+      - name: Add pivot_data_dir and pivot_url to env
         run: |
-            cargo test 2>&1 | tee /tmp/book_test.txt
-            echo "--- [book] $(grep 'test result' /tmp/book_test.txt | tail -1)"
- 
+          echo "PIVOT_DATA_DIR=$GITHUB_WORKSPACE/pivoteur.github.io/data" >> $GITHUB_ENV
+          echo "PIVOT_URL=https://raw.githubusercontent.com/pivoteur/pivoteur.github.io" >> $GITHUB_ENV
+
       - name: "[book] cargo tarpaulin — src/libs/book"
         working-directory: crypto-n-rust/src/libs/book
         run: |
             cargo tarpaulin 2>&1 | tee /tmp/book_tarp.txt
-            echo "--- [book] $(grep 'coverage' /tmp/book_tarp.txt | tail -1)"
- 
-      - name: "[libs] cargo test — libs"
-        working-directory: protocol/libs
-        run: |
-            cargo test 2>&1 | tee /tmp/libs_test.txt
-            echo "--- [libs] $(grep 'test result' /tmp/libs_test.txt | tail -1)"
- 
+            if grep -q 'test result: FAILED' /tmp/book_tarp.txt; then
+              echo "--- [book] TESTS FAILED | $(grep 'coverage' /tmp/book_tarp.txt | tail -1)"
+              exit 1
+            else
+              echo "--- [book] All tests passed | $(grep 'coverage' /tmp/book_tarp.txt | tail -1)"
+            fi
+
       - name: "[libs] cargo tarpaulin — libs"
         working-directory: protocol/libs
         run: |
             cargo tarpaulin 2>&1 | tee /tmp/libs_tarp.txt
-            echo "--- [libs] $(grep 'coverage' /tmp/libs_tarp.txt | tail -1)"
- 
+            if grep -q 'test result: FAILED' /tmp/libs_tarp.txt; then
+              echo "--- [libs] TESTS FAILED | $(grep 'coverage' /tmp/libs_tarp.txt | tail -1)"
+              exit 1
+            else
+              echo "--- [libs] All tests passed | $(grep 'coverage' /tmp/libs_tarp.txt | tail -1)"
+            fi
+
       - name: "[quizzes] cargo make test-flow — quizzes"
         working-directory: protocol/quizzes
         run: |
             cargo make test-flow 2>&1 | tee /tmp/quizzes_test.txt
-            echo "--- [quizzes] $(grep 'test result' /tmp/quizzes_test.txt | tail -1)"
+            if grep -q 'test result: FAILED' /tmp/quizzes_test.txt; then
+              echo "--- [quizzes] TESTS FAILED | $(grep 'test result' /tmp/quizzes_test.txt | tail -1)"
+              exit 1
+            else
+              echo "--- [quizzes] All tests passed | $(grep 'test result' /tmp/quizzes_test.txt | tail -1)"
+            fi
         
       - name: "[quizzes] cargo tarpaulin — quizzes"
         working-directory: protocol/quizzes
         run: |
             cargo tarpaulin 2>&1 | tee /tmp/quizzes_tarp.txt
-            echo "--- [quizzes] $(grep 'coverage' /tmp/quizzes_tarp.txt | tail -1)"
-
+            if grep -q 'test result: FAILED' /tmp/quizzes_tarp.txt; then
+              echo "--- [quizzes] TESTS FAILED | $(grep 'coverage' /tmp/quizzes_tarp.txt | tail -1)"
+              exit 1
+            else
+              echo "--- [quizzes] All tests passed | $(grep 'coverage' /tmp/quizzes_tarp.txt | tail -1)"
+            fi
+    
       - name: Build itr
         working-directory: protocol/dapps/itr
         run: |
@@ -81,3 +115,49 @@ jobs:
         run: |
             itr . 2>&1 | tee /tmp/dapps_itr.txt
             echo "--- [dapps] $(grep 'total:' /tmp/dapps_itr.txt | tail -1)"
+
+      - name: Define log_dir
+        run: echo "LOG_DIR=$GITHUB_WORKSPACE/protocol/data" >> $GITHUB_ENV
+
+      - name: Define log file path
+        run: echo "LOG=$LOG_DIR/diagnostics.txt" >> $GITHUB_ENV
+
+      - name: Write diagnostics log
+        run: |
+          echo "I'm writing out to $LOG"
+          echo "=== RAT Diagnostics: $(date -u) ===" > $LOG
+          echo "" >> $LOG
+
+          echo "--- [book] tarpaulin" >> $LOG
+          grep -E 'TESTS FAILED|All tests passed' /tmp/book_tarp.txt  | tail -1 >> $LOG || echo "  (no result)" >> $LOG
+          grep 'coverage' /tmp/book_tarp.txt | tail -1 >> $LOG || echo "  (no coverage)" >> $LOG
+          echo "" >> $LOG
+
+          echo "--- [libs] tarpaulin" >> $LOG
+          grep -E 'TESTS FAILED|All tests passed' /tmp/libs_tarp.txt  | tail -1 >> $LOG || echo "  (no result)" >> $LOG
+          grep 'coverage' /tmp/libs_tarp.txt | tail -1 >> $LOG || echo "  (no coverage)" >> $LOG
+          echo "" >> $LOG
+
+          echo "--- [quizzes] cargo make test-flow" >> $LOG
+          grep -E 'TESTS FAILED|All tests passed' /tmp/quizzes_test.txt | tail -1 >> $LOG || echo "  (no result)" >> $LOG
+
+          echo "--- [quizzes] tarpaulin" >> $LOG
+          grep -E 'TESTS FAILED|All tests passed' /tmp/quizzes_tarp.txt | tail -1 >> $LOG || echo "  (no result)" >> $LOG
+          grep 'coverage' /tmp/quizzes_tarp.txt | tail -1 >> $LOG || echo "  (no coverage)" >> $LOG
+          echo "" >> $LOG
+
+          echo "--- [dapps] itr" >> $LOG
+          grep 'total:' /tmp/dapps_itr.txt | tail -1 >> $LOG || echo "  (no result)" >> $LOG
+
+      - name: Commit diagnostics log to protocol
+        env: 
+          USER0_NAME: ${{ vars.USER0_NAME }}
+          USER0_EMAIL: ${{ secrets.USER0_EMAIL }}
+        run: |
+          cd protocol
+          git config user.name "$USER0_NAME"
+          git config user.email "$USER0_EMAIL"
+          git add $LOG
+          git commit -m "rat's diagnostic log [skip ci]" || echo "No changes to commit"
+          git push
+          
