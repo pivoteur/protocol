@@ -1,10 +1,10 @@
-=== RAT Diagnostics: Fri May 29 16:20:04 UTC 2026 ===
+=== RAT Diagnostics: Fri May 29 16:47:16 UTC 2026 ===
 
 --- [book] tarpaulin
 46.85% coverage, 349/745 lines covered
 
 --- [libs] tarpaulin
-81.83% coverage, 680/831 lines covered
+81.95% coverage, 681/831 lines covered
 
 --- [quizzes] cargo make test-flow
 --- [quizzes] tarpaulin
