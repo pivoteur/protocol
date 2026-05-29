@@ -1,30 +1,5 @@
-=== RAT Diagnostics: Fri May 29 22:37:15 UTC 2026 ===
+=== RAT Diagnostics Log (Fri May 29 23:35:09 UTC 2026) ===
 
---- [book] tarpaulin
---- [book] All tests passed | 46.85% coverage, 349/745 lines covered
-
---- [libs] tarpaulin
---- [libs] All tests passed | 80.74% coverage, 717/888 lines covered
-
---- [quizzes] cargo make test-flow
---- [quizzes] All tests passed | test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
---- [quizzes] tarpaulin
---- [quizzes] All tests passed | 61.26% coverage, 544/888 lines covered
-
---- [dapps] itr
-total: 12/12
---- [book] tarpaulin --- All tests passed | 46.85% coverage, 349/745 lines covered
---- [book] All tests passed | 46.85% coverage, 349/745 lines covered
-
---- [libs] tarpaulin --- All tests passed | 80.86% coverage, 718/888 lines covered
---- [libs] All tests passed | 80.86% coverage, 718/888 lines covered
-
---- [quizzes] cargo make test-flow --- All tests passed | test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
---- [quizzes] tarpaulin --- All tests passed | 61.26% coverage, 544/888 lines covered
---- [quizzes] All tests passed | 61.26% coverage, 544/888 lines covered
-
---- [dapps] itr
-total: 12/12
 --- [book] tarpaulin --- All tests passed | 46.85% coverage, 349/745 lines covered
 --- [book] All tests passed | 46.85% coverage, 349/745 lines covered
 
