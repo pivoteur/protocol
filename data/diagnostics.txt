@@ -25,3 +25,16 @@ total: 12/12
 
 --- [dapps] itr
 total: 12/12
+--- [book] tarpaulin --- All tests passed | 46.85% coverage, 349/745 lines covered
+--- [book] All tests passed | 46.85% coverage, 349/745 lines covered
+
+--- [libs] tarpaulin --- All tests passed | 80.74% coverage, 717/888 lines covered
+--- [libs] All tests passed | 80.74% coverage, 717/888 lines covered
+
+--- [quizzes] cargo make test-flow --- All tests passed | test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+--- [quizzes] tarpaulin --- All tests passed | 61.26% coverage, 544/888 lines covered
+--- [quizzes] All tests passed | 61.26% coverage, 544/888 lines covered
+
+--- [dapps] itr
+total: 12/12
