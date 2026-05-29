@@ -118,6 +118,7 @@ jobs:
 
       - name: Write diagnostics log
         run: |
+          pwd
           echo "=== RAT Diagnostics: $(date -u) ===" > data/diagnostics.txt
           echo "" >> data/diagnostics.txt
 
