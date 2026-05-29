@@ -117,33 +117,34 @@ jobs:
 #            echo "--- [dapps] $(grep 'total:' /tmp/dapps_itr.txt | tail -1)"
 
       - name: Write diagnostics log
+        env: 
+          LOG: $GITHUB_WORKSPACE/protocol/data/diagnostics.txt
         run: |
           pwd
-          echo "I'm writing out to $GITHUB_WORKSPACE/data/diagnostics.txt"
-          ls -lRt
-          echo "=== RAT Diagnostics: $(date -u) ===" > $GITHUB_WORKSPACE/data/diagnostics.txt
-          echo "" >> $GITHUB_WORKSPACE/data/diagnostics.txt
+          echo "I'm writing out to $LOG"
+          echo "=== RAT Diagnostics: $(date -u) ===" > $LOG
+          echo "" >> $LOG
 
-          echo "--- [book] tarpaulin" >> $GITHUB_WORKSPACE/data/diagnostics.txt
-          grep -E 'TESTS FAILED|All tests passed' /tmp/book_tarp.txt  | tail -1 >> $GITHUB_WORKSPACE/data/diagnostics.txt || echo "  (no result)" >> $GITHUB_WORKSPACE/data/diagnostics.txt
-          grep 'coverage' /tmp/book_tarp.txt | tail -1 >> $GITHUB_WORKSPACE/data/diagnostics.txt || echo "  (no coverage)" >> $GITHUB_WORKSPACE/data/diagnostics.txt
-          echo "" >> $GITHUB_WORKSPACE/data/diagnostics.txt
+          echo "--- [book] tarpaulin" >> $LOG
+          grep -E 'TESTS FAILED|All tests passed' /tmp/book_tarp.txt  | tail -1 >> $LOG || echo "  (no result)" >> $LOG
+          grep 'coverage' /tmp/book_tarp.txt | tail -1 >> $LOG || echo "  (no coverage)" >> $LOG
+          echo "" >> $LOG
 
-          echo "--- [libs] tarpaulin" >> $GITHUB_WORKSPACE/data/diagnostics.txt
-          grep -E 'TESTS FAILED|All tests passed' /tmp/libs_tarp.txt  | tail -1 >> $GITHUB_WORKSPACE/data/diagnostics.txt || echo "  (no result)" >> $GITHUB_WORKSPACE/data/diagnostics.txt
-          grep 'coverage' /tmp/libs_tarp.txt | tail -1 >> $GITHUB_WORKSPACE/data/diagnostics.txt || echo "  (no coverage)" >> $GITHUB_WORKSPACE/data/diagnostics.txt
-          echo "" >> $GITHUB_WORKSPACE/data/diagnostics.txt
+          echo "--- [libs] tarpaulin" >> $LOG
+          grep -E 'TESTS FAILED|All tests passed' /tmp/libs_tarp.txt  | tail -1 >> $LOG || echo "  (no result)" >> $LOG
+          grep 'coverage' /tmp/libs_tarp.txt | tail -1 >> $LOG || echo "  (no coverage)" >> $LOG
+          echo "" >> $LOG
 
-          echo "--- [quizzes] cargo make test-flow" >> $GITHUB_WORKSPACE/data/diagnostics.txt
-          grep -E 'TESTS FAILED|All tests passed' /tmp/quizzes_test.txt | tail -1 >> $GITHUB_WORKSPACE/data/diagnostics.txt || echo "  (no result)" >> $GITHUB_WORKSPACE/data/diagnostics.txt
+          echo "--- [quizzes] cargo make test-flow" >> $LOG
+          grep -E 'TESTS FAILED|All tests passed' /tmp/quizzes_test.txt | tail -1 >> $LOG || echo "  (no result)" >> $LOG
 
-          echo "--- [quizzes] tarpaulin" >> $GITHUB_WORKSPACE/data/diagnostics.txt
-          grep -E 'TESTS FAILED|All tests passed' /tmp/quizzes_tarp.txt | tail -1 >> $GITHUB_WORKSPACE/data/diagnostics.txt || echo "  (no result)" >> $GITHUB_WORKSPACE/data/diagnostics.txt
-          grep 'coverage' /tmp/quizzes_tarp.txt | tail -1 >> $GITHUB_WORKSPACE/data/diagnostics.txt || echo "  (no coverage)" >> $GITHUB_WORKSPACE/data/diagnostics.txt
-          echo "" >> $GITHUB_WORKSPACE/data/diagnostics.txt
+          echo "--- [quizzes] tarpaulin" >> $LOG
+          grep -E 'TESTS FAILED|All tests passed' /tmp/quizzes_tarp.txt | tail -1 >> $LOG || echo "  (no result)" >> $LOG
+          grep 'coverage' /tmp/quizzes_tarp.txt | tail -1 >> $LOG || echo "  (no coverage)" >> $LOG
+          echo "" >> $LOG
 
-          echo "--- [dapps] itr" >> $GITHUB_WORKSPACE/data/diagnostics.txt
-          grep 'total:' /tmp/dapps_itr.txt | tail -1 >> $GITHUB_WORKSPACE/data/diagnostics.txt || echo "  (no result)" >> $GITHUB_WORKSPACE/data/diagnostics.txt
+          echo "--- [dapps] itr" >> $LOG
+          grep 'total:' /tmp/dapps_itr.txt | tail -1 >> $LOG || echo "  (no result)" >> $LOG
 
       - name: Commit diagnostics log to protocol
         env: 
