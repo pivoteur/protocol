@@ -103,18 +103,18 @@ jobs:
             else
               echo "--- [quizzes] All tests passed | $(grep 'coverage' /tmp/quizzes_tarp.txt | tail -1)"
             fi
+    
+      - name: Build itr
+        working-directory: protocol/dapps/itr
+        run: |
+            cargo build
+            echo "$GITHUB_WORKSPACE/protocol/dapps/itr/target/debug" >> $GITHUB_PATH       
 
-#      - name: Build itr
-#        working-directory: protocol/dapps/itr
-#        run: |
-#            cargo build
-#            echo "$GITHUB_WORKSPACE/protocol/dapps/itr/target/debug" >> $GITHUB_PATH       
-
-#      - name: "[itr] itr . — dapps"
-#        working-directory: protocol/dapps
-#        run: |
-#            itr . 2>&1 | tee /tmp/dapps_itr.txt
-#            echo "--- [dapps] $(grep 'total:' /tmp/dapps_itr.txt | tail -1)"
+      - name: "[itr] itr . — dapps"
+        working-directory: protocol/dapps
+        run: |
+            itr . 2>&1 | tee /tmp/dapps_itr.txt
+            echo "--- [dapps] $(grep 'total:' /tmp/dapps_itr.txt | tail -1)"
 
       - name: Define log_dir
         run: echo "LOG_DIR=$GITHUB_WORKSPACE/protocol/data" >> $GITHUB_ENV
@@ -124,8 +124,6 @@ jobs:
 
       - name: Write diagnostics log
         run: |
-          pwd
-          ls -lRt $LOG_DIR/..
           echo "I'm writing out to $LOG"
           echo "=== RAT Diagnostics: $(date -u) ===" > $LOG
           echo "" >> $LOG
