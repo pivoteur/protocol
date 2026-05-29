@@ -116,13 +116,16 @@ jobs:
 #            itr . 2>&1 | tee /tmp/dapps_itr.txt
 #            echo "--- [dapps] $(grep 'total:' /tmp/dapps_itr.txt | tail -1)"
 
-      - name: Define log
-        run: echo "LOG=$GITHUB_WORKSPACE/protocol/data/diagnostics.txt" >> $GITHUB_ENV
+      - name: Define log_dir
+        run: echo "LOG_DIR=$GITHUB_WORKSPACE/protocol/data" >> $GITHUB_ENV
+
+      - name: Define log file path
+        run: echo "LOG=$LOG_DIR/diagnostics.txt" >> $GITHUB_ENV
 
       - name: Write diagnostics log
         run: |
           pwd
-          ls -lRt $LOG/..
+          ls -lRt $LOG_DIR/..
           echo "I'm writing out to $LOG"
           echo "=== RAT Diagnostics: $(date -u) ===" > $LOG
           echo "" >> $LOG
@@ -158,5 +161,4 @@ jobs:
           git add $LOG
           git commit -m "rat's diagnostic log [skip ci]" || echo "No changes to commit"
           git push
-          echo "ur_mom"
           
