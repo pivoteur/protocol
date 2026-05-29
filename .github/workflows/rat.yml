@@ -127,23 +127,22 @@ jobs:
 
       - name: Write diagnostics log
         run: |
-          echo "I'm writing out to $LOG"
-          echo "=== RAT Diagnostics: $(date -u) ===" > $LOG
+          BOOK_VERDICT=$(grep -E 'TESTS FAILED|All tests passed' /tmp/book_tarp.txt | tail -1 | sed 's/--- \[book\] //')
+          echo "--- [book] tarpaulin --- ${BOOK_VERDICT:-no result}" >> $LOG
+          grep 'coverage' /tmp/book_tarp.txt | tail -1 >> $LOG || echo "  (no coverage)" >> $LOG
           echo "" >> $LOG
 
-          echo "--- [book] tarpaulin" >> $LOG
-          grep -E 'TESTS FAILED|All tests passed' /tmp/book_tarp.txt  | tail -1 >> $LOG || echo "  (no result)" >> $LOG
+          LIBS_VERDICT=$(grep -E 'TESTS FAILED|All tests passed' /tmp/libs_tarp.txt | tail -1 | sed 's/--- \[libs\] //')
+          echo "--- [libs] tarpaulin --- ${LIBS_VERDICT:-no result}" >> $LOG
+          grep 'coverage' /tmp/libs_tarp.txt | tail -1 >> $LOG || echo "  (no coverage)" >> $LOG
           echo "" >> $LOG
 
-          echo "--- [libs] tarpaulin" >> $LOG
-          grep -E 'TESTS FAILED|All tests passed' /tmp/libs_tarp.txt  | tail -1 >> $LOG || echo "  (no result)" >> $LOG
-          echo "" >> $LOG
+          QUIZZES_TEST_VERDICT=$(grep -E 'TESTS FAILED|All tests passed' /tmp/quizzes_test.txt | tail -1 | sed 's/--- \[quizzes\] //')
+          echo "--- [quizzes] cargo make test-flow --- ${QUIZZES_TEST_VERDICT:-no result}" >> $LOG
 
-          echo "--- [quizzes] cargo make test-flow" >> $LOG
-          grep -E 'TESTS FAILED|All tests passed' /tmp/quizzes_test.txt | tail -1 >> $LOG || echo "  (no result)" >> $LOG
-
-          echo "--- [quizzes] tarpaulin" >> $LOG
-          grep -E 'TESTS FAILED|All tests passed' /tmp/quizzes_tarp.txt | tail -1 >> $LOG || echo "  (no result)" >> $LOG
+          QUIZZES_TARP_VERDICT=$(grep -E 'TESTS FAILED|All tests passed' /tmp/quizzes_tarp.txt | tail -1 | sed 's/--- \[quizzes\] //')
+          echo "--- [quizzes] tarpaulin --- ${QUIZZES_TARP_VERDICT:-no result}" >> $LOG
+          grep 'coverage' /tmp/quizzes_tarp.txt | tail -1 >> $LOG || echo "  (no coverage)" >> $LOG
           echo "" >> $LOG
 
           echo "--- [dapps] itr" >> $LOG
