@@ -4,6 +4,7 @@ pub mod pivots;
 pub mod pool_names;
 pub mod quotes;
 pub mod wallets;
-pub mod test_helpers;
+pub mod whitelist;
 
+pub mod test_helpers;
 mod utils;

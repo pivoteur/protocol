@@ -66,12 +66,14 @@ mod functional_tests {
       create_testing,
       csv_utils::{CsvWriter,CsvHeader,enumerate_csv},
       currency::usd::USD,
-      string_utils::words,
-      types::filters::{ Container, mk_whitelist, Sieve },
+      types::filters::{ Container, Sieve },
       utils::now
    };
    use crate::{
-      fetchers::test_helpers::test_functions::marshall,
+      fetchers::{
+         test_helpers::test_functions::marshall,
+         whitelist::fetch_whitelist
+      },
       types::{ measurable::tvl, tokens::moralis::Blockchain::AVALANCHE }
    };
 
@@ -89,15 +91,8 @@ mod functional_tests {
    });
 
    run!("fetch_wallet_balances_whitelisted", {
-// removed: 0xb97ef9ef8734c71904d8002f8b6bc66dd9c48a6e
-      let whitelist = mk_whitelist(words("
-Protocol
-AVAX 0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee
-Tokens
-UNDEAD 0x5a3534720a4f29fa0dc53ce474db88973a95f65c
-WETH 0x49d5c2bdffac6ce2bfdb6640f4f80f226bc10bab
-USDt 0x9702230a8ea53601f5cd2dc00fdbc13d4df4a8c7
-USDC 0xb97ef9ef8734c71904d8002f8b6bc66dd9c48a6e"));
+      let whitelist =
+         now(fetch_whitelist("pivot", "pivot-token-addresses.txt"))?;
       now(iter_chains_on(whitelist))
    });
 

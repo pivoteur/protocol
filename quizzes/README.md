@@ -32,7 +32,7 @@ directory directly, locally.
 
 ## Infrastructure
 
-* [10](src/quiz10): list files of a directory. Yes. I know
+* [10](src/quiz10): pool and treasury/wallet information
 
 ## Telegram
 
