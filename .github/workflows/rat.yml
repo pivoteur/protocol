@@ -127,6 +127,9 @@ jobs:
 
       - name: Write diagnostics log
         run: |
+          echo "=== RAT Diagnostics Log ($(date -u) ===" > $LOG
+          echo "" >> $LOG
+
           BOOK_VERDICT=$(grep -E 'TESTS FAILED|All tests passed' /tmp/book_tarp.txt | tail -1 | sed 's/--- \[book\] //')
           echo "--- [book] tarpaulin --- ${BOOK_VERDICT:-no result}" >> $LOG
           grep 'coverage' /tmp/book_tarp.txt | tail -1 >> $LOG || echo "  (no coverage)" >> $LOG
