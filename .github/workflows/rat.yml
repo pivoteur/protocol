@@ -130,19 +130,24 @@ jobs:
           BOOK_VERDICT=$(grep -E 'TESTS FAILED|All tests passed' /tmp/book_tarp.txt | tail -1 | sed 's/--- \[book\] //')
           echo "--- [book] tarpaulin --- ${BOOK_VERDICT:-no result}" >> $LOG
           grep 'coverage' /tmp/book_tarp.txt | tail -1 >> $LOG || echo "  (no coverage)" >> $LOG
+          grep -A1 'failures:' /tmp/book_tarp.txt | grep '::' >> $LOG || true
           echo "" >> $LOG
 
           LIBS_VERDICT=$(grep -E 'TESTS FAILED|All tests passed' /tmp/libs_tarp.txt | tail -1 | sed 's/--- \[libs\] //')
           echo "--- [libs] tarpaulin --- ${LIBS_VERDICT:-no result}" >> $LOG
           grep 'coverage' /tmp/libs_tarp.txt | tail -1 >> $LOG || echo "  (no coverage)" >> $LOG
+          grep -A1 'failures:' /tmp/libs_tarp.txt | grep '::' >> $LOG || true
           echo "" >> $LOG
 
           QUIZZES_TEST_VERDICT=$(grep -E 'TESTS FAILED|All tests passed' /tmp/quizzes_test.txt | tail -1 | sed 's/--- \[quizzes\] //')
           echo "--- [quizzes] cargo make test-flow --- ${QUIZZES_TEST_VERDICT:-no result}" >> $LOG
+          grep -A1 'failures:' /tmp/quizzes_test.txt | grep '::' >> $LOG || true
+          echo "" >> $LOG
 
           QUIZZES_TARP_VERDICT=$(grep -E 'TESTS FAILED|All tests passed' /tmp/quizzes_tarp.txt | tail -1 | sed 's/--- \[quizzes\] //')
           echo "--- [quizzes] tarpaulin --- ${QUIZZES_TARP_VERDICT:-no result}" >> $LOG
           grep 'coverage' /tmp/quizzes_tarp.txt | tail -1 >> $LOG || echo "  (no coverage)" >> $LOG
+          grep -A1 'failures:' /tmp/quizzes_tarp.txt | grep '::' >> $LOG || true
           echo "" >> $LOG
 
           echo "--- [dapps] itr" >> $LOG
