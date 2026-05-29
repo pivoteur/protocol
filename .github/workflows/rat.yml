@@ -117,7 +117,7 @@ jobs:
 #            echo "--- [dapps] $(grep 'total:' /tmp/dapps_itr.txt | tail -1)"
 
       - name: Define log
-        run: echo "LOG=$GITHUB_WORKSPACE/data/diagnostics.txt" >> $GITHUB_ENV
+        run: echo "LOG=$GITHUB_WORKSPACE/protocol/data/diagnostics.txt" >> $GITHUB_ENV
 
       - name: Write diagnostics log
         run: |
