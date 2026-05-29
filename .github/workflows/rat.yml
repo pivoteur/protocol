@@ -116,9 +116,10 @@ jobs:
 #            itr . 2>&1 | tee /tmp/dapps_itr.txt
 #            echo "--- [dapps] $(grep 'total:' /tmp/dapps_itr.txt | tail -1)"
 
+      - name: Define log
+        run: echo "LOG=$GITHUB_WORKSPACE/protocol/data/diagnostics.txt" >> $GITHUB_ENV
+
       - name: Write diagnostics log
-        env: 
-          LOG: $GITHUB_WORKSPACE/protocol/data/diagnostics.txt
         run: |
           pwd
           echo "I'm writing out to $LOG"
@@ -153,7 +154,7 @@ jobs:
         run: |
           git config user.name "$USER0_NAME"
           git config user.email "$USER0_EMAIL"
-          git add $GITHUB_WORKSPACE/data/diagnostics.txt
+          git add $LOG
           git commit -m "rat's diagnostic log [skip ci]" || echo "No changes to commit"
           git push
           echo "ur_mom"
