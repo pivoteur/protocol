@@ -1,2 +1,13 @@
-ur_mom
+=== RAT Diagnostics: Fri May 29 15:53:59 UTC 2026 ===
 
+--- [book] tarpaulin
+46.85% coverage, 349/745 lines covered
+
+--- [libs] tarpaulin
+81.83% coverage, 680/831 lines covered
+
+--- [quizzes] cargo make test-flow
+--- [quizzes] tarpaulin
+61.66% coverage, 542/879 lines covered
+
+--- [dapps] itr
