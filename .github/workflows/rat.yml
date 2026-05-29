@@ -75,6 +75,7 @@ jobs:
         working-directory: protocol/libs
         env:
           PIVOT_WALLET_ADDY: ${{ secrets.PIVOT_WALLET_ADDY }}
+          PIVOT_MORALIS_API_KEY: ${{ secrets.PIVOT_MORALIS_API_KEY }}
         run: |
             cargo tarpaulin 2>&1 | tee /tmp/libs_tarp.txt
             if grep -q 'test result: FAILED' /tmp/libs_tarp.txt; then
