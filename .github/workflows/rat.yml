@@ -73,6 +73,8 @@ jobs:
 
       - name: "[libs] cargo tarpaulin — libs"
         working-directory: protocol/libs
+        env:
+          PIVOT_WALLET_ADDY: ${{ secrets.PIVOT_WALLET_ADDY }}
         run: |
             cargo tarpaulin 2>&1 | tee /tmp/libs_tarp.txt
             if grep -q 'test result: FAILED' /tmp/libs_tarp.txt; then
@@ -130,12 +132,10 @@ jobs:
 
           echo "--- [book] tarpaulin" >> $LOG
           grep -E 'TESTS FAILED|All tests passed' /tmp/book_tarp.txt  | tail -1 >> $LOG || echo "  (no result)" >> $LOG
-          grep 'coverage' /tmp/book_tarp.txt | tail -1 >> $LOG || echo "  (no coverage)" >> $LOG
           echo "" >> $LOG
 
           echo "--- [libs] tarpaulin" >> $LOG
           grep -E 'TESTS FAILED|All tests passed' /tmp/libs_tarp.txt  | tail -1 >> $LOG || echo "  (no result)" >> $LOG
-          grep 'coverage' /tmp/libs_tarp.txt | tail -1 >> $LOG || echo "  (no coverage)" >> $LOG
           echo "" >> $LOG
 
           echo "--- [quizzes] cargo make test-flow" >> $LOG
@@ -143,7 +143,6 @@ jobs:
 
           echo "--- [quizzes] tarpaulin" >> $LOG
           grep -E 'TESTS FAILED|All tests passed' /tmp/quizzes_tarp.txt | tail -1 >> $LOG || echo "  (no result)" >> $LOG
-          grep 'coverage' /tmp/quizzes_tarp.txt | tail -1 >> $LOG || echo "  (no coverage)" >> $LOG
           echo "" >> $LOG
 
           echo "--- [dapps] itr" >> $LOG
