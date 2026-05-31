@@ -50,8 +50,8 @@ jobs:
  
       - name: Verify checkouts
         run: |
-            test -d protocol/.git      || (echo "ERROR: protocol not checked out" && exit 1)
-            test -d crypto-n-rust/.git || (echo "ERROR: crypto-n-rust not checked out" && exit 1)
+            test -d protocol/.git           || (echo "ERROR: protocol           not checked out" && exit 1)
+            test -d crypto-n-rust/.git      || (echo "ERROR: crypto-n-rust      not checked out" && exit 1)
             test -d pivoteur.github.io/.git || (echo "ERROR: pivoteur.github.io not checked out" && exit 1)
             echo "All checkouts verified."
 
@@ -65,21 +65,24 @@ jobs:
         run: |
             cargo tarpaulin 2>&1 | tee /tmp/book_tarp.txt
             if grep -q 'test result: FAILED' /tmp/book_tarp.txt; then
-              echo "--- [book] TESTS FAILED | $(grep 'coverage' /tmp/book_tarp.txt | tail -1)"
+              echo "--- [book] TESTS FAILED | $(grep 'coverage' /tmp/book_tarp.txt | tail -1)" | tee -a /tmp/book_tarp.txt
               exit 1
             else
-              echo "--- [book] All tests passed | $(grep 'coverage' /tmp/book_tarp.txt | tail -1)"
+              echo "--- [book] All tests passed | $(grep 'coverage' /tmp/book_tarp.txt | tail -1)" | tee -a /tmp/book_tarp.txt
             fi
 
       - name: "[libs] cargo tarpaulin — libs"
         working-directory: protocol/libs
+        env:
+          PIVOT_WALLET_ADDY: ${{ secrets.PIVOT_WALLET_ADDY }}
+          PIVOT_MORALIS_API_KEY: ${{ secrets.PIVOT_MORALIS_API_KEY }}
         run: |
             cargo tarpaulin 2>&1 | tee /tmp/libs_tarp.txt
             if grep -q 'test result: FAILED' /tmp/libs_tarp.txt; then
-              echo "--- [libs] TESTS FAILED | $(grep 'coverage' /tmp/libs_tarp.txt | tail -1)"
+              echo "--- [libs] TESTS FAILED | $(grep 'coverage' /tmp/libs_tarp.txt | tail -1)" | tee -a /tmp/libs_tarp.txt
               exit 1
             else
-              echo "--- [libs] All tests passed | $(grep 'coverage' /tmp/libs_tarp.txt | tail -1)"
+              echo "--- [libs] All tests passed | $(grep 'coverage' /tmp/libs_tarp.txt | tail -1)" | tee -a /tmp/libs_tarp.txt
             fi
 
       - name: "[quizzes] cargo make test-flow — quizzes"
@@ -87,10 +90,10 @@ jobs:
         run: |
             cargo make test-flow 2>&1 | tee /tmp/quizzes_test.txt
             if grep -q 'test result: FAILED' /tmp/quizzes_test.txt; then
-              echo "--- [quizzes] TESTS FAILED | $(grep 'test result' /tmp/quizzes_test.txt | tail -1)"
+              echo "--- [quizzes] TESTS FAILED | $(grep 'test result' /tmp/quizzes_test.txt | tail -1)" | tee -a /tmp/quizzes_test.txt
               exit 1
             else
-              echo "--- [quizzes] All tests passed | $(grep 'test result' /tmp/quizzes_test.txt | tail -1)"
+              echo "--- [quizzes] All tests passed | $(grep 'test result' /tmp/quizzes_test.txt | tail -1)" | tee -a /tmp/quizzes_test.txt
             fi
         
       - name: "[quizzes] cargo tarpaulin — quizzes"
@@ -98,10 +101,10 @@ jobs:
         run: |
             cargo tarpaulin 2>&1 | tee /tmp/quizzes_tarp.txt
             if grep -q 'test result: FAILED' /tmp/quizzes_tarp.txt; then
-              echo "--- [quizzes] TESTS FAILED | $(grep 'coverage' /tmp/quizzes_tarp.txt | tail -1)"
+              echo "--- [quizzes] TESTS FAILED | $(grep 'coverage' /tmp/quizzes_tarp.txt | tail -1)" | tee -a /tmp/quizzes_tarp.txt
               exit 1
             else
-              echo "--- [quizzes] All tests passed | $(grep 'coverage' /tmp/quizzes_tarp.txt | tail -1)"
+              echo "--- [quizzes] All tests passed | $(grep 'coverage' /tmp/quizzes_tarp.txt | tail -1)" | tee -a /tmp/quizzes_tarp.txt
             fi
     
       - name: Build itr
@@ -124,26 +127,27 @@ jobs:
 
       - name: Write diagnostics log
         run: |
-          echo "I'm writing out to $LOG"
-          echo "=== RAT Diagnostics: $(date -u) ===" > $LOG
+          echo "=== RAT Diagnostics Log ($(date -u)) ===" > $LOG
           echo "" >> $LOG
 
-          echo "--- [book] tarpaulin" >> $LOG
-          grep -E 'TESTS FAILED|All tests passed' /tmp/book_tarp.txt  | tail -1 >> $LOG || echo "  (no result)" >> $LOG
-          grep 'coverage' /tmp/book_tarp.txt | tail -1 >> $LOG || echo "  (no coverage)" >> $LOG
+          BOOK_VERDICT=$(grep -E 'TESTS FAILED|All tests passed' /tmp/book_tarp.txt | tail -1 | sed 's/--- \[book\] //')
+          echo "--- [book] tarpaulin --- ${BOOK_VERDICT:-no result}" >> $LOG
+          grep -A1 'failures:' /tmp/book_tarp.txt | grep '::' >> $LOG || true
           echo "" >> $LOG
 
-          echo "--- [libs] tarpaulin" >> $LOG
-          grep -E 'TESTS FAILED|All tests passed' /tmp/libs_tarp.txt  | tail -1 >> $LOG || echo "  (no result)" >> $LOG
-          grep 'coverage' /tmp/libs_tarp.txt | tail -1 >> $LOG || echo "  (no coverage)" >> $LOG
+          LIBS_VERDICT=$(grep -E 'TESTS FAILED|All tests passed' /tmp/libs_tarp.txt | tail -1 | sed 's/--- \[libs\] //')
+          echo "--- [libs] tarpaulin --- ${LIBS_VERDICT:-no result}" >> $LOG
+          grep -A1 'failures:' /tmp/libs_tarp.txt | grep '::' >> $LOG || true
           echo "" >> $LOG
 
-          echo "--- [quizzes] cargo make test-flow" >> $LOG
-          grep -E 'TESTS FAILED|All tests passed' /tmp/quizzes_test.txt | tail -1 >> $LOG || echo "  (no result)" >> $LOG
+          QUIZZES_TEST_VERDICT=$(grep -E 'TESTS FAILED|All tests passed' /tmp/quizzes_test.txt | tail -1 | sed 's/--- \[quizzes\] //')
+          echo "--- [quizzes] cargo make test-flow --- ${QUIZZES_TEST_VERDICT:-no result}" >> $LOG
+          grep -A1 'failures:' /tmp/quizzes_test.txt | grep '::' >> $LOG || true
+          echo "" >> $LOG
 
-          echo "--- [quizzes] tarpaulin" >> $LOG
-          grep -E 'TESTS FAILED|All tests passed' /tmp/quizzes_tarp.txt | tail -1 >> $LOG || echo "  (no result)" >> $LOG
-          grep 'coverage' /tmp/quizzes_tarp.txt | tail -1 >> $LOG || echo "  (no coverage)" >> $LOG
+          QUIZZES_TARP_VERDICT=$(grep -E 'TESTS FAILED|All tests passed' /tmp/quizzes_tarp.txt | tail -1 | sed 's/--- \[quizzes\] //')
+          echo "--- [quizzes] tarpaulin --- ${QUIZZES_TARP_VERDICT:-no result}" >> $LOG
+          grep -A1 'failures:' /tmp/quizzes_tarp.txt | grep '::' >> $LOG || true
           echo "" >> $LOG
 
           echo "--- [dapps] itr" >> $LOG
