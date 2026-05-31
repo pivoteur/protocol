@@ -1,18 +1,28 @@
 use book::{
    err_utils::ErrStr,
+   string_utils::{str2strf,words},
    types::filters::{ mk_whitelist, WhiteList },
-   utils::get_env
+   utils::{composer,get_env}
 };
 use super::{ utils::fetch_lines };
+use crate::paths::data_dir;
 
 pub async fn fetch_whitelist(auth: &str, file: &str)
       -> ErrStr<WhiteList<String>> {
    let aut = auth.to_uppercase();
    let root_url = get_env(&format!("{}_URL", aut))?;
-   let data_dir = get_env(&format!("{}_DATA_DIR", aut))?;
-   let file_name = format!("{root_url}/{data_dir}/{file}");
-   let text = fetch_lines(&file_name).await?;
-   Ok(mk_whitelist(text))
+   let file_name = format!("{}/{file}", data_dir(&root_url));
+   let lines = fetch_lines(&file_name).await?;
+
+   fn filter_0x(v: Vec<String>) -> Vec<String> {
+      v.into_iter().filter(|s| s.starts_with("0x")).collect()
+   }
+   let addys: Vec<String> =
+      lines.into_iter()
+           .map(composer(filter_0x,str2strf(words)))
+           .flatten()
+           .collect();
+   Ok(mk_whitelist(addys))
 }
 
 // ----- TESTS -------------------------------------------------------
@@ -22,7 +32,7 @@ pub async fn fetch_whitelist(auth: &str, file: &str)
 mod functional_tests {
    use super::*;
    use paste::paste;
-   use book::{ create_testing, utils::now };
+   use book::{ create_testing, csv_utils::CsvWriter, utils::now };
 
    create_testing!("fetchers::whitelist");
    run!("fetch_whitelist", {
@@ -36,7 +46,6 @@ mod functional_tests {
 #[cfg(not(tarpaulin_include))]
 mod tests {
    use super::*;
-   use book::{ csv_utils::CsvWriter, types::filters::PermissionList };
 
    #[tokio::test] async fn test_fetch_whitelist_ok() {
       let wl = fetch_whitelist("pivot", "pivot-token-addresses.txt").await;
