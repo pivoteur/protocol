@@ -175,4 +175,3 @@ jobs:
           git add $LOG
           git commit -m "rat's diagnostic log [skip ci]" || echo "No changes to commit"
           git push
-          
