@@ -131,22 +131,33 @@ jobs:
           echo "" >> $LOG
 
           BOOK_VERDICT=$(grep -E 'TESTS FAILED|All tests passed' /tmp/book_tarp.txt | tail -1 | sed 's/--- \[book\] //')
-          echo "--- [book] tarpaulin --- ${BOOK_VERDICT:-no result}" >> $LOG
+          BOOK_COV=$(grep 'coverage' /tmp/book_tarp.txt | tail -1 | grep -oP '[\d.]+(?=% coverage)')
+          BOOK_PASS=$(grep 'test result' /tmp/book_tarp.txt | tail -1 | grep -oP '\d+ passed')
+          BOOK_FAIL=$(grep 'test result' /tmp/book_tarp.txt | tail -1 | grep -oP '\d+ failed')
+          echo "--- [book] ${BOOK_VERDICT:-no result} | ${BOOK_COV:-?}% coverage | ${BOOK_PASS:-0 passed}, ${BOOK_FAIL:-0 failed}" >> $LOG
           grep -A1 'failures:' /tmp/book_tarp.txt | grep '::' >> $LOG || true
           echo "" >> $LOG
 
           LIBS_VERDICT=$(grep -E 'TESTS FAILED|All tests passed' /tmp/libs_tarp.txt | tail -1 | sed 's/--- \[libs\] //')
-          echo "--- [libs] tarpaulin --- ${LIBS_VERDICT:-no result}" >> $LOG
+          LIBS_COV=$(grep 'coverage' /tmp/libs_tarp.txt | tail -1 | grep -oP '[\d.]+(?=% coverage)')
+          LIBS_PASS=$(grep 'test result' /tmp/libs_tarp.txt | tail -1 | grep -oP '\d+ passed')
+          LIBS_FAIL=$(grep 'test result' /tmp/libs_tarp.txt | tail -1 | grep -oP '\d+ failed')
+          echo "--- [libs] ${LIBS_VERDICT:-no result} | ${LIBS_COV:-?}% coverage | ${LIBS_PASS:-0 passed}, ${LIBS_FAIL:-0 failed}" >> $LOG
           grep -A1 'failures:' /tmp/libs_tarp.txt | grep '::' >> $LOG || true
           echo "" >> $LOG
 
-          QUIZZES_TEST_VERDICT=$(grep -E 'TESTS FAILED|All tests passed' /tmp/quizzes_test.txt | tail -1 | sed 's/--- \[quizzes\] //')
-          echo "--- [quizzes] cargo make test-flow --- ${QUIZZES_TEST_VERDICT:-no result}" >> $LOG
+          QUIZZES_PASS=$(grep 'test result' /tmp/quizzes_test.txt | tail -1 | grep -oP '\d+ passed')
+          QUIZZES_FAIL=$(grep 'test result' /tmp/quizzes_test.txt | tail -1 | grep -oP '\d+ failed')
+          QUIZZES_VERDICT=$(grep -E 'TESTS FAILED|All tests passed' /tmp/quizzes_test.txt | tail -1 | sed 's/--- \[quizzes\] //')
+          echo "--- [quizzes] test-flow | ${QUIZZES_VERDICT:-no result} | ${QUIZZES_PASS:-0 passed}, ${QUIZZES_FAIL:-0 failed}" >> $LOG
           grep -A1 'failures:' /tmp/quizzes_test.txt | grep '::' >> $LOG || true
           echo "" >> $LOG
 
           QUIZZES_TARP_VERDICT=$(grep -E 'TESTS FAILED|All tests passed' /tmp/quizzes_tarp.txt | tail -1 | sed 's/--- \[quizzes\] //')
-          echo "--- [quizzes] tarpaulin --- ${QUIZZES_TARP_VERDICT:-no result}" >> $LOG
+          QUIZZES_TARP_COV=$(grep 'coverage' /tmp/quizzes_tarp.txt | tail -1 | grep -oP '[\d.]+(?=% coverage)')
+          QUIZZES_TARP_PASS=$(grep 'test result' /tmp/quizzes_tarp.txt | tail -1 | grep -oP '\d+ passed')
+          QUIZZES_TARP_FAIL=$(grep 'test result' /tmp/quizzes_tarp.txt | tail -1 | grep -oP '\d+ failed')
+          echo "--- [quizzes] coverage | ${QUIZZES_TARP_VERDICT:-no result} | ${QUIZZES_TARP_COV:-?}% coverage | ${QUIZZES_TARP_PASS:-0 passed}, ${QUIZZES_TARP_FAIL:-0 failed}" >> $LOG
           grep -A1 'failures:' /tmp/quizzes_tarp.txt | grep '::' >> $LOG || true
           echo "" >> $LOG
 
