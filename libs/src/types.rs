@@ -1,6 +1,12 @@
 /// Representation of tokens, blockchains, and their amounts
 pub mod tokens;
 
+/// a simple enumerated, jsonable, type
+pub mod blockchains;
+
+/// structure to fetch wallets from the blockchain
+pub mod wallets;
+
 /// A composition of two assets: a pivot pool
 pub mod comps;
 

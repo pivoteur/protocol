@@ -17,7 +17,7 @@ use super::{
       pivots::fetch_pivots,
       pool_names::fetch_pool_names,
       quotes::fetch_quotes,
-      wallets::fetch_wallet_balances,
+      wallets::fetch_wallets_balances,
       whitelist::fetch_whitelist
    },
    reports::{Proposal,mk_proposal},
@@ -26,7 +26,7 @@ use super::{
       measurable::sort_descending,
       pivots::{Pivot,next_close_id,partition_on},
       proposals::proposes::{Propose,propose as propose_f},
-      tokens::moralis::{as_pair,Blockchain::AVALANCHE},
+      tokens::moralis::as_pair,
       util::{Token,Pool,pool_name}
    }
 };
@@ -114,7 +114,7 @@ pub async fn compute_health(auth: &str, date: &NaiveDate, debug: bool)
 pub async fn process_wallet_balances(auth: &str, _debug: bool)
       -> ErrStr<HashMap<Token,f32>> {
    let aut = auth.to_uppercase();
-   let tokens = fetch_wallet_balances(&aut, AVALANCHE).await?;
+   let wallets = fetch_wallets_balances(&aut).await?;
    let whitelist = fetch_whitelist(&aut, "pivot-token-addresses.txt").await?;
    let mut toks = tokens.result;
    toks.retain(|t| whitelist.contains(t));

@@ -1,3 +1,4 @@
+use std::fmt;
 use serde::{ Serialize, Deserialize, Deserializer };
 use serde_json::Value;
 
@@ -9,12 +10,16 @@ use book::{
    string_utils::s,
    types::filters::Filter
 };
-use crate::types::{ measurable::{Measurable,tvl}, util::Token };
+use crate::types::{
+   blockchains::{Blockchain,Blockchain::*},
+   measurable::{Measurable,tvl},
+   util::Token
+};
 
 #[derive(Deserialize, Debug)]
 pub struct Tokens { pub result: Vec<TokenBalance> }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Hash, Eq)]
 pub struct TokenBalance {
     symbol: Token,
     balance: String,
@@ -23,6 +28,13 @@ pub struct TokenBalance {
 
     #[serde(deserialize_with = "parse_float_to_usd")]
     usd_price: USD
+}
+
+impl fmt::Display for Wallet {
+   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+      // Write the formatted string to the formatter buffer
+      write!(f, "{}", self.symbol)
+   }
 }
 
 pub fn mk_native_coin(sym: &str, bal: u128, quote: f32) -> TokenBalance {
@@ -53,27 +65,15 @@ pub fn mk_rpc_request(id: u32, method: &'static str, params: Value)
    RpcRequest { jsonrpc, id, method, params }
 }
 
-pub enum Blockchain { AVALANCHE, BINANCE, ETHEREUM }
-use Blockchain::*;
-
-impl Blockchain {
-   pub fn blockchain(&self) -> String {
-      s(match self {
-         AVALANCHE => "avalanche", BINANCE => "bsc", ETHEREUM => "eth" })
-   }
-   pub fn node(&self) -> String {
-      format!("{} Mainnet", match self {
-         AVALANCHE => "Avalanche",
-         BINANCE   => "BNB Smart Chain",
-         ETHEREUM  => "Ethereum" })
-   }
-   pub fn protocol_token(&self) -> String {
-      s(match self { AVALANCHE => "AVAX", BINANCE => "BNB", ETHEREUM => "ETH" })
-   }
-   pub fn url(&self) -> String {
-      format!("https://site1.moralis-nodes.com/{}", self.blockchain())
-      // site2 is an alternative
-   }
+pub fn node(b: &Blockchain) -> String {
+   format!("{} Mainnet", match b {
+      AVALANCHE => "Avalanche",
+      BINANCE   => "BNB Smart Chain",
+      ETHEREUM  => "Ethereum" })
+}
+pub fn url(b: &Blockchain) -> String {
+   format!("https://site1.moralis-nodes.com/{}", self.blockchain())
+   // site2 is an alternative
 }
 
 fn protocol_token_address() -> String {

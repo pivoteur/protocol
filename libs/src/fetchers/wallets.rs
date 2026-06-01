@@ -1,14 +1,17 @@
 use reqwest::header::{ HeaderMap, HeaderValue };
+use serde_json::from_str;
 
 use book::{
    err_utils::{ErrStr,err_or},
-   utils::get_env
+   utils::{ get_env, now }
 };
 use crate::{
    paths::tsv_url,
    tables::{IxTable,index_table},
    types::{
-      tokens::moralis::{Tokens,Blockchain}
+      blockchains::Blockchain,
+      tokens::moralis::Tokens,
+      wallets::Wallet
    }
 };
 use super::utils::fetch_lines;
@@ -16,15 +19,14 @@ use super::utils::fetch_lines;
 // ----- WALLETS ----------------------------------------------------
 
 /// This fetches alles the wallets from github (manually updated for now)
-pub async fn fetch_wallets(root_url: &str) -> ErrStr<IxTable> {
+pub async fn fetch_wallets_table(root_url: &str) -> ErrStr<IxTable> {
    let url = tsv_url(root_url, "wallets");
    let lines = fetch_lines(&url).await?;
    index_table(lines)
 }
 
 // Function to fetch native balance (e.g., ETH, MATIC)
-pub async fn fetch_wallet_balances(auth: &str, ch: Blockchain)
-      -> ErrStr<Tokens> {
+pub fn fetch_wallets_balances(auth: &str) -> ErrStr<HashMap<Wallet, Tokens>> {
 
 /*
 This function models the following cURL command:
@@ -34,25 +36,34 @@ curl --request GET \
   --header 'X-API-Key: test'
 */
 
-    let chain = ch.blockchain();
-    let aut = auth.to_uppercase();
-    let address = get_env(&format!("{aut}_WALLET_ADDY"))?;
-    let api_key = get_env(&format!("{aut}_MORALIS_API_KEY"))?;
+   let aut = auth.to_uppercase();
+   let addresses = get_env(&format!("{aut}_WALLET_ADDY"))?;
+   let api_key = get_env(&format!("{aut}_MORALIS_API_KEY"))?;
+   let wallets = from_str<Vec<Wallet>>(addresses)?;
+   let c = reqwest::Client::new();
+   let tokensz = filter_map_or(fetch_wallet_balances(c, api_key), wallets)?;
+   Ok(wallets.into_iter().zip(tokensz.into_iter()).collect())
+}
 
-    let url0 = "https://deep-index.moralis.io/api/v2.2/wallets";
-    let url = format!("{url0}/{address}/tokens?chain={chain}");
-    let mut headers = HeaderMap::new();
-    let api_hdr = err_or(HeaderValue::from_str(&api_key),
-                         "Cannot insert MORALIS_API_KEY into header")?;
-    headers.insert("X-API-Key", api_hdr);
+fn fetch_wallet_balances(api_key: &str)
+      -> impl Fn(Client, Wallet) -> ErrStr<Tokens> {
+   move | client: Client, w: Wallet | {
+      let chain = w.blockchain.blockchain();
+      let address = &w.address;
+      let url0 = "https://deep-index.moralis.io/api/v2.2/wallets";
+      let url = format!("{url0}/{address}/tokens?chain={chain}");
+      let mut headers = HeaderMap::new();
+      let api_hdr = err_or(HeaderValue::from_str(&api_key),
+                           "Cannot insert MORALIS_API_KEY into header")?;
+      headers.insert("X-API-Key", api_hdr);
 
-    let client = reqwest::Client::new();
-    let res = 
-       err_or(client.get(&url).headers(headers).send().await,
-              "Failed to send reqwest to moralis.io")?;
-    let toks: Tokens =
-       err_or(res.json().await, "Cannot convert response from JSON")?;
-    Ok(toks)
+      let res = 
+         err_or(now(client.get(&url).headers(headers).send()),
+                "Failed to send reqwest to moralis.io")?;
+      let toks: Tokens =
+         err_or(now(res.json()), "Cannot convert response from JSON")?;
+      Ok(toks)
+   }
 }
 
 // ----- TESTS -------------------------------------------------------
@@ -79,9 +90,9 @@ mod functional_tests {
 
    create_testing!("fetchers::wallets");
 
-   run!("fetch_wallets", " (fetch all wallets from github)", {
+   run!("fetch_wallets_table", " (fetch all wallets from github)", {
       let (root_url, _aliases) = marshall()?;
-      let wallets = now(fetch_wallets(&root_url))?;
+      let wallets = now(fetch_wallets_table(&root_url))?;
       println!("The wallets for {root_url} are:\n\n{}\n",
                wallets.as_csv());
    });
@@ -97,10 +108,7 @@ mod functional_tests {
    });
 
    async fn iter_chains_on(whitelist: impl Container<String>) -> ErrStr<()> {
-      let chains = [AVALANCHE];
-      for chain in chains {
-         println!("\n=== Chain: {} ===", chain.blockchain());
-         let tokens =
+      let tokens =
             match fetch_wallet_balances("pivot", chain).await {
                Ok(x) => x,
                Err(y) => panic!("Error: {y}")
@@ -124,7 +132,7 @@ mod tests {
    use crate::fetchers::test_helpers::test_functions::marshall;
 
    #[tokio::test]
-   async fn test_fetch_wallets_ok() -> ErrStr<()> {
+   async fn test_fetch_wallets_table_ok() -> ErrStr<()> {
       let (root_url, _aliases) = marshall()?;
       let ans = fetch_wallets(&root_url).await;
       assert!(ans.is_ok());

@@ -4,6 +4,7 @@ use book::{ currency::usd::USD, err_utils::ErrStr };
 
 pub type Id = usize;
 pub type Token = String;
+pub type Address = String;
 
 pub type Pool = (Token, Token);
 pub fn mk_pool(a: &str, b: &str) -> Pool {
