@@ -17,6 +17,7 @@ where:
 
 ## Revision history
 
+* 1.02, 2026-06-01: Moved functionality to processing-module in libs.
 * 1.01, 2026-05-26: Added debugging-flow to pool-processing.
 * 1.00, 2026-05-17: release
 
