@@ -1,8 +1,8 @@
 use book::{err_utils::ErrStr,utils::{get_env,get_args}};
 use libs::{
    fetchers::assets::pool::fetch_assets,
-   reports::{print_table,header},
-   types::aliases::aliases
+   reports::print_table,
+   types::{ aliases::aliases, util::{mk_pool,pool_name} }
 };
 
 fn version() -> String { "0.01".to_string() }
@@ -31,7 +31,8 @@ async fn fetch_pool_assets(auth: &str, prim: &str, piv: &str)
    let aliases = aliases();
    let root = get_env(&format!("{}_URL", auth.to_uppercase()))?;
    let og = fetch_assets(&root, &prim, &piv, &aliases).await?;
-   print_table(&format!("{} assets", header(&prim, &piv)), &[og]);
+   let p0 = mk_pool(&prim, &piv);
+   print_table(&format!("{} assets", pool_name(&p0)), &[og]);
    Ok(1)
 }
 

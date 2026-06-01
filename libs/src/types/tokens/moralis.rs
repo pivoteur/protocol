@@ -4,17 +4,19 @@ use serde_json::Value;
 use book::{
    currency::usd::{ USD,mk_usd },
    csv_utils::{CsvWriter,CsvHeader },
+   err_utils::ErrStr,
+   num_utils::parse_num,
    string_utils::s,
    types::filters::Filter
 };
-use crate::types::measurable::{Measurable,tvl};
+use crate::types::{ measurable::{Measurable,tvl}, util::Token };
 
 #[derive(Deserialize, Debug)]
 pub struct Tokens { pub result: Vec<TokenBalance> }
 
 #[derive(Deserialize, Debug)]
 pub struct TokenBalance {
-    symbol: String,
+    symbol: Token,
     balance: String,
     decimals: Option<u8>,
     token_address: String,
@@ -117,6 +119,10 @@ impl TokenBalance {
          Err(_) => s(raw_balance)
       }
    }
+}
+
+pub fn as_pair(t: &TokenBalance) -> ErrStr<(Token, f32)> {
+   Ok((t.symbol.clone(), parse_num(&t.bal())?))
 }
 
 fn parse_float_to_usd<'de, D>(deserializer: D) -> Result<USD, D::Error>

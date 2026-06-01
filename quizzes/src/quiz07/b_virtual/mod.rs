@@ -12,14 +12,14 @@ use libs::{
    collections::assets::{Assets,mk_assets,assets_by_price},
    fetchers::{ quotes::fetch_quotes, pivots::fetch_pivots},
    paths::pivot_pool_from_file,
-   reports::{header,total_line,print_tsv_table_d},
+   reports::{total_line,print_tsv_table_d},
    types::{
       tokens::coins::{Coin,mk_coin},
       comps::{Composition,mk_composition},
       measurable::{Measurable,tvl},
       pivots::{Pivot,recompute_pivot},
       quotes::Quotes,
-      util::{Blockchain,Token,Pool,mk_pool}
+      util::{Blockchain,Token,Pool,mk_pool,pool_name}
    }
 };
 
@@ -71,7 +71,6 @@ async fn update_virtual_pivots(protocol: &str, dt: &str, path: &str,
    let (p0, p1) = pivot_pool_from_file(path)?;
    let pri = p0.to_uppercase();
    let piv = p1.to_uppercase();
-   let pool_name = header(&pri, &piv);
    let pool = mk_pool(&pri, &piv);
    let auth = protocol.to_uppercase();
    let root_url = get_env(&format!("{auth}_URL"))?;
@@ -81,6 +80,7 @@ async fn update_virtual_pivots(protocol: &str, dt: &str, path: &str,
    let (pivots, _mx) = fetch_pivots(&root_url, &pri, &piv, truz).await?;
    let (all_opns, cls) = pivots;
    let (virts, opns) = partition_virtual_pivots(all_opns);
+   let pn = pool_name(&pool);
 
    if debug {
       if !virts.is_empty() {
@@ -92,10 +92,10 @@ async fn update_virtual_pivots(protocol: &str, dt: &str, path: &str,
             let comp = mk_composition(pr, pv);
             report_on_assets(&[comp], &virts);
          } else {
-            panic!("Not two assets in {pool_name} Assets: {:?}", abp)
+            panic!("Not two assets in {pn} Assets: {:?}", abp)
          }
       } else {
-         println!("Pivot pool {pool_name} has no virtual pivots.");
+         println!("Pivot pool {pn} has no virtual pivots.");
       }
    }
 
@@ -107,7 +107,7 @@ async fn update_virtual_pivots(protocol: &str, dt: &str, path: &str,
                       .chain(new_virts.into_iter()))
                       .collect();
    new_opens.sort_by(|a,b| a.index().cmp(&b.index()));
-   tabl(&format!("{pool_name} pivots"), &new_opens, 3, debug);
+   tabl(&format!("{pn} pivots"), &new_opens, 3, debug);
    Ok(())
 }
 

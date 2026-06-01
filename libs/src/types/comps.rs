@@ -22,7 +22,8 @@ pub struct Composition {
 }
 
 #[cfg(test)]
-mod test_data {
+#[cfg(not(tarpaulin_include))]
+pub mod test_data {
    use book::err_utils::ErrStr;
    use super::{ Composition, mk_composition, from_assets };
    use crate::{
@@ -75,6 +76,7 @@ mod asset_ordering {
    }
 
    #[cfg(test)]
+   #[cfg(not(tarpaulin_include))]
    mod tests {
       use super::*;
       use crate::types::{ comps::test_data::*, util::{ Pool, pool_from_str } };

@@ -1,16 +1,24 @@
+use std::collections::HashMap;
+
 use chrono::NaiveDate;
 
 use book::{
    date_utils::parse_date,
-   err_utils::{ErrStr,not_implemented},
-   utils::get_env
+   err_utils::ErrStr,
+   list_utils::filter_map_or,
+   num::floats::mk_safe_float,
+   types::filters::Container,
+   utils::{get_env, deref}
 };
 
 use super::{
    fetchers::{
+      assets::pool::fetch_available_assets,
       pivots::fetch_pivots,
+      pool_names::fetch_pool_names,
       quotes::fetch_quotes,
-      pool_names::fetch_pool_names
+      wallets::fetch_wallet_balances,
+      whitelist::fetch_whitelist
    },
    reports::{Proposal,mk_proposal},
    types::{
@@ -18,11 +26,12 @@ use super::{
       measurable::sort_descending,
       pivots::{Pivot,next_close_id,partition_on},
       proposals::proposes::{Propose,propose as propose_f},
-      util::{Token,Pool}
+      tokens::moralis::{as_pair,Blockchain::AVALANCHE},
+      util::{Token,Pool,pool_name}
    }
 };
 
-// ---- Proposals -------------------------------------------------------
+// ---- PROPOSALS -------------------------------------------------------
 
 pub async fn process_pools(auth_name: &str, dt: &str)
       -> ErrStr<(Vec<Proposal>, Vec<Pool>)> {
@@ -79,20 +88,44 @@ fn propose(proposer: impl Fn(Ixs<Pivot>) -> ErrStr<Option<Ix<Propose>>>,
    Ok(props)
 }
 
-// ---- Available assets ---------------------------------------------
+// ----- AVAILABLE ASSETS ---------------------------------------------
 
-// we transition between composition and pivots and back
+pub async fn compute_health(auth: &str, date: &NaiveDate, debug: bool)
+      -> ErrStr<Vec<Composition>> {
+   if debug { println!("Computing pivot pool health"); }
+   let aut = auth.to_uppercase();
+   let root_url = get_env(&format!("{aut}_URL"))?;
+   let pools = fetch_pool_names(&root_url).await?;
+   let quotes = fetch_quotes(date).await?;
+   let mut ans = Vec::new();
+   for pool in pools {
+      if debug { println!("Computing health for pool {}", pool_name(&pool)); }
+      let comp = fetch_available_assets(auth, &quotes, &pool).await?;
+      ans.push(comp);
+   }
+   ans.sort_by_key(|c| mk_safe_float(&c.tvl().amount));
+   Ok(ans)
+}
 
-pub fn available_assets(_asset: Composition, _open_pivots: &Vec<Pivot>)
-      -> ErrStr<Composition> {
-   not_implemented("available_assets")
+// ----- WALLET TOKENS ------------------------------------------------
+
+// we process tokens, sieving them through the whitelist (getting rid of junk)
+
+pub async fn process_wallet_balances(auth: &str, _debug: bool)
+      -> ErrStr<HashMap<Token,f32>> {
+   let aut = auth.to_uppercase();
+   let tokens = fetch_wallet_balances(&aut, AVALANCHE).await?;
+   let whitelist = fetch_whitelist(&aut, "pivot-token-addresses.txt").await?;
+   let mut toks = tokens.result;
+   toks.retain(|t| whitelist.contains(t));
+   Ok(filter_map_or(deref(as_pair), toks)?.into_iter().collect())
 }
 
 // ----- TESTS -------------------------------------------------------
 
 #[cfg(test)]
 #[cfg(not(tarpaulin_include))]
-pub mod functional_tests {
+mod functional_tests {
    use super::*;
    use paste::paste;
    use book::{
@@ -100,8 +133,7 @@ pub mod functional_tests {
       date_utils::yesterday,
       utils::now
    };
-   use crate::{ reports::print_table, types::util::pool_name };
-
+   use crate::{ reports::{print_table,report_health}, types::util::pool_name };
 
    create_testing!("processors");
 
@@ -113,25 +145,30 @@ pub mod functional_tests {
       let ps: Vec<String> = nixen.iter().map(pool_name).collect();
       println!("Pools with no calls:\n\n{}", ps.join("\t"));
    });
+
+   run!("compute_health", {
+      let yday = yesterday();
+      let comps = now(compute_health("pivot", &yday, true))?;
+      report_health(yday, comps);
+   });
 }
 
 #[cfg(test)]
 #[cfg(not(tarpaulin_include))]
 mod tests {
+   use std::collections::HashSet;
    use super::*;
    use crate::fetchers::test_helpers::test_functions::marshall;
-   use book::date_utils::yesterday;
+   use book::{ date_utils::yesterday, utils::get_env };
 
    fn yday() -> String { format!("{}", yesterday()) }
 
-   #[tokio::test]
-   async fn fail_process_pools() {
+   #[tokio::test] async fn fail_process_pools() {
       let ans = process_pools("asdf", &yday()).await;
       assert!(ans.is_err());
    }
 
-   #[tokio::test]
-   async fn test_process_pools_ok() {
+   #[tokio::test] async fn test_process_pools_ok() {
       let ans = process_pools("pivot", &yday()).await;
       assert!(ans.is_ok());
    }
@@ -145,6 +182,46 @@ mod tests {
       let cnn = calls.len() + neins.len();
       assert!(cnn >= npools,
               "Number of pools: {npools}; calls and no-calls: {cnn}");
+      Ok(())
+   }
+
+   #[tokio::test] async fn fail_process_wallet_balances() {
+      let ans = process_wallet_balances("asdf", false).await;
+      assert!(ans.is_err());
+   }
+
+   #[tokio::test] async fn test_process_wallet_balances_ok() {
+      let ans = process_wallet_balances("pivot", true).await;
+      assert!(ans.is_ok());
+   }
+
+   #[tokio::test] async fn test_process_wallet_balances_has_values()
+         -> ErrStr<()> {
+      let ans = process_wallet_balances("pivot", true).await?;
+      assert!(!ans.is_empty());
+     Ok(())
+   }
+
+   #[tokio::test] async fn test_compute_health_ok() {
+      assert!(compute_health("pivot", &yesterday(), false).await.is_ok());
+   }
+
+   #[tokio::test] async fn test_compute_health_all_pools_with_debug()
+         -> ErrStr<()> {
+      let yday = yesterday();
+      let auth = "PIVOT";
+      let root_url = get_env(&format!("{auth}_URL"))?;
+      let npools = fetch_pool_names(&root_url).await?;
+      let pool_names: HashSet<String> = npools.iter().map(pool_name).collect();
+      let assets = compute_health(auth, &yday, true).await?;
+      let al = &assets.len();
+      let pl = &pool_names.len();
+      assert_eq!(pl, al, "Assets {al} do not equal pools {pl}!");
+      for a in assets {
+         let asset = a.pool_name();
+         assert!(pool_names.contains(&asset),
+                 "I do not know this pool: {asset}");
+      }
       Ok(())
    }
 }

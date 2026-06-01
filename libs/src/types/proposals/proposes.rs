@@ -185,23 +185,34 @@ pub fn propose(q: &Quotes)
 
 #[cfg(test)]
 #[cfg(not(tarpaulin_include))]
-pub mod functional_tests {
+pub mod test_data {
    use super::*;
-   use paste::paste;
    use crate::types::{
       assets::amounts::mk_amt,
       quotes::functional_tests::test_mk_quotes,
       pivots::functional_tests::mk_btc_usdc_piv
    };
+
+   pub fn btc_usdc_proposal() -> ErrStr<Option<(Propose, usize)>> {
+      let piv = mk_btc_usdc_piv(78408.88,mk_amt(0.0,0.1),0,"virtual pivot")?;
+      let quotes = test_mk_quotes(&[("BTC", 65000.0)]);
+      let proposer = propose(&quotes);
+      proposer((vec![piv], 1))
+   }
+}
+
+#[cfg(test)]
+#[cfg(not(tarpaulin_include))]
+mod functional_tests {
+   use super::*;
+   use super::test_data::btc_usdc_proposal;
+   use paste::paste;
    use book::create_testing;
 
    create_testing!("types::proposals::proposes");
 
    run!("propose", {
-      let piv = mk_btc_usdc_piv(78408.88,mk_amt(0.0,0.1),0,"virtual pivot")?;
-      let quotes = test_mk_quotes(&[("BTC", 65000.0)]);
-      let proposer = propose(&quotes);
-      if let Some((call, next_id)) = proposer((vec![piv], 1))? {
+      if let Some((call, next_id)) = btc_usdc_proposal()? {
          println!("call:\n{}\n{}\n\nnext_id: {next_id}",
                   call.header(), call.as_csv());
       } else {

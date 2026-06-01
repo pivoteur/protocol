@@ -12,7 +12,8 @@ use libs::{
       pool_names::fetch_pool_names,
       pivots::fetch_open_pivots
    },
-   reports::{header,print_table}
+   reports::print_table,
+   types::util::{mk_pool,pool_name}
 };
 
 async fn list_quotes_and_assets(args: Vec<String>) -> ErrStr<()> {
@@ -28,7 +29,8 @@ async fn list_quotes_and_assets(args: Vec<String>) -> ErrStr<()> {
       let pool_names = fetch_pool_names(&root_url).await?;
       for (pri, piv) in pool_names {
          let pool = fetch_assets(&root_url, &pri, &piv, aliases).await?;
-         print_table(&format!("Pool {}:", header(&pri, &piv)), &[pool]);
+         let p0 = mk_pool(&pri, &piv);
+         print_table(&format!("Pool {}:", pool_name(&p0)), &[pool]);
          let (open_pivs, _) =
             fetch_open_pivots(&root_url, &pri, &piv, aliases).await?;
          print_table("Open Pivots:", &open_pivs);
