@@ -146,10 +146,10 @@ jobs:
           grep -A1 'failures:' /tmp/libs_tarp.txt | grep '::' >> $LOG || true
           echo "" >> $LOG
 
-          QUIZZES_PASS=$(grep 'test result' /tmp/quizzes_test.txt | tail -1 | grep -oP '\d+ passed')
-          QUIZZES_FAIL=$(grep 'test result' /tmp/quizzes_test.txt | tail -1 | grep -oP '\d+ failed')
+          QUIZZES_PASS=$(grep 'test result: ok' /tmp/quizzes_test.txt | grep -v '^test result: ok. 0 passed' | tail -1 | grep -oP '\d+ passed')
+          QUIZZES_FAIL=$(grep 'test result' /tmp/quizzes_test.txt | grep -v '^test result: ok. 0 passed' | tail -1 | grep -oP '\d+ failed')
           QUIZZES_VERDICT=$(grep -E 'TESTS FAILED|All tests passed' /tmp/quizzes_test.txt | tail -1 | sed 's/--- \[quizzes\] //')
-          echo "--- [quizzes] test-flow | ${QUIZZES_VERDICT:-no result} | ${QUIZZES_PASS:-0 passed}, ${QUIZZES_FAIL:-0 failed}" >> $LOG
+          echo "--- [quizzes] make test-flow | ${QUIZZES_VERDICT:-no result} | ${QUIZZES_PASS:-0 passed}, ${QUIZZES_FAIL:-0 failed}" >> $LOG
           grep -A1 'failures:' /tmp/quizzes_test.txt | grep '::' >> $LOG || true
           echo "" >> $LOG
 
