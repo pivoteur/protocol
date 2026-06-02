@@ -63,10 +63,10 @@ pub fn parse_row(table: &IxTable, ix: usize, tx_id: &str, new_to_actual: &str) -
     let to_quote     = col_opt("proposed_close_price")?;
     //----- formulas for the correct headers -----------
     let sum_amt_virt    = amount1 + virtual_;
-    let vol             = mk_usd(trade * from_quote.amount);
+    let vol             = mk_usd(trade * from_quote.amount());
     let gain_10_percent = sum_amt_virt * 1.1;
     let gain            = actual - sum_amt_virt;
-    let gain_total_usd  = mk_usd(gain * to_quote.amount);
+    let gain_total_usd  = mk_usd(gain * to_quote.amount());
     let roi_val         = if sum_amt_virt != 0.0 { gain / sum_amt_virt } else { 0.0 };
     let days            = (date - opened).num_days();
     if days < 0 {

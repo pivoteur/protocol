@@ -167,7 +167,7 @@ mod tests {
    async fn test_fetch_assets() -> ErrStr<()> {
       let (root_url, a) = marshall()?;
       let assets = fetch_assets(&root_url, "btc", "eth", &a).await?;
-      assert!(assets.tvl().amount > 0.0);
+      assert!(assets.tvl().amount() > 0.0);
       assert_eq!("BTC+ETH", assets.pool_name());
       Ok(())
    }

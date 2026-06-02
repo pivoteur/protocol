@@ -203,7 +203,7 @@ mod tests {
          ((a - b) / b).abs() < 0.01
       }
       let tvlsz = tvls(&virts) + tvls(&opns);
-      assert!(around(tvls(&all_opns).amount, tvlsz.amount));
+      assert!(around(tvls(&all_opns).amount(), tvlsz.amount()));
       Ok(())
    }
 
