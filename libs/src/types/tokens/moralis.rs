@@ -87,7 +87,7 @@ impl Measurable for TokenBalance {
       let bal = self.bal();
       bal.parse().expect(&format!("{} is not a number", bal))
    }
-   fn aug(&self) -> f32 { self.usd_price.amount }
+   fn aug(&self) -> f32 { self.usd_price.amount() }
 }
 
 impl CsvHeader for TokenBalance {

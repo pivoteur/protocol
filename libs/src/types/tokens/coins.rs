@@ -34,7 +34,7 @@ impl AddAssign<f32> for Coin {
 
 impl Measurable for Coin {
    fn sz(&self) -> f32 { self.amount }
-   fn aug(&self) -> f32 { self.quote.amount }
+   fn aug(&self) -> f32 { self.quote.amount() }
 }
 
 impl CsvHeader for Coin {

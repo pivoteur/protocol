@@ -99,7 +99,7 @@ mod tests {
       let piv_price = f("pivot_close_price");
       let pp: USD = err_or(piv_price.parse(),
                            "Cannot parse USD from {piv_price}")?;
-      assert!(pp.amount > 0.0);
+      assert!(pp.amount() > 0.0);
       Ok(())
    }
 }

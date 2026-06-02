@@ -45,14 +45,14 @@ impl Asset {
 
 impl Measurable for Asset {
    fn sz(&self) -> f32 { self.amount.amount() }
-   fn aug(&self) -> f32 { self.quote.amount }
+   fn aug(&self) -> f32 { self.quote.amount() }
 }
 
 impl CsvWriter for Asset {
    fn ncols(&self) -> usize { 1 + 1 + self.amount.ncols() + 1 + 1}
    fn as_csv(&self) -> String {
       let qt = &self.quote;
-      let total = mk_usd(qt.amount * self.sz());
+      let total = mk_usd(qt.amount() * self.sz());
       format!("{},{},{},{},{}",
               self.token,self.blockchain,self.amount.as_csv(),qt,total)
    }
@@ -168,7 +168,7 @@ pub mod functional_tests {
 
    pub fn assert_price(a: &Asset, est: f32) {
       let q1 = &a.quote;
-      let qe1 = mk_estimate(q1.amount);
+      let qe1 = mk_estimate(q1.amount());
       let tok = &a.token;
       assert!(qe1.approximates(est), "{tok} price ({q1}) isn't ${est}");
    }
