@@ -154,7 +154,7 @@ impl Composition {
 }
 
 impl Measurable for Composition {
-   fn sz(&self) -> f32 { self.tvl().amount }
+   fn sz(&self) -> f32 { self.tvl().amount() }
    fn aug(&self) -> f32 { 1.0 }
 }
 

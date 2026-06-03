@@ -84,7 +84,7 @@ pub struct Asset {
 impl CsvWriter for Asset {
    fn ncols(&self) -> usize { 1 + self.amount.ncols() + 1 + 1}
    fn as_csv(&self) -> String {
-      let total = mk_usd(self.quote.amount * amount(&self.amount));
+      let total = mk_usd(self.quote.amount() * amount(&self.amount));
       format!("{},{},{},{}", self.token,self.amount.as_csv(),self.quote,total)
    }
 }
