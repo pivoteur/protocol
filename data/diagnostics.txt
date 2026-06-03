@@ -1,12 +1,12 @@
-=== RAT Diagnostics Log (Tue Jun  2 06:16:29 UTC 2026) ===
+=== RAT Diagnostics Log (Wed Jun  3 06:31:16 UTC 2026) ===
 
---- [book] tarpaulin --- All tests passed | 47.81% coverage, 361/755 lines covered
+ All tests passed | 47.64% coverage | 151 passed passed, 0 failed failed | lines: 364/764
 
---- [libs] tarpaulin --- All tests passed | 80.86% coverage, 718/888 lines covered
+ All tests passed | 80.74% coverage | 138 passed passed, 0 failed failed | lines: 717/888
 
 --- [quizzes] test-flow | All tests passed | 119 passed passed, 0 failed failed
 
---- [quizzes] All tests passed | 61.26% coverage | 119 passed passed, 0 failed failed
+ All tests passed | 61.26% coverage | 119 passed passed, 0 failed failed | lines: 544/888
 
 --- [dapps] itr
 total: 12/12
