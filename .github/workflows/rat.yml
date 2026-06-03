@@ -136,7 +136,7 @@ jobs:
             local pass=$(grep 'test result' $file | grep -oP '\d+(?= passed)' | sort -n | tail -1)
             local fail=$(grep 'test result' $file | grep -oP '\d+(?= failed)' | sort -n | tail -1)
             local lines=$(grep -oP '\d+/\d+(?= lines)' $file | tail -1)
-            local status=$(grep -qE "^--- \[$label\] TESTS FAILED" $file && echo 'TESTS FAILED' || echo 'All tests passed')
+            local status=$(grep -qE "--- \[$label\] TESTS FAILED" $file && echo 'TESTS FAILED' || echo 'All tests passed')
             echo "--- [$label] ${status} | ${cov:-?}% coverage | ${pass:-0} passed, ${fail:-0} failed | lines: ${lines:-?}" >> $LOG
             grep -A1 'failures:' $file | grep '::' >> $LOG || true
             echo "" >> $LOG
