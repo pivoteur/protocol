@@ -49,7 +49,7 @@ async fn compute_health(auth: &str, date: &NaiveDate, debug: bool)
       let comp = fetch_available_assets(auth, &quotes, &pool).await?;
       ans.push(comp);
    }
-   ans.sort_by_key(|c| mk_safe_float(&c.tvl().amount));
+   ans.sort_by_key(|c| mk_safe_float(&c.tvl().amount()));
    Ok(ans)
 }
 
