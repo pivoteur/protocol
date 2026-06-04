@@ -7,9 +7,10 @@ use book::{
 
 use crate::types::{
    assets::asset_types::{AssetType,AssetType::*},
-   util::{Token,Blockchain,Pool},
+   blockchains::Blockchain,
    measurable::{Measurable,weight,size},
-   tokens::coins::{Coin,mk_coin}
+   tokens::coins::{Coin,mk_coin},
+   util::{Token,Pool}
 };
 
 #[derive(Debug, Clone)]

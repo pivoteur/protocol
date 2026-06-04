@@ -6,10 +6,11 @@ use book::{
 };
 
 use crate::types::{
-   tokens::coins::Coin,
+   blockchains::Blockchain,
    measurable::{Measurable,sort_by_tvl,sort_by_weight},
    quotes::Quotes,
-   util::{Token,Blockchain}
+   tokens::coins::Coin,
+   util::Token
 };
 
 /// An Assets (a singular collection of a plurality of assets) is a bag

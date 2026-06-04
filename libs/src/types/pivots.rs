@@ -12,12 +12,13 @@ use super::{
       assets::{Asset,parse_asset,recompute_assets,gain_10_percent,trade},
       asset_types::AssetType::{FROM,TO}
    },
+   blockchains::Blockchain,
    headers::{Header, next_close_id as closer, parse_header},
    tokens::coins::Coin,
    measurable::Measurable,
    proposals::prop_assets::PropAsset,
    quotes::Quotes,
-   util::{Blockchain,Id}
+   util::Id
 };
 
 // ----- PIVOT types -------------------------------------------------------

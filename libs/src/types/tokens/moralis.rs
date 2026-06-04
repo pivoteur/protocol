@@ -17,9 +17,10 @@ use crate::types::{
 };
 
 #[derive(Deserialize, Debug)]
-pub struct Tokens { pub result: Vec<TokenBalance> }
+pub struct Tokens { result: Vec<TokenBalance> }
+pub fn results(t: &Tokens) -> Vec<TokenBalance> { t.result.clone() }
 
-#[derive(Deserialize, Debug, Hash, Eq)]
+#[derive(Clone, Deserialize, Debug, Hash, PartialEq)]
 pub struct TokenBalance {
     symbol: Token,
     balance: String,
@@ -30,55 +31,14 @@ pub struct TokenBalance {
     usd_price: USD
 }
 
-impl fmt::Display for Wallet {
+impl Eq for TokenBalance { }
+
+impl fmt::Display for TokenBalance {
    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
       // Write the formatted string to the formatter buffer
       write!(f, "{}", self.symbol)
    }
-}
-
-pub fn mk_native_coin(sym: &str, bal: u128, quote: f32) -> TokenBalance {
-   TokenBalance {
-      symbol: s(sym),
-      balance: format!("{bal}"),
-      decimals: None,
-      token_address: protocol_token_address(),
-      usd_price: mk_usd(quote)
-   }
-}
-
-// a type to send the RPC request for the wallet-information
-// Generic envelope for JSON-RPC requests
-
-#[derive(Debug,Serialize)]
-pub struct RpcRequest {
-    jsonrpc: &'static str,
-    id: u32,
-    method: &'static str,
-    params: Value,
-}
-
-pub fn mk_rpc_request(id: u32, method: &'static str, params: Value)
-      -> RpcRequest {
-   let jsonrpc = "2.0";
-   // let params = vec![parms];
-   RpcRequest { jsonrpc, id, method, params }
-}
-
-pub fn node(b: &Blockchain) -> String {
-   format!("{} Mainnet", match b {
-      AVALANCHE => "Avalanche",
-      BINANCE   => "BNB Smart Chain",
-      ETHEREUM  => "Ethereum" })
-}
-pub fn url(b: &Blockchain) -> String {
-   format!("https://site1.moralis-nodes.com/{}", self.blockchain())
-   // site2 is an alternative
-}
-
-fn protocol_token_address() -> String {
-   s("0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee")
-}
+}  
 
 impl Filter<String> for TokenBalance {
    fn filter(&self) -> String { self.token_address.clone() }
@@ -123,6 +83,49 @@ impl TokenBalance {
 
 pub fn as_pair(t: &TokenBalance) -> ErrStr<(Token, f32)> {
    Ok((t.symbol.clone(), parse_num(&t.bal())?))
+}
+
+pub fn mk_native_coin(sym: &str, bal: u128, quote: f32) -> TokenBalance {
+   TokenBalance {
+      symbol: s(sym),
+      balance: format!("{bal}"),
+      decimals: None,
+      token_address: protocol_token_address(),
+      usd_price: mk_usd(quote)
+   }
+}
+
+// a type to send the RPC request for the wallet-information
+// Generic envelope for JSON-RPC requests
+
+#[derive(Debug,Serialize)]
+pub struct RpcRequest {
+    jsonrpc: &'static str,
+    id: u32,
+    method: &'static str,
+    params: Value,
+}
+
+pub fn mk_rpc_request(id: u32, method: &'static str, params: Value)
+      -> RpcRequest {
+   let jsonrpc = "2.0";
+   // let params = vec![parms];
+   RpcRequest { jsonrpc, id, method, params }
+}
+
+pub fn node(b: &Blockchain) -> String {
+   format!("{} Mainnet", match b {
+      AVALANCHE => "Avalanche",
+      BINANCE   => "BNB Smart Chain",
+      ETHEREUM  => "Ethereum" })
+}
+pub fn url(b: &Blockchain) -> String {
+   format!("https://site1.moralis-nodes.com/{}", b.blockchain())
+   // site2 is an alternative
+}
+
+fn protocol_token_address() -> String {
+   s("0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee")
 }
 
 fn parse_float_to_usd<'de, D>(deserializer: D) -> Result<USD, D::Error>

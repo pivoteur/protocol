@@ -1,8 +1,9 @@
-use reqwest::header::{ HeaderMap, HeaderValue };
-use serde_json::from_str;
+use std::collections::HashMap;
+use reqwest::{ Client, header::{ HeaderMap, HeaderValue } };
 
 use book::{
    err_utils::{ErrStr,err_or},
+   list_utils::filter_map_or,
    utils::{ get_env, now }
 };
 use crate::{
@@ -10,8 +11,9 @@ use crate::{
    tables::{IxTable,index_table},
    types::{
       blockchains::Blockchain,
-      tokens::moralis::Tokens,
-      wallets::Wallet
+      tokens::moralis::{Tokens,TokenBalance,results},
+      util::Address,
+      wallets::{Wallet,parse_wallets}
    }
 };
 use super::utils::fetch_lines;
@@ -26,7 +28,8 @@ pub async fn fetch_wallets_table(root_url: &str) -> ErrStr<IxTable> {
 }
 
 // Function to fetch native balance (e.g., ETH, MATIC)
-pub fn fetch_wallets_balances(auth: &str) -> ErrStr<HashMap<Wallet, Tokens>> {
+pub fn fetch_wallets_balances(auth: &str)
+      -> ErrStr<HashMap<Wallet, Vec<TokenBalance>>> {
 
 /*
 This function models the following cURL command:
@@ -39,19 +42,22 @@ curl --request GET \
    let aut = auth.to_uppercase();
    let addresses = get_env(&format!("{aut}_WALLET_ADDY"))?;
    let api_key = get_env(&format!("{aut}_MORALIS_API_KEY"))?;
-   let wallets = from_str<Vec<Wallet>>(addresses)?;
+   let wallets = parse_wallets(&addresses)?;
    let c = reqwest::Client::new();
-   let tokensz = filter_map_or(fetch_wallet_balances(c, api_key), wallets)?;
-   Ok(wallets.into_iter().zip(tokensz.into_iter()).collect())
+   let tokensz =
+      filter_map_or(fetch_wallet_balances(&c, &api_key), wallets.clone())?;
+   Ok(wallets.into_iter().zip(tokensz.iter().map(results).collect()))
 }
 
-fn fetch_wallet_balances(api_key: &str)
-      -> impl Fn(Client, Wallet) -> ErrStr<Tokens> {
-   move | client: Client, w: Wallet | {
-      let chain = w.blockchain.blockchain();
-      let address = &w.address;
-      let url0 = "https://deep-index.moralis.io/api/v2.2/wallets";
-      let url = format!("{url0}/{address}/tokens?chain={chain}");
+fn fetch_wallet_balances(client: &Client, api_key: &str)
+      -> impl Fn(Wallet) -> ErrStr<Tokens> {
+   move | w: Wallet | {
+      fn inject_wallet_info(b: &Blockchain, address: &Address) -> String {
+         let url0 = "https://deep-index.moralis.io/api/v2.2/wallets";
+         let chain = b.blockchain();
+         format!("{url0}/{address}/tokens?chain={chain}")
+      }
+      let url = w.build_url(inject_wallet_info);
       let mut headers = HeaderMap::new();
       let api_hdr = err_or(HeaderValue::from_str(&api_key),
                            "Cannot insert MORALIS_API_KEY into header")?;
@@ -113,14 +119,13 @@ mod functional_tests {
                Ok(x) => x,
                Err(y) => panic!("Error: {y}")
          };
-         let mut toks = tokens.result;
-         println!("I received {} tokens", toks.len());
-         toks.retain(|t| whitelist.contains(t));
-         let tok = toks.first().unwrap();
-         println!("{}\n{}\n\ntotal: {}",
-                  tok.header(), enumerate_csv(&toks),
-                  toks.iter().map(tvl).sum::<USD>());
-      }
+      let mut toks = tokens.result;
+      println!("I received {} tokens", toks.len());
+      toks.retain(|t| whitelist.contains(t));
+      let tok = toks.first().unwrap();
+      println!("{}\n{}\n\ntotal: {}",
+               tok.header(), enumerate_csv(&toks),
+               toks.iter().map(tvl).sum::<USD>());
       Ok(())
    }
 }

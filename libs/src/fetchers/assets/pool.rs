@@ -20,11 +20,12 @@ use crate::{
    paths::pool_assets_url,
    types::{
       aliases::Aliases,
-      tokens::coins::{Coin,mk_coin},
+      blockchains::{Blockchain,mk_blockchain},
       comps::{Composition,mk_composition,from_assets},
       pivots::{Pivot,pivot_assets},
       quotes::Quotes,
-      util::{Token,Blockchain,Pool}
+      tokens::coins::{Coin,mk_coin},
+      util::{Token,Pool}
    }
 };
 
@@ -44,7 +45,7 @@ pub async fn fetch_assets(root_url: &str, primary: &str, pivot: &str,
                               .ok_or(format!("No max_date for {p}+{s}"))?;
    let top = row(&table, &max_date)
                 .ok_or(format!("No row for date {max_date}"))?;
-   let blk = top[hdrs["blockchain"]].clone();
+   let blk = parse_blockchain(&top[hdrs["blockchain"]])?;
    let primary = buidl_asset(&top[hdrs[&p]], qt_f(&top, &hdrs),
                              &blk, &p, &max_date)?;
    let h_s = hdrs.get(&s)

@@ -16,12 +16,14 @@ use crate::types::{
       assets::{Asset,coalesce,gain_10_percent},
       asset_types::AssetType::*
    },
+   blockchains::Blockchain,
    tokens::coins::Coin,
    gains::Gains,
    measurable::{Measurable,weight,size},
    pivots::{Pivot,headers,froms},
    quotes::Quotes,
-   util::{Blockchain,Id,Pool}
+   util::{Id,Pool},
+   wallets::Wallet
 };
 
 // ----- CLOSE PIVOTS -------------------------------------------------------

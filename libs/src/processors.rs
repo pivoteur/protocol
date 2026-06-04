@@ -5,10 +5,8 @@ use chrono::NaiveDate;
 use book::{
    date_utils::parse_date,
    err_utils::ErrStr,
-   list_utils::filter_map_or,
    num::floats::mk_safe_float,
-   types::filters::Container,
-   utils::{get_env, deref}
+   utils::get_env
 };
 
 use super::{
@@ -26,8 +24,9 @@ use super::{
       measurable::sort_descending,
       pivots::{Pivot,next_close_id,partition_on},
       proposals::proposes::{Propose,propose as propose_f},
-      tokens::moralis::as_pair,
-      util::{Token,Pool,pool_name}
+      tokens::moralis::TokenBalance,
+      util::{Token,Pool,pool_name},
+      wallets::Wallet
    }
 };
 
@@ -103,7 +102,7 @@ pub async fn compute_health(auth: &str, date: &NaiveDate, debug: bool)
       let comp = fetch_available_assets(auth, &quotes, &pool).await?;
       ans.push(comp);
    }
-   ans.sort_by_key(|c| mk_safe_float(&c.tvl().amount));
+   ans.sort_by_key(|c| mk_safe_float(&c.tvl().amount()));
    Ok(ans)
 }
 
@@ -111,14 +110,15 @@ pub async fn compute_health(auth: &str, date: &NaiveDate, debug: bool)
 
 // we process tokens, sieving them through the whitelist (getting rid of junk)
 
-pub async fn process_wallet_balances(auth: &str, _debug: bool)
-      -> ErrStr<HashMap<Token,f32>> {
+pub async fn process_wallet_balances(auth: &str, whitelist: &str, _debug: bool)
+      -> ErrStr<HashMap<Wallet, Vec<TokenBalance>>> {
    let aut = auth.to_uppercase();
-   let wallets = fetch_wallets_balances(&aut).await?;
-   let whitelist = fetch_whitelist(&aut, "pivot-token-addresses.txt").await?;
-   let mut toks = tokens.result;
-   toks.retain(|t| whitelist.contains(t));
-   Ok(filter_map_or(deref(as_pair), toks)?.into_iter().collect())
+   let mut wallets = fetch_wallets_balances(&aut)?;
+   let wl = fetch_whitelist(&aut, whitelist).await?;
+   for (_wallet, toks) in wallets.iter_mut() {
+      *toks.retain(|t| wl.contains(t));
+   }
+   Ok(wallets)
 }
 
 // ----- TESTS -------------------------------------------------------

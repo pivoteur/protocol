@@ -23,8 +23,6 @@ pub fn pool_from_str(pool: &str) -> ErrStr<Pool> {
    Ok(mk_pool(&a, &b))
 }
 
-pub type Blockchain = String; // enum? maybe, but String for now.
-
 pub type TVLs = Vec<(Token,USD)>;
 
 // ----- TESTS -------------------------------------------------------

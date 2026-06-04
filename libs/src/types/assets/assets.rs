@@ -16,11 +16,12 @@ use super::{
 };
 
 use crate::types::{
+   blockchains::Blockchain,
    measurable::{Measurable,weight},
    tokens::coins::Coin,
    quotes::Quotes,
    proposals::prop_assets::{PropAsset,mk_prop_asset},
-   util::{Token,Blockchain}
+   util::Token
 };
 
 // ----- ASSETS

@@ -9,15 +9,16 @@ use book::{
 };
 
 use crate::types::{
+   blockchains::Blockchain,
    measurable::{Measurable,tvl},
    quotes::Quotes,
-   util::{Blockchain,Token}
+   util::Token
 };
 
 // ----- ASSETS ----------------------------------------------------------
 
 /// A Coin (an element of Assets) is a Token distinguished by Blockchain
-#[derive(Default, Debug, Clone)]
+#[derive(Debug, Clone)]
 pub struct Coin {
    blockchain: Blockchain,
    token: Token,
@@ -63,10 +64,10 @@ pub fn mk_coin(k: &(Blockchain, Token), amount: f32,
                 quote: &USD, date: &NaiveDate) -> Coin {
    let (b, t) = k;
    Coin { blockchain: b.clone(),
-           token: t.clone(), 
-           amount, 
-           quote: quote.clone(),
-           date: date.clone() }
+          token: t.clone(), 
+          amount, 
+          quote: quote.clone(),
+          date: date.clone() }
 }
 
 // ----- PIVOT ASSET -------------------------------------------------------
