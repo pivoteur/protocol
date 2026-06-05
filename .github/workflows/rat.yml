@@ -130,13 +130,16 @@ jobs:
           echo "=== RAT Diagnostics Log ($(date -u)) ===" > $LOG
           echo "" >> $LOG
 
+          export LOG
+          
           write_tarp() {
             local label=$1 file=$2
             local cov=$(grep -oP '[\d.]+(?=% coverage)' $file | tail -1)
-            local pass=$(grep 'test result' $file | grep -oP '\d+ passed' | sort -n | tail -1)
-            local fail=$(grep 'test result' $file | grep -oP '\d+ failed' | sort -n | tail -1)
-            local status=$(grep -qE "^--- \[$label\] TESTS FAILED" $file && echo 'TESTS FAILED' || echo 'All tests passed')
-            echo "${prefix} ${status} | ${cov:-?}% coverage | ${pass:-0} passed, ${fail:-0} failed | lines: $(grep -oP '\d+/\d+(?= lines)' $file | tail -1)" >> $LOG
+            local pass=$(grep -oP '\d+(?= passed)' $file | sort -n | tail -1)
+            local fail=$(grep -oP '\d+(?= failed)' $file | sort -n | tail -1)
+            local lines=$(grep -oP '\d+/\d+(?= lines)' $file | tail -1)
+            local status=$(grep -qE "--- \[$label\] TESTS FAILED" $file && echo 'TESTS FAILED' || echo 'All tests passed')
+            echo "--- [$label] ${status} | ${cov:-?}% coverage | ${pass:-0} passed, ${fail:-0} failed | lines: ${lines:-?}" >> $LOG
             grep -A1 'failures:' $file | grep '::' >> $LOG || true
             echo "" >> $LOG
           }
@@ -144,8 +147,8 @@ jobs:
           write_tarp book    /tmp/book_tarp.txt
           write_tarp libs    /tmp/libs_tarp.txt
 
-          QUIZZES_PASS=$(grep 'test result' /tmp/quizzes_test.txt | grep -oP '\d+ passed' | sort -n | tail -1)
-          QUIZZES_FAIL=$(grep 'test result' /tmp/quizzes_test.txt | grep -oP '\d+ failed' | sort -n | tail -1)
+          QUIZZES_PASS=$(grep -oP '\d+(?= passed)' /tmp/quizzes_test.txt | sort -n | tail -1)
+          QUIZZES_FAIL=$(grep -oP '\d+(?= failed)' /tmp/quizzes_test.txt | sort -n | tail -1)
           QUIZZES_STATUS=$(grep -qE 'TESTS FAILED' /tmp/quizzes_test.txt && echo 'TESTS FAILED' || echo 'All tests passed')
           echo "--- [quizzes] test-flow | ${QUIZZES_STATUS} | ${QUIZZES_PASS:-0} passed, ${QUIZZES_FAIL:-0} failed" >> $LOG
           grep -A1 'failures:' /tmp/quizzes_test.txt | grep '::' >> $LOG || true
