@@ -214,11 +214,12 @@ Iterates `cargo build` over each subdir in `<dir>`
 * [dusk](dusk): aggregates assets to pivot by blockchain
 * [wyrd](wyrd): closes a pivot based upon a transaction
 
-### Standalone dapps that also support `dawn` include:
+### Standalone support dapps
 
 * [assets](assets): partitions pools by TVL
 * [virtsz](virtsz): Assets committed to virtual pivots
 * [hwaet](hwaet): Assesses pivot pools health
+* [convcls](convcls): Updates old-style close pivot tables
 
 ## WIP / Works in Progress
 
