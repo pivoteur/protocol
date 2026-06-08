@@ -1,22 +1,12 @@
-use book:: { 
-    err_utils::ErrStr,
-    utils::get_args
-};
-use libs:: {
-    processors::process_pools,
-    collections::assets:: { 
-        assets_by_tvl, 
-        mk_assets
-    },
-    reports:: {
-        Proposal, 
-        print_table, 
-        proposal, 
-        report_proposes
-    },
+use book::{ err_utils::ErrStr, utils::get_args };
+
+use libs::{
+   processors::process_pools,
+   collections::assets::{ assets_by_tvl, mk_assets },
+   reports::{ Proposal, print_table, proposal, report_proposes }
 };
 
-fn version() -> String { "2.02".to_string() }
+fn version() -> String { "2.03".to_string() }
 fn app_name() -> String { "dusk".to_string() }
 fn usage() -> ErrStr<()> {
     println!("Usage:
@@ -53,25 +43,15 @@ fn tokens_to_pivot(proposals: Vec<Proposal>) {
 
 #[cfg(test)]
 mod unit_tests {
-    use super::*;
+   use super::*;
 
+   #[test] fn test_usage_returns_err() {
+      let result = usage();
+      assert!(result.is_err());
+      assert_eq!(result.unwrap_err(), "Need <protocol> and <date> arguments");
+   }
 
-    #[test]
-    fn test_app_name() {
-        assert_eq!(app_name(), "dusk");
-    }
-
-    #[test]
-    fn test_usage_returns_err() {
-        let result = usage();
-        assert!(result.is_err());
-        assert_eq!(result.unwrap_err(), "Need <protocol> and <date> arguments");
-    }
-
-    #[test]
-    fn test_tokens_to_pivot_empty() {
-        tokens_to_pivot(vec![]);
-    }
+   #[test] fn test_tokens_to_pivot_empty() { tokens_to_pivot(vec![]); }
 }
 
 pub async fn runoff_with_args() -> ErrStr<()> {
@@ -101,7 +81,6 @@ pub mod functional_tests {
         date_utils::yesterday,
         create_testing
     };
-    
 
     async fn run_full_dusk() -> ErrStr<usize> {
         println!("quiz05:b_dusk_min full functional test\n");
