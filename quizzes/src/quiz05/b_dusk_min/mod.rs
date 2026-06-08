@@ -16,16 +16,10 @@ use libs:: {
     },
 };
 
-fn version() -> String {
-    "2.02".to_string()
-}
-fn app_name() -> String {
-    "dusk".to_string()
-}
-
+fn version() -> String { "2.02".to_string() }
+fn app_name() -> String { "dusk".to_string() }
 fn usage() -> ErrStr<()> {
-    println!(
-        "Usage:
+    println!("Usage:
 
 $ {} [--min] <protocol> <date>
 
@@ -37,22 +31,22 @@ Err("Need <protocol> and <date> arguments".to_string())
 }
 
 pub async fn propose(auth: &str, dt: &str, min: bool) -> ErrStr<usize> {
-    let (proposals, no_closes) = process_pools(&auth, &dt).await?;
-    let x = if min { &vec![] } else { &no_closes };
-    report_proposes(&proposals, x, min);
-    if !min && !proposals.is_empty() {
-        tokens_to_pivot(proposals);
-    }
-    Ok(1)
+   let (proposals, no_closes) = process_pools(&auth, &dt).await?;
+   let x = if min { &vec![] } else { &no_closes };
+   report_proposes(proposals.clone(), x, min);
+   if !min && !proposals.is_empty() {
+      tokens_to_pivot(proposals);
+   }
+   Ok(1)
 }
 
 fn tokens_to_pivot(proposals: Vec<Proposal>) {
-    let mut tokens = mk_assets();
-    proposals.iter().for_each(|p| {
-        let asset = proposal(p).pivot_amount();
-        tokens.add(asset);
-    });
-    print_table("Assets to pivot", &assets_by_tvl(&tokens));
+   let mut tokens = mk_assets();
+   proposals.iter().for_each(|p| {
+      let asset = proposal(p).pivot_amount();
+      tokens.add(asset);
+   });
+   print_table("Assets to pivot", &assets_by_tvl(&tokens));
 }
 
 // ----- UNIT TESTS ------------------------------------------------
