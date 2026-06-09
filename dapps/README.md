@@ -21,6 +21,7 @@ stateDiagram-v2
    class pools inUse
 
    class Tests isUse
+   class Integration inUse
    class Setup wip
    class Closes wip
    class WorkFlow wip
