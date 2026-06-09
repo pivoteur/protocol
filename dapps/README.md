@@ -67,12 +67,27 @@ stateDiagram-v2
 
       Integration: Tests
       state Integration {
-         Tarp: cargo tarpaulin
-         [*] --> itr
-         itr --> Tarp
-         Tarp --> Func
+         [*] --> Itr
+         Itr --> Tarpaulin
+         Tarpaulin --> Func
          Func --> Rep
          Rep --> [*]
+         Itr: Smoke-checks all dapps
+         state Itr {
+            direction LR
+
+            [*] --> itr
+            itr --> [*]
+         }
+         Tarpaulin: Runs code coverage
+         state Tarpaulin {
+            direction LR
+
+            [*] --> Tarp
+            Tarp --> [*]
+
+            Tarp: cargo tarpaulin
+         }
          Func: Runs my functional test framework
          state Func {
             direction LR
@@ -80,7 +95,7 @@ stateDiagram-v2
             [*] --> Run
             Run --> [*]
 
-            Run: cargo run
+            Run: cargo test
          }
          Rep: Automation Status Report
          state Rep {
