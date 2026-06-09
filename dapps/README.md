@@ -20,13 +20,13 @@ stateDiagram-v2
    class virtsz inUse
    class pools inUse
 
-   class Tests wip
+   class Tests isUse
    class Setup wip
    class Closes wip
    class WorkFlow wip
 
    class report manual
-   class ReportwithoutUpdatingDatabase manual
+   class ReportwithoutUpdatingDatabase inUse
    class ScanOpens wip
    class UpdateDb manual
    class UpdateDbwithoutReporting1 inUse
