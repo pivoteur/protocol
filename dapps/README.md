@@ -20,13 +20,14 @@ stateDiagram-v2
    class virtsz inUse
    class pools inUse
 
-   class Tests wip
+   class Tests isUse
+   class Integration inUse
    class Setup wip
    class Closes wip
    class WorkFlow wip
 
    class report manual
-   class ReportwithoutUpdatingDatabase manual
+   class ReportwithoutUpdatingDatabase inUse
    class ScanOpens wip
    class UpdateDb manual
    class UpdateDbwithoutReporting1 inUse
@@ -66,12 +67,27 @@ stateDiagram-v2
 
       Integration: Tests
       state Integration {
-         Tarp: cargo tarpaulin
-         [*] --> itr
-         itr --> Tarp
-         Tarp --> Func
+         [*] --> Itr
+         Itr --> Tarpaulin
+         Tarpaulin --> Func
          Func --> Rep
          Rep --> [*]
+         Itr: Smoke-checks all dapps
+         state Itr {
+            direction LR
+
+            [*] --> itr
+            itr --> [*]
+         }
+         Tarpaulin: Runs code coverage
+         state Tarpaulin {
+            direction LR
+
+            [*] --> Tarp
+            Tarp --> [*]
+
+            Tarp: cargo tarpaulin
+         }
          Func: Runs my functional test framework
          state Func {
             direction LR
@@ -79,7 +95,7 @@ stateDiagram-v2
             [*] --> Run
             Run --> [*]
 
-            Run: cargo run
+            Run: cargo test
          }
          Rep: Automation Status Report
          state Rep {
@@ -214,11 +230,12 @@ Iterates `cargo build` over each subdir in `<dir>`
 * [dusk](dusk): aggregates assets to pivot by blockchain
 * [wyrd](wyrd): closes a pivot based upon a transaction
 
-### Standalone dapps that also support `dawn` include:
+### Standalone support dapps
 
 * [assets](assets): partitions pools by TVL
 * [virtsz](virtsz): Assets committed to virtual pivots
 * [hwaet](hwaet): Assesses pivot pools health
+* [convcls](convcls): Updates old-style close pivot tables
 
 ## WIP / Works in Progress
 

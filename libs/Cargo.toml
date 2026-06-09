@@ -11,8 +11,8 @@ path = "src/lib.rs"
 paste = "1.0"
 chrono = "0.4.38"
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
-reqwest = { version = "0.12.4", features = ["json"] }
-serde_json = "1.0"
+reqwest = { version = "0.13.4", features = ["json"] }
+serde_json = "1.0.150"
 serde = { version = "1.0", features = ["derive"] }
 
 book = { path = "../../crypto-n-rust/src/libs/book" }
@@ -22,4 +22,3 @@ level = "warn"
 check-cfg = [
     'cfg(tarpaulin_include)'
 ]
-

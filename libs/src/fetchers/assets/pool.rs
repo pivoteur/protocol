@@ -20,7 +20,7 @@ use crate::{
    paths::pool_assets_url,
    types::{
       aliases::Aliases,
-      coins::{Coin,mk_coin},
+      tokens::coins::{Coin,mk_coin},
       comps::{Composition,mk_composition,from_assets},
       pivots::{Pivot,pivot_assets},
       quotes::Quotes,
@@ -167,7 +167,7 @@ mod tests {
    async fn test_fetch_assets() -> ErrStr<()> {
       let (root_url, a) = marshall()?;
       let assets = fetch_assets(&root_url, "btc", "eth", &a).await?;
-      assert!(assets.tvl().amount > 0.0);
+      assert!(assets.tvl().amount() > 0.0);
       assert_eq!("BTC+ETH", assets.pool_name());
       Ok(())
    }

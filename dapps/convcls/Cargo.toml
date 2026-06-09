@@ -1,0 +1,22 @@
+[package]
+name = "convcls"
+version = "0.1.0"
+edition = "2024"
+
+[[bin]]
+name = "convcls"
+path = "../../quizzes/src/quiz08/d_convcls/src/main.rs"
+
+[dependencies]
+serde = { version = "1.0", features = ["derive"] }
+serde_with = "3.0"
+
+tokio = { version = "1.51.2", features = ["macros", "rt-multi-thread"] }
+
+libs = { path = "../../libs" }
+book = { path = "../../../crypto-n-rust/src/libs/book" }
+quizzes = { path = "../../quizzes" }
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(tarpaulin_include)'] }
+

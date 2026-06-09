@@ -38,7 +38,7 @@ Err("Need <protocol> and <date> arguments".to_string())
 
 async fn propose(auth: &str, dt: &str) -> ErrStr<usize> {
     let (proposals, no_closes) = process_pools(&auth, &dt).await?;
-    report_proposes(&proposals, &no_closes, false);
+    report_proposes(proposals.clone(), &no_closes, false);
     if !proposals.is_empty() {
         tokens_to_pivot(proposals);
     }

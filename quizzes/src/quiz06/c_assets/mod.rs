@@ -205,7 +205,7 @@ ETH+UNDEAD	0.0	5	6250000";
       let r = row(&quotes(), &ans, &assets());
       assert_eq!(3, r.len());
       for (ix, amt) in amts().into_iter().enumerate() {
-         assert_eq!(prices()[ix] * amt, r[ix].amount,
+         assert_eq!(prices()[ix] * amt, r[ix].amount(),
                     "For {}, TVLs mismatch", hdrs()[ix]);
       }
       Ok(())

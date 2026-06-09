@@ -12,14 +12,14 @@ use libs::{
    collections::assets::{Assets,mk_assets,assets_by_price},
    fetchers::{ quotes::fetch_quotes, pivots::fetch_pivots},
    paths::pivot_pool_from_file,
-   reports::{header,total_line,print_tsv_table_d},
+   reports::{total_line,print_tsv_table_d},
    types::{
-      coins::{Coin,mk_coin},
+      tokens::coins::{Coin,mk_coin},
       comps::{Composition,mk_composition},
       measurable::{Measurable,tvl},
       pivots::{Pivot,recompute_pivot},
       quotes::Quotes,
-      util::{Blockchain,Token,Pool,mk_pool}
+      util::{Blockchain,Token,Pool,mk_pool,pool_name}
    }
 };
 
@@ -71,8 +71,8 @@ async fn update_virtual_pivots(protocol: &str, dt: &str, path: &str,
    let (p0, p1) = pivot_pool_from_file(path)?;
    let pri = p0.to_uppercase();
    let piv = p1.to_uppercase();
-   let pool_name = header(&pri, &piv);
    let pool = mk_pool(&pri, &piv);
+   let pool_name = pool_name(&pool);
    let auth = protocol.to_uppercase();
    let root_url = get_env(&format!("{auth}_URL"))?;
    let date = parse_date(&dt)?;
@@ -203,7 +203,7 @@ mod tests {
          ((a - b) / b).abs() < 0.01
       }
       let tvlsz = tvls(&virts) + tvls(&opns);
-      assert!(around(tvls(&all_opns).amount, tvlsz.amount));
+      assert!(around(tvls(&all_opns).amount(), tvlsz.amount()));
       Ok(())
    }
 

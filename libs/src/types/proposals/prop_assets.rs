@@ -9,7 +9,7 @@ use crate::types::{
    assets::asset_types::{AssetType,AssetType::*},
    util::{Token,Blockchain,Pool},
    measurable::{Measurable,weight,size},
-   coins::{Coin,mk_coin}
+   tokens::coins::{Coin,mk_coin}
 };
 
 #[derive(Debug, Clone)]
@@ -54,7 +54,7 @@ impl CsvWriter for PropAsset {
 
 impl Measurable for PropAsset {
    fn sz(&self) -> f32 { self.amount }
-   fn aug(&self) -> f32 { self.close_price.amount }
+   fn aug(&self) -> f32 { self.close_price.amount() }
 }
 
 pub fn mk_prop_asset(t: &str, b: &str, c: &USD, amount: f32, kind: AssetType)

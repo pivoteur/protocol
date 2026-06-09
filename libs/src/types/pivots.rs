@@ -13,7 +13,7 @@ use super::{
       asset_types::AssetType::{FROM,TO}
    },
    headers::{Header, next_close_id as closer, parse_header},
-   coins::Coin,
+   tokens::coins::Coin,
    measurable::Measurable,
    proposals::prop_assets::PropAsset,
    quotes::Quotes,
