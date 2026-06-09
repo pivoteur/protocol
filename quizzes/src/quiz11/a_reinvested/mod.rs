@@ -85,7 +85,9 @@ pub async fn runoff_with_args() -> ErrStr<()> {
     match args.as_slice() {
         [investor, token_a, token_b, pivot_count, amount, url, send] => {
             let msg = build_message(token_a, token_b, pivot_count, amount, url)?;
-            if send == "true" {
+            let do_send = send.parse::<bool>()
+                .map_err(|_| format!("send must be true or false, got: {send}"))?;
+            if do_send {
                 let chat_id      = chat_id_for(investor)?;
                 let bot_token = get_env("REINVESTED_BOT")?;
                 send_telegram(&bot_token, chat_id, &msg).await?;
