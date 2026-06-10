@@ -1,7 +1,8 @@
 use chrono::NaiveDate;
 use serde::{Deserialize, Deserializer};
 use serde_with::{serde_as, DisplayFromStr};
-use std::error::Error;
+
+use book::err_utils::{ErrStr,err_or};
 
 // -----------------------------------------------------------------------------
 // CUSTOM SERDE PARSERS FOR CLEANING FIELDS
@@ -10,8 +11,7 @@ use std::error::Error;
 // Strips characters like '$', '%', and ',' before parsing into a float
 fn deserialize_clean_float<'de, D>(deserializer: D) -> Result<f64, D::Error>
 where
-    D: Deserializer<'de>,
-{
+    D: Deserializer<'de> {
     let s: String = Deserialize::deserialize(deserializer)?;
     let cleaned = s.replace('$', "").replace('%', "").replace(',', "");
     cleaned.trim().parse::<f64>().map_err(serde::de::Error::custom)
@@ -20,8 +20,7 @@ where
 // Splits semi-colon separated lists (e.g. "27;29") into a Vec<i32>
 fn deserialize_semicolon_list<'de, D>(deserializer: D) -> Result<Vec<i32>, D::Error>
 where
-    D: Deserializer<'de>,
-{
+    D: Deserializer<'de> {
     let s: String = Deserialize::deserialize(deserializer)?;
     if s.trim().is_empty() {
         return Ok(Vec::new());
@@ -34,8 +33,8 @@ where
 // -----------------------------------------------------------------------------
 // 📇 THE STRUCT (Data Layout)
 // -----------------------------------------------------------------------------
-#[derive(Debug, Deserialize)]
 #[serde_as]
+#[derive(Debug, Deserialize)]
 pub struct CryptoCallRecord {
     pub ix: i32,
     pub pool: String,
@@ -54,6 +53,7 @@ pub struct CryptoCallRecord {
     pub from_blockchain: String,
     #[serde(deserialize_with = "deserialize_clean_float")]
     pub amount1: f64,
+    #[serde(rename = "virtual")]
     #[serde(deserialize_with = "deserialize_clean_float")]
     pub virtual_amount: f64, // Renamed 'virtual' as it is a reserved word in some contexts
     #[serde(deserialize_with = "deserialize_clean_float")]
@@ -83,16 +83,18 @@ pub struct CryptoCallRecord {
 // -----------------------------------------------------------------------------
 // 📑 THE PARSER
 // -----------------------------------------------------------------------------
-pub fn parse_crypto_csv(csv_data: &str) -> Result<Vec<CryptoCallRecord>, Box<dyn Error>> {
-    let mut reader = csv::Reader::from_reader(csv_data.as_bytes());
-    let mut records = Vec::new();
+pub fn parse_crypto_csv(csv_data: &str) -> ErrStr<Vec<CryptoCallRecord>> {
+   let mut reader = csv::Reader::from_reader(csv_data.as_bytes());
+   let mut records = Vec::new();
+   let mut ix = 0;
+   for result in reader.deserialize() {
+      ix += 1;
+      let record: CryptoCallRecord =
+          err_or(result, &format!("Cannot parse row {ix}"))?;
+      records.push(record);
+   }
 
-    for result in reader.deserialize() {
-        let record: CryptoCallRecord = result?;
-        records.push(record);
-    }
-
-    Ok(records)
+   Ok(records)
 }
 
 // -----------------------------------------------------------------------------
