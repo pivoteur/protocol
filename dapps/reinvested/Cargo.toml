@@ -1,0 +1,21 @@
+[package]
+name = "reinvested"
+version = "0.1.0"
+edition = "2024"
+
+[[bin]]
+name = "reinvested"
+path = "../../quizzes/src/quiz11/a_reinvested/src/main.rs"
+
+[dependencies]
+book = { path = "../../../crypto-n-rust/src/libs/book" }
+libs = { path = "../../libs" }
+quizzes = { path = "../../quizzes" }
+
+tokio = { version = "1.52.3", features = ["full"] }
+teloxide = { version = "0.17.0", features = ["macros"] }
+reqwest = { version = "0.13.4", features = ["json"] }
+serde_json = "1"
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(tarpaulin_include)'] }
