@@ -26,18 +26,19 @@ fn chat_id_for(investor: &str) -> ErrStr<i64> {
 // * error 400 means:   bot was kicked from chat
 
 //----- Version/ App_Name/ Usage ---------------------------------------------
-fn version()  -> &'static str { "1.01" }
+fn version()  -> &'static str { "1.02" }
 fn app_name() -> &'static str { "reinvested" }
  
 fn usage() -> ErrStr<()> {
-    eprintln!("Usage: {} <investor> <token_a> <token_b> <pivot_count> <amount> <url>", app_name());
+    eprintln!("Usage: {} <investor> <token_a> <token_b> <pivot_count> <amount> <url> <send>", app_name());
     eprintln!("  investor    : name of investor equals telegram chat (e.g. Pivot Internal Bot)");
     eprintln!("  token_a     : reinvested token, left side of pool   (e.g. AVAX)");
     eprintln!("  token_b     : paired token,    right side of pool   (e.g. BTC)");
     eprintln!("  pivot_count : number of pivots closed               (e.g. 2)");
     eprintln!("  amount      : amount reinvested                     (e.g. 0.59)");
     eprintln!("  url         : tweet URL                             (e.g. x.com/pivocateur)");
-    Err("Need <investor> <token_a> <token_b> <pivot_count> <amount> <url> arguments".to_string())
+    eprintln!("  send     : let Robbie send message?              (e.g. true/false, default: true)");
+    Err("Need <investor> <token_a> <token_b> <pivot_count> <amount> <url> <send> arguments".to_string())
 }
 
 //----- Message Building and Sending -----------------------------------------
@@ -82,11 +83,15 @@ pub async fn runoff_with_args() -> ErrStr<()> {
     eprintln!("{}, version: {}", app_name(), version());
     let args = get_args();
     match args.as_slice() {
-        [investor, token_a, token_b, pivot_count, amount, url] => {
-            let chat_id     = chat_id_for(investor)?;
-            let msg       = build_message(token_a, token_b, pivot_count, amount, url)?;
-            let bot_token = get_env("REINVESTED_BOT")?;
-            send_telegram(&bot_token, chat_id, &msg).await?;
+        [investor, token_a, token_b, pivot_count, amount, url, send] => {
+            let msg = build_message(token_a, token_b, pivot_count, amount, url)?;
+            let do_send = send.parse::<bool>()
+                .map_err(|_| format!("send must be true or false, got: {send}"))?;
+            if do_send {
+                let chat_id      = chat_id_for(investor)?;
+                let bot_token = get_env("REINVESTED_BOT")?;
+                send_telegram(&bot_token, chat_id, &msg).await?;
+            }
             println!("{msg}");
             Ok(())
         }
