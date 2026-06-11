@@ -1,3 +1,5 @@
+use serde::{Deserialize, Deserializer, de};
+
 use book::{ currency::usd::USD, err_utils::ErrStr };
 
 // ----- Your basic types used across all domains -------------------------
@@ -20,6 +22,16 @@ pub fn pool_from_str(pool: &str) -> ErrStr<Pool> {
       _ => Err(format!("Malformed pool name: {pool}"))
    }?;
    Ok(mk_pool(&a, &b))
+}
+
+pub fn deserialize_pool<'de, D>(deserializer: D)
+      -> Result<Pool, D::Error> where D: Deserializer<'de> {
+    let s: String = Deserialize::deserialize(deserializer)?;
+    if let [a, b] = s.split('+').collect::<Vec<_>>().as_slice() {
+       Ok(mk_pool(&a, &b))
+    } else {
+       Err(de::Error::custom(&format!("Cannot parse pool from {s}")))
+    }
 }
 
 pub type Blockchain = String; // enum? maybe, but String for now.
