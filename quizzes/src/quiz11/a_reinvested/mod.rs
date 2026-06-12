@@ -32,8 +32,8 @@ fn app_name() -> &'static str { "reinvested" }
 fn usage() -> ErrStr<()> {
     eprintln!("Usage: {} <investor> <token_a> <token_b> <pivot_count> <amount> <url> <send> <flipped>", app_name());
     eprintln!("  investor    : name of investor equals telegram chat (e.g. Pivot Internal Bot)");
-    eprintln!("  token_a     : reinvested token, left side of pool   (e.g. AVAX)");
-    eprintln!("  token_b     : paired token,    right side of pool   (e.g. BTC)");
+    eprintln!("  token_a     : primary asset, left side of pool      (e.g. ETH)");
+    eprintln!("  token_b     : pivot asset,   right side of pool     (e.g. UNDEAD)");
     eprintln!("  pivot_count : number of pivots closed               (e.g. 2)");
     eprintln!("  amount      : amount reinvested                     (e.g. 0.59)");
     eprintln!("  url         : tweet URL                             (e.g. x.com/pivocateur)");
@@ -58,23 +58,24 @@ pub fn build_message(
     flipped:     bool,
 ) -> ErrStr<String> {
     let prim = token_a;
-    let prop = token_b;
-    let pool = if flipped {
-        format!("{prop}+{prim}")
+    let piv  = token_b;
+    let pool = format!("{prim}+{piv}");
+    let (reinvested, trade) = if flipped {
+        (piv,  format!("{piv}-on-{prim}"))
     } else {
-        format!("{prim}+{prop}")
+        (prim, format!("{prim}-on-{piv}"))
     };
-    let n        = parse_id(pivot_count)?;
-    let noun    = format!("{prim}-on-{prop} pivot");
-    let pivots  = if n == 1 {
+    let n      = parse_id(pivot_count)?;
+    let noun   = format!("{trade} pivot");
+    let pivots = if n == 1 {
         noun.clone()
     } else {
         plural(n, &noun)
     };
-    let article = article(prim);
+    let article = article(reinvested);
     Ok(format!(
         "I close {article} {pivots} (see tweet: {url}). \
-         I reinvest {amount} {prim} into the {pool} pivot pool for you."
+         I reinvest {amount} {reinvested} into the {pool} pivot pool for you."
     ))
 }
 
@@ -188,11 +189,11 @@ mod unit_tests {
 
     #[test]
     fn test_flipped_pool_order() -> ErrStr<()> {
-        // trade is UNDEAD-on-ETH but file is eth-undead.tsv, so pool displays as ETH+UNDEAD
-        let msg = build_message("UNDEAD", "ETH", "1", "500", "https://x.com/pivocateur", true)?;
-        assert!(msg.contains("UNDEAD-on-ETH"), "trade direction unchanged when flipped");
-        assert!(msg.contains("ETH+UNDEAD"),    "pool order matches filename when flipped");
-        assert!(msg.contains("500 UNDEAD"),    "reinvested token unchanged when flipped");
+        // file is eth-undead.tsv, trade is UNDEAD-on-ETH, reinvested token is UNDEAD (piv)
+        let msg = build_message("ETH", "UNDEAD", "1", "500", "https://x.com/pivocateur", true)?;
+        assert!(msg.contains("UNDEAD-on-ETH"),  "trade direction is piv-on-prim when flipped");
+        assert!(msg.contains("ETH+UNDEAD"),     "pool is always prim+piv");
+        assert!(msg.contains("500 UNDEAD"),     "reinvested token is piv when flipped");
         Ok(())
     }
 
