@@ -212,6 +212,39 @@ mod unit_tests {
             "BTC starts with consonant so article should be 'a': {msg}");
         Ok(())
     }
+
+    #[test]
+    fn test_normal_flow() -> ErrStr<()> {
+        let msg = build_message(
+            "ETH", "UNDEAD", "1", "0.75",
+            "https://x.com/pivocateur/status/2056884438156398786",
+            false,
+        )?;
+        assert_eq!(
+            msg,
+            "I close an ETH-on-UNDEAD pivot (see tweet: \
+             https://x.com/pivocateur/status/2056884438156398786). \
+             I reinvest 0.75 ETH into the ETH+UNDEAD pivot pool for you."
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn test_flipped_flow() -> ErrStr<()> {
+        let msg = build_message(
+            "ETH", "UNDEAD", "1", "500",
+            "https://x.com/pivocateur/status/2056884438156398786",
+            true,
+        )?;
+        assert_eq!(
+            msg,
+            "I close an UNDEAD-on-ETH pivot (see tweet: \
+             https://x.com/pivocateur/status/2056884438156398786). \
+             I reinvest 500 UNDEAD into the ETH+UNDEAD pivot pool for you."
+        );
+        Ok(())
+    }
+
 }
 // ===========================================================================
 //----- FUNCTIONAL TESTS -----------------------------------------------------
