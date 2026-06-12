@@ -64,9 +64,13 @@ pub fn build_message(
     } else {
         format!("{prim}+{prop}")
     };
-    let n       = parse_id(pivot_count)?;
+    let n        = parse_id(pivot_count)?;
     let noun    = format!("{prim}-on-{prop} pivot");
-    let pivots  = plural(n, &noun);
+    let pivots  = if n == 1 {
+        noun.clone()
+    } else {
+        plural(n, &noun)
+    };
     let article = article(prim);
     Ok(format!(
         "I close {article} {pivots} (see tweet: {url}). \
