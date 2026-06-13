@@ -13,6 +13,7 @@ use book::{
 };
 
 use crate::{
+   collections::assets::Assets,
    fetchers::{
       pivots::fetch_pivots,
       utils::{ enlowerify, enupperify, fetch_lines }
@@ -88,16 +89,24 @@ async fn enfetchify(auth: &str, quotes: &Quotes, pool: &Pool)
    Ok((pool_assets, opens))
 }
 
-pub async fn fetch_available_assets(auth: &str, quotes: &Quotes, pool: &Pool)
-      -> ErrStr<Composition> {
+pub async fn available_assets_fetcher
+      (subtractor: impl Fn(&mut Assets, &Coin), auth: &str,
+       quotes: &Quotes, pool: &Pool) -> ErrStr<Composition> {
    let (pool_assets, opens) = enfetchify(auth, &quotes, pool).await?;
    let mut available = pool_assets.as_assets();
    let all_opens = pivot_assets(&opens)?;
    for a in all_opens.assets() {
-      available.subtract(&a);
+      subtractor(&mut available, &a);
    }
    available.update_prices(&quotes)?;
    from_assets(&available.assets())
+}
+
+pub fn subtractor(assets: &mut Assets, coin: &Coin) { assets.subtract(coin); }
+
+pub async fn fetch_available_assets(auth: &str, quotes: &Quotes, pool: &Pool)
+      -> ErrStr<Composition> {
+   available_assets_fetcher(subtractor, auth, quotes, pool).await
 }
 
 // ----- TESTS -------------------------------------------------------
