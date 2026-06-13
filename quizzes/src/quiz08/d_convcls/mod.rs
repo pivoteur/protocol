@@ -26,6 +26,7 @@ struct OpenPivotRow {
 #[derive(Debug, Deserialize)]
 struct OldClosePivotRow {
     date: String,
+    #[serde(alias = "open")]
     pivot: String,
     close: String,
     tx_id: String,
