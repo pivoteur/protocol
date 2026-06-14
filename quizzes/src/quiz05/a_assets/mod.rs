@@ -70,11 +70,7 @@ pub async fn runoff_with_args() -> ErrStr<()> {
 pub mod functional_tests {
     use super::*;
     use paste::paste;
-    use book:: {
-        date_utils::yesterday,
-        utils::now,
-        create_testing
-    };
+    use book::{ create_testing, date_utils::yesterday, utils::now };
 
     create_testing!("quiz05::a_assets");
 
@@ -82,5 +78,4 @@ pub mod functional_tests {
         let yday = format!("{}", yesterday());
         now(propose("pivot", &yday))
     });
-
 }

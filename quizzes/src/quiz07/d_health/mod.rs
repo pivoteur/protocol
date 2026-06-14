@@ -38,26 +38,24 @@ where
 }
 
 async fn health_computer(f: impl Fn(&mut Assets, &Coin),
-      auth: &str, date: &NaiveDate, debug: bool) 
+      root_url: &str, date: &NaiveDate, debug: bool) 
       -> ErrStr<Vec<Composition>> {
    if debug { println!("Computing pivot pool health"); }
-   let aut = auth.to_uppercase();
-   let root_url = get_env(&format!("{aut}_URL"))?;
    let pools = fetch_pool_names(&root_url).await?;
    let quotes = fetch_quotes(date).await?;
    let mut ans = Vec::new();
    for pool in pools {
       if debug { println!("Computing health for pool {}", pool_name(&pool)); }
-      let comp = available_assets_fetcher(&f ,auth, &quotes, &pool).await?;
+      let comp = available_assets_fetcher(&f, &root_url, &quotes, &pool).await?;
       ans.push(comp);
    }
    ans.sort_by_key(|c| mk_safe_float(&c.tvl().amount()));
    Ok(ans)
 }
 
-async fn compute_health(auth: &str, date: &NaiveDate, debug: bool)
+async fn compute_health(root_url: &str, date: &NaiveDate, debug: bool)
       -> ErrStr<Vec<Composition>> {
-   health_computer(subtractor, auth, date, debug).await
+   health_computer(subtractor, root_url, date, debug).await
 }
 
 fn composition_as_js_health_row(c: &Composition) -> String {
@@ -90,8 +88,9 @@ pub async fn runoff_with_args() -> ErrStr<()> {
 
 async fn runoff_continued(args: Vec<String>, debug: bool) -> ErrStr<()> {
    if let [auth, dt] = args.as_slice() {
+      let root_url = get_env(&format!("{}_URL", auth.to_uppercase()))?;
       let date = parse_date(&dt)?;
-      let comps = compute_health(&auth, &date, debug).await?;
+      let comps = compute_health(&root_url, &date, debug).await?;
       report_health(date, comps);
       Ok(())
    } else {
@@ -112,15 +111,17 @@ mod test_functions {
 #[cfg(not(tarpaulin_include))]
 mod functional_tests {
    use super::*;
-   use super::test_functions::mock_subtractor;
+   use super::test_functions::mock_subtractor as s;
    use paste::paste;
    use book::{ create_testing, date_utils::yesterday, utils::now };
+   use libs::fetchers::test_helpers::test_functions::marshall;
 
    create_testing!("quiz07::d_health");
 
    run!("compute_health", " (using mock subtractor)", {
       let yday = yesterday();
-      let comps = now(health_computer(mock_subtractor, "pivot", &yday, true))?;
+      let (root_url, _) = marshall()?;
+      let comps = now(health_computer(s, &root_url, &yday, true))?;
       report_health(yday, comps);
    });
 }
@@ -131,22 +132,25 @@ mod tests {
    use super::*;
    use super::test_functions::mock_subtractor as s;
    use std::collections::HashSet;
-   use book::{ date_utils::yesterday, utils::get_env };
-   use libs::types::util::pool_name;
+   use book::date_utils::yesterday;
+   use libs::{
+      fetchers::test_helpers::test_functions::marshall,
+      types::util::pool_name
+   };
 
    #[tokio::test] async fn test_compute_health_ok_mock_subtractor() {
-      assert!(health_computer(s, "pivot", &yesterday(), false).await.is_ok());
+      let (url, _) = marshall()?;
+      assert!(health_computer(s, url, &yesterday(), false).await.is_ok());
    }
 
    #[tokio::test]
    async fn test_compute_health_all_pools_with_debug_mock_subtractor()
          -> ErrStr<()> {
+      let (root_url, _) = marshall()?;
       let yday = yesterday();
-      let auth = "PIVOT";
-      let root_url = get_env(&format!("{auth}_URL"))?;
       let npools = fetch_pool_names(&root_url).await?;
       let pool_names: HashSet<String> = npools.iter().map(pool_name).collect();
-      let assets = health_computer(s, auth, &yday, true).await?;
+      let assets = health_computer(s, &root_url, &yday, true).await?;
       let al = &assets.len();
       let pl = &pool_names.len();
       assert_eq!(pl, al, "Assets {al} do not equal pools {pl}!");

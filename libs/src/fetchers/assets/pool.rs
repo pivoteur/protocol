@@ -8,8 +8,7 @@ use book::{
    err_utils::{err_or,ErrStr},
    num_utils::parse_commaless,
    parse_utils::parse_str,
-   table_utils::{cols,row,rows,ingest},
-   utils::get_env
+   table_utils::{cols,row,rows,ingest}
 };
 
 use crate::{
@@ -77,10 +76,8 @@ fn buidl_asset<'a>(amount: &str, q: impl Fn(&'a Token) -> ErrStr<USD>,
 
 // this gets the assets and the open pivots (so we compute available assets)
 
-async fn enfetchify(auth: &str, quotes: &Quotes, pool: &Pool)
+async fn enfetchify(root_url: &str, quotes: &Quotes, pool: &Pool)
       -> ErrStr<(Composition, Vec<Pivot>)> {
-   let aut = auth.to_uppercase();
-   let root_url = get_env(&format!("{aut}_URL"))?;
    let aliases = &quotes.aliases;
    let (prim, piv) = pool;
    let pool_assets = fetch_assets(&root_url, &prim, &piv, aliases).await?;
@@ -90,9 +87,9 @@ async fn enfetchify(auth: &str, quotes: &Quotes, pool: &Pool)
 }
 
 pub async fn available_assets_fetcher
-      (subtractor: impl Fn(&mut Assets, &Coin), auth: &str,
+      (subtractor: impl Fn(&mut Assets, &Coin), root_url: &str,
        quotes: &Quotes, pool: &Pool) -> ErrStr<Composition> {
-   let (pool_assets, opens) = enfetchify(auth, &quotes, pool).await?;
+   let (pool_assets, opens) = enfetchify(root_url, &quotes, pool).await?;
    let mut available = pool_assets.as_assets();
    let all_opens = pivot_assets(&opens)?;
    for a in all_opens.assets() {
@@ -137,9 +134,10 @@ pub mod functional_tests {
 
    run!("fetch_available_assets", {
       let yday = yesterday();
+      let (url, _) = marshall()?;
       let quotes = now(fetch_quotes(&yday))?;
       let pool = pool_from_str("btc-eth")?;
-      let comp = now(fetch_available_assets("pivot", &quotes, &pool))?;
+      let comp = now(fetch_available_assets(&url, &quotes, &pool))?;
       println!("\nAvailable BTC+ETH assets\n{}", comp.as_csv());
    });
 }
@@ -185,9 +183,10 @@ mod tests {
 
    async fn fetchme() -> ErrStr<Composition> {
       let yday = yesterday();
+      let (url, _) = marshall()?;
       let quotes = fetch_quotes(&yday).await?;
       let pool = pool_from_str("btc-eth")?;
-      fetch_available_assets("pivot", &quotes, &pool).await
+      fetch_available_assets(&url, &quotes, &pool).await
    }
 
    #[tokio::test]
@@ -202,10 +201,11 @@ mod tests {
 
    async fn enfetchme() -> ErrStr<(Composition, Vec<Pivot>)> {
       let yday = yesterday();
+      let (url, _) = marshall()?;
       let pool = pool_from_str("btc-eth")?;
       let quotes = fetch_quotes(&yday).await?;
-      enfetchify("pivot", &quotes, &pool).await
-   }  
+      enfetchify(&url, &quotes, &pool).await
+   }
 
    #[tokio::test]
    async fn test_fetch_available_assets() -> ErrStr<()> {
