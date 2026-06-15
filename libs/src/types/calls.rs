@@ -1,5 +1,5 @@
 use chrono::NaiveDate;
-use serde::{Deserialize, Deserializer};
+use serde::{Serialize, Deserialize, Deserializer};
 use serde_with::{serde_as, DisplayFromStr};
 
 use book::{
@@ -14,7 +14,7 @@ use super::{
 };
 
 #[serde_as]
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct Call {
     pub ix: usize,
     #[serde(deserialize_with = "deserialize_pool")]
@@ -40,8 +40,7 @@ pub struct Call {
     pub quote1: USD,
     #[serde_as(as = "DisplayFromStr")]
     pub val1: USD,
-    #[serde_as(as = "DisplayFromStr")]
-    pub gain_10_percent: Percentage,
+    pub gain_10_percent: f32,
     pub pivot_token: String,
     #[serde_as(as = "DisplayFromStr")]
     pub pivot_blockchain: Blockchain,

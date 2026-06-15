@@ -5,6 +5,7 @@ use serde_with::{serde_as, DisplayFromStr};
 
 use book::{
    currency::usd::USD,
+   csv_utils::as_tsv,
    err_utils::{ErrStr,err_or},
    num::percentage::Percentage,
    string_utils::s,
@@ -126,25 +127,6 @@ fn process_old_close_pivots<R: io::Read>(closes: R) -> ErrStr<Closes<R>> {
     Ok(csv::ReaderBuilder::new().delimiter(b'\t').from_reader(closes))
 }
 
-fn new_close_pivot_table(closes: Vec<NewClosePivotRow>) -> ErrStr<String> {
-   let mut output = Vec::new();
-   let mut wtr = csv::WriterBuilder::new().delimiter(b'\t')
-                                          .from_writer(&mut output);
-   for new_row in closes {
-      err_or(wtr.serialize(&new_row),
-             &format!("Could not serialize new close pivot:\n{new_row:?}"))?;
-   }
-   let _ = err_or(wtr.flush(), "Unable to flush output to stdout");
-
-   // Drop the writer to release its mutable borrow and guarantee all 
-   // bytes flush down to output_buffer
-   std::mem::drop(wtr);
-
-   // Convert the raw bytes buffer into a valid UTF-8 String
-   err_or(String::from_utf8(output),
-          &format!("Could not convert close pivot table to string"))
-}
-
 fn gain_10_percent_for_close(open_map: &Opens, close: &OldClosePivotRow)
       -> ErrStr<f32> {
    // Extract the 10% gain matching against the compound key mapping
@@ -203,7 +185,7 @@ pub fn runoff_with_args() -> ErrStr<()> {
                  &format!("Cannot open old close pivot table: {closes}"))?;
       let mut close_rdr = process_old_close_pivots(&close_file)?;
       let closes = new_close_pivots(&open_map, &mut close_rdr)?;
-      let table = new_close_pivot_table(closes)?;
+      let table = as_tsv(closes)?;
       println!("{table}");
       Ok(())
    } else { usage() }
@@ -259,7 +241,7 @@ mod functional_tests {
       println!("Converting\n{old_closes}");
       let mut basis = process_old_close_pivots(old_closes.as_bytes())?;
       let new_closes = new_close_pivots(&open_pivots, &mut basis)?;
-      let table = new_close_pivot_table(new_closes)?;
+      let table = as_tsv(&new_closes)?;
       println!("Result:\n{table}");
    });
 }

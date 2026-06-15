@@ -36,7 +36,7 @@ pub mod functional_tests {
    use paste::paste;
    use book::{
       create_testing,
-      csv_utils::CsvWriter,
+      csv_utils::{CsvWriter,as_csv},
       utils::now
    };
    use crate::fetchers::test_helpers::test_functions::marshall;
@@ -52,9 +52,7 @@ pub mod functional_tests {
    run!("fetch_calls", " (as structures)", {
       let (root_url, _aliases) = marshall()?;
       let calls = now(fetch_calls(&root_url))?;
-      let rows: Vec<String> =
-         calls.iter().map(CsvWriter::as_csv).collect();
-      println!("\tcall structuress are:\n{}", rows.join("\n"));
+      println!("\tcall structuress are:\n{}", as_csv(&calls)?);
    });
 }
 
