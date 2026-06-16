@@ -1,8 +1,8 @@
-use book::err_utils::{ErrStr,err_or};
+use book::err_utils::ErrStr;
 
 use libs::types::calls::{Call,parse_calls};
 
-pub parse_crypto_csv(csv: &str) -> ErrStr<Vec<Call>> {
+pub fn parse_crypto_csv(csv: &str) -> ErrStr<Vec<Call>> {
    parse_calls(csv)
 }
 

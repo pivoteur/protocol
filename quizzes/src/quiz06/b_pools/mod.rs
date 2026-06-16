@@ -69,9 +69,9 @@ async fn fetch_all_pools_assets(root_url: &str) -> ErrStr<Vec<Composition>> {
    let aliases = aliases();
    let pool_names = fetch_pool_names(&root_url).await?;
    let mut pools = Vec::new();
-   for (prim, piv) in pool_names {
-      let pool = fetch_assets(&root_url, &prim, &piv, &aliases).await?;
-      pools.push(pool);
+   for pool in pool_names {
+      let p = fetch_assets(&root_url, &pool, &aliases).await?;
+      pools.push(p);
    }
    Ok(pools)
 }
@@ -120,33 +120,28 @@ mod tests {
       fetch_all_pools_assets(&root_url).await
    }
 
-   #[tokio::test]
-   async fn test_fetch_all_pools_assets_ok() -> ErrStr<()> {
+   #[tokio::test] async fn test_fetch_all_pools_assets_ok() -> ErrStr<()> {
       let pools = fetch_pools().await;
       assert!(pools.is_ok());
       Ok(())
    }
 
-   #[tokio::test]
-   async fn test_fetch_all_pools_have_assets() -> ErrStr<()> {
+   #[tokio::test] async fn test_fetch_all_pools_have_assets() -> ErrStr<()> {
       let pools = fetch_pools().await?;
       assert!(!pools.is_empty());
       Ok(())
    }
 
-   #[test]
-   fn test_min_default_none() {
+   #[test] fn test_min_default_none() {
       assert_eq!(mk_usd(min_default()), min_value(None));
    }
 
-   #[test]
-   fn test_min_default_parse_failed() {
+   #[test] fn test_min_default_parse_failed() {
       assert_eq!(mk_usd(min_default()),
                  min_value(Some(&"blad-di-blah".to_string())));
    }
 
-   #[test]
-   fn test_min_value() {
+   #[test] fn test_min_value() {
       assert_eq!(mk_usd(1234.0), min_value(Some(&"1234".to_string())));
    }
 }

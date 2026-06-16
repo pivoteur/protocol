@@ -185,7 +185,7 @@ pub fn runoff_with_args() -> ErrStr<()> {
                  &format!("Cannot open old close pivot table: {closes}"))?;
       let mut close_rdr = process_old_close_pivots(&close_file)?;
       let closes = new_close_pivots(&open_map, &mut close_rdr)?;
-      let table = as_tsv(closes)?;
+      let table = as_tsv(&closes)?;
       println!("{table}");
       Ok(())
    } else { usage() }

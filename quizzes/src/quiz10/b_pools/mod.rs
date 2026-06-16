@@ -16,7 +16,10 @@ async fn print_pool_assets(auth: &str, dt: &NaiveDate) -> ErrStr<()> {
    let root_url = get_env(&format!("{ogori_cap}_URL"))?;
    let pools = fetch_pool_names(&root_url).await?;  // TODO: FIXME
    let assets: Vec<String> =
-      pools.into_iter().map(|(a,b)| format!("[ '{a}', '{b}' ]")).collect();
+      pools.into_iter().map(|pool| {
+         let (a, b) = pool.as_tuple();
+         format!("[ '{a}', '{b}' ]")
+   }).collect();
    println!("
 const poolAssets = {{
    generated: '{dt}',

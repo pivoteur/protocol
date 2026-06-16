@@ -7,7 +7,7 @@ use book::{
 
 use libs::{
    fetchers::{assets::pool::fetch_available_assets,quotes::fetch_quotes},
-   types::util::{pool_from_str,pool_name}
+   types::pools::pool_from_str
 };
 
 fn version() -> String { "2.01".to_string() }
@@ -35,7 +35,7 @@ pub async fn runoff_with_args() -> ErrStr<()> {
       let pool = pool_from_str(pool_str)?;
       let comp = fetch_available_assets(&auth, &quotes, &pool).await?;
       println!("Available assets for {} pivot pool are:
-{}", pool_name(&pool), comp.as_csv());
+{}", pool.pool_name(), comp.as_csv());
       Ok(())
    } else {
       usage()

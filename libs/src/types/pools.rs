@@ -1,11 +1,13 @@
-use std::{fmt,str::FromStr};
+use std::{fmt,hash::Hash,str::FromStr};
 use serde::{Deserialize,Serialize};
 
 use book::err_utils::ErrStr;
 use super::util::Token;
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Hash)]
 pub struct Pool { primary: Token, pivot: Token }
+
+impl Eq for Pool { }
 
 impl fmt::Display for Pool {
    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {

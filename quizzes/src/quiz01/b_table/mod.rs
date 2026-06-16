@@ -15,7 +15,11 @@ use book::{
    utils::{get_env,pred}
 };
 
-use libs::paths::open_pivot_path;
+use libs::{
+   paths::open_pivot_path,
+   tables::IxTable,
+   types::{ util::Id, pools::pool_from_str }
+};
 
 trait CsvHeader {
    fn header(&self) -> String;
@@ -28,8 +32,6 @@ fn parse_int(s: &str) -> ErrStr<usize> {
 fn parse_str(s: &str) -> ErrStr<String> {
    Ok(s.to_string())
 }
-
-type Id = usize;
 
 #[derive(Debug, Clone)]
 pub struct Header {
@@ -226,9 +228,10 @@ impl<T: Eq + std::hash::Hash> Bag<T> {
     }
 }
 
-pub async fn ingest_table() -> ErrStr<Table<usize, String, String>> {
+pub async fn ingest_table() -> ErrStr<IxTable> {
    let piv_url = get_env("PIVOT_URL")?;
-   let url = open_pivot_path(&piv_url, "btc", "eth");
+   let btc_eth = pool_from_str("btc-eth")?;
+   let url = open_pivot_path(&piv_url, &btc_eth);
    let daters = read_rest(&url).await?;
    let lines: Vec<String> =
       daters.lines()

@@ -13,7 +13,6 @@ use libs::{
       pivots::fetch_open_pivots
    },
    reports::print_table,
-   types::util::pool_name
 };
 
 async fn list_quotes_and_assets(args: Vec<String>) -> ErrStr<()> {
@@ -28,12 +27,11 @@ async fn list_quotes_and_assets(args: Vec<String>) -> ErrStr<()> {
       print_table("Quotes:", &[quotes]);
       let pool_names = fetch_pool_names(&root_url).await?;
       for pool in pool_names {
-         let pn = pool_name(&pool);
-         let (pri, piv) = pool;
-         let pool = fetch_assets(&root_url, &pri, &piv, aliases).await?;
-         print_table(&format!("Pool {}:", pn), &[pool]);
+         let pn = pool.pool_name();
+         let comp = fetch_assets(&root_url, &pool, aliases).await?;
+         print_table(&format!("Pool {}:", pn), &[comp]);
          let (open_pivs, _) =
-            fetch_open_pivots(&root_url, &pri, &piv, aliases).await?;
+            fetch_open_pivots(&root_url, &pool, aliases).await?;
          print_table("Open Pivots:", &open_pivs);
       }
    }

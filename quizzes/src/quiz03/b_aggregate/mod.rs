@@ -6,13 +6,11 @@ use book::{
 };
 use libs::{
    reports::print_table,
-   fetchers::{  pivots::fetch_pivots,  quotes::fetch_quotes },
+   fetchers::{ pivots::fetch_pivots, quotes::fetch_quotes },
    types::{ 
-      proposals::proposes::propose, 
-      pivots:: { 
-         partition_on, 
-         next_close_id 
-      }
+      pivots::{ partition_on, next_close_id },
+      pools::{Pool,mk_pool},
+      proposals::proposes::propose
    }
 };
 
@@ -30,15 +28,16 @@ fn usage() -> ErrStr<()> {
    Err("Needs <root URL> <primary> <pivot> <date> arguments".to_string())
 }
 
-async fn aggregate(root_url: &str, prim: &str, piv: &str, date: NaiveDate)
+async fn aggregate(root_url: &str, pool: &Pool, date: NaiveDate)
       -> ErrStr<()> {
    let quotes = fetch_quotes(&date).await?;
    let a = &quotes.aliases;
-   let ((opns, cls), max_date) = fetch_pivots(root_url, prim, piv, a).await?;
+   let ((opns, cls), max_date) = fetch_pivots(root_url, pool, a).await?;
    let next_close = next_close_id(&cls);
-   preamble(prim, piv, opns.len(), &max_date, &date);
+   preamble(pool, opns.len(), &max_date, &date);
    let proposer = propose(&quotes);
-   let (lefts, rights) = partition_on(prim, opns);
+   let (prim, _piv) = pool.as_tuple();
+   let (lefts, rights) = partition_on(&prim, opns);
    let mut props = Vec::new();
    let follow = if let Some((prop, nxt)) = proposer((lefts, next_close))? {
       props.push(prop);
@@ -53,11 +52,8 @@ async fn aggregate(root_url: &str, prim: &str, piv: &str, date: NaiveDate)
    Ok(())
 }
 
-fn preamble(prim: &str, piv: &str, len: usize,
-            max_date: &NaiveDate, date: &NaiveDate) {
-   let cap_prim = prim.to_uppercase();
-   let cap_piv = piv.to_uppercase();
-   let header = format!("{cap_prim}+{cap_piv}");
+fn preamble(pool: &Pool, len: usize, max_date: &NaiveDate, date: &NaiveDate) {
+   let header = pool.pool_name();
    let pool = format!("{header} pivot pool");
 
    println!("{header}\n");
@@ -70,7 +66,8 @@ pub async fn runoff_get_args() -> ErrStr<()> {
    println!("{}, version: {}", app_name(), version());
    if let [root_url, prim, piv, date] = get_args().as_slice() {
       let dt = parse_date(&date)?;
-      aggregate(root_url, prim, piv, dt).await
+      let pool = mk_pool(&prim, &piv);
+      aggregate(root_url, &pool, dt).await
    } else {
       usage()
    }
@@ -82,11 +79,7 @@ pub async fn runoff_get_args() -> ErrStr<()> {
 pub mod functional_tests {
    use super::*;
    use paste::paste;
-   use book:: { 
-      utils::get_env,
-      create_testing 
-   };
-
+   use book::{ create_testing, utils::get_env };
 
    create_testing!("quiz03::b_aggregate");
 
@@ -94,7 +87,7 @@ pub mod functional_tests {
       println!("\nquiz03: b_aggregate functional test\n");
       let piv = get_env("PIVOT_URL")?;
       let dt = parse_date("2026-02-02")?;
-      let _ = aggregate(&piv, "BTC", "ETH", dt);
+      let pool = mk_pool("btc", "eth");
+      let _ = aggregate(&piv, &pool, dt);
    });
-
 }

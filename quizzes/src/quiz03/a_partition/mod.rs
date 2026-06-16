@@ -1,14 +1,14 @@
-use book:: { 
+use book::{ 
    err_utils::ErrStr,
-   csv_utils:: { CsvHeader, print_csv },
+   csv_utils::{ CsvHeader, print_csv },
    utils::get_args
 };
-use libs:: { 
+use libs::{ 
    fetchers::pivots::fetch_pivots,
-   types:: { 
-      pivots::Pivot,
+   types::{
       aliases::aliases,
-      pivots::partition_on
+      pivots::{Pivot,partition_on},
+      pools::{Pool,mk_pool}
    }
 };
 
@@ -45,19 +45,21 @@ fn list_open_pivots(piv: &str, opens: Vec<Pivot>) {
 
 pub async fn runoff_get_args() -> ErrStr<()> {
    if let [root_url, prim, piv] = get_args().as_slice() {
-      fetch_and_list_open_pivots(root_url, prim, piv).await
+      let pool = mk_pool(&prim, &piv);
+      fetch_and_list_open_pivots(root_url, &pool).await
    } else {
       usage()
    }
 }
 
-async fn fetch_and_list_open_pivots(root_url: &str, prim: &str, piv: &str) -> ErrStr<()> {
+async fn fetch_and_list_open_pivots(root_url: &str, pool: &Pool) -> ErrStr<()> {
    let a = aliases();
    let ((opens, _closes), _max_date) =
-      fetch_pivots(root_url, prim, piv, &a).await?;
-   let (lefts, rights) = partition_on(prim, opens);
-   list_open_pivots(prim, lefts);
-   list_open_pivots(piv, rights);
+      fetch_pivots(root_url, pool, &a).await?;
+   let (prim, piv) = pool.as_tuple();
+   let (lefts, rights) = partition_on(&prim, opens);
+   list_open_pivots(&prim, lefts);
+   list_open_pivots(&piv, rights);
    Ok(())
 }
 
@@ -72,16 +74,16 @@ pub mod functional_tests {
       utils:: { get_env, now },
       create_testing
    };
+   use libs::types::pools::pool_from_str;
 
-   
    create_testing!("quiz03::a_partition");
-   
+
    run!("partition", {
       let root_url = get_env("PIVOT_URL")?;
-      match now(fetch_and_list_open_pivots(&root_url, "BTC", "ETH")) {
+      let pool = pool_from_str("btc-eth")?;
+      match now(fetch_and_list_open_pivots(&root_url, &pool)) {
          Ok(_) => Ok(1),
          Err(x) => Err(x)
       }
    });
-   
 }

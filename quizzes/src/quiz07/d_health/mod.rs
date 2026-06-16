@@ -18,7 +18,7 @@ use libs::{
       pool_names::fetch_pool_names,
       quotes::fetch_quotes
    },
-   types::{ tokens::coins::Coin, comps::Composition, util::pool_name }
+   types::{ tokens::coins::Coin, comps::Composition }
 };
 
 fn version() -> String { "1.01".to_string() }
@@ -45,7 +45,7 @@ async fn health_computer(f: impl Fn(&mut Assets, &Coin),
    let quotes = fetch_quotes(date).await?;
    let mut ans = Vec::new();
    for pool in pools {
-      if debug { println!("Computing health for pool {}", pool_name(&pool)); }
+      if debug { println!("Computing health for pool {}", pool.pool_name()); }
       let comp = available_assets_fetcher(&f, &root_url, &quotes, &pool).await?;
       ans.push(comp);
    }
@@ -135,12 +135,14 @@ mod tests {
    use book::date_utils::yesterday;
    use libs::{
       fetchers::test_helpers::test_functions::marshall,
-      types::util::pool_name
+      types::pools::Pool
    };
 
-   #[tokio::test] async fn test_compute_health_ok_mock_subtractor() {
+   #[tokio::test]
+   async fn test_compute_health_ok_mock_subtractor() -> ErrStr<()> {
       let (url, _) = marshall()?;
-      assert!(health_computer(s, url, &yesterday(), false).await.is_ok());
+      assert!(health_computer(s, &url, &yesterday(), false).await.is_ok());
+      Ok(())
    }
 
    #[tokio::test]
@@ -149,7 +151,8 @@ mod tests {
       let (root_url, _) = marshall()?;
       let yday = yesterday();
       let npools = fetch_pool_names(&root_url).await?;
-      let pool_names: HashSet<String> = npools.iter().map(pool_name).collect();
+      let pool_names: HashSet<String> =
+         npools.iter().map(Pool::pool_name).collect();
       let assets = health_computer(s, &root_url, &yday, true).await?;
       let al = &assets.len();
       let pl = &pool_names.len();

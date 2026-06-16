@@ -3,5 +3,6 @@ members = [
     "chihuahua",
     "basset",
     "old_dusk",
-    "pools"
+    "pools",
+    "old_pools"
 ]
