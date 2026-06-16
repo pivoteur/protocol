@@ -28,6 +28,9 @@ pub mod quotes;
 /// Represents a pivot (from -> to swap)
 pub mod pivots;
 
+/// (prim, piv) but as a struct now for de/serialization
+pub mod pools;
+
 /// recommends proposals
 pub mod proposals;
 
