@@ -14,7 +14,7 @@ use super::{
 };
 
 #[serde_as]
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Call {
     pub ix: usize,
     #[serde_as(as = "DisplayFromStr")]

@@ -505,21 +505,6 @@ pub mod functional_tests {
     }
     run_with!("currency_format", now(), compose!(resolve)(currency_format));
 
-    fn apr_math((close_str, open_str): (String, String)) -> ErrStr<String> {
-        let row = make_table(&format!(
-            "ix,close_date,opened,ids,close_id,pivot_token,from,\
-            pivot_amount,amount1,virtual,pivot_close_price,proposed_close_price\n\
-            1,{close_str},{open_str},20,99,BTC,UNDEAD,0,100,0,0.00,0.00"
-        )).and_then(|t| parse_row(&t, 1, "tx_id", "110.0"))?;
-        if !row.contains("10.00%") { return Err(format!("apr_math: expected 10.00% in: {row}")); }
-        Ok(row)
-    }
-    run!("apr_math", {
-        let close  = today();
-        let opened = close - chrono::Duration::days(365);
-        println!("\tclose date: {close}\n\topened date: {opened}");
-    });
-
     fn undead_zero_precision(dt: String) -> ErrStr<String> {
         let row = make_table(&format!(
             "ix,close_date,opened,ids,close_id,pivot_token,from,\

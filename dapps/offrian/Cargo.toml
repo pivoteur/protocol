@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [[bin]]
-name = "hwaet"
+name = "offrian"
 path = "../../quizzes/src/quiz08/e_offrian/src/main.rs"
 
 [dependencies]
