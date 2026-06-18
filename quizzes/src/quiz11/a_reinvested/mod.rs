@@ -41,13 +41,6 @@ fn usage() -> ErrStr<()> {
     eprintln!("  flipped  : when you trade in the opposite direction (e.g. BTC/AVAX instead of AVAX/BTC)");
     Err("Need <investor> <token_a> <token_b> <pivot_count> <amount> <url> <send> <flipped> arguments".to_string())
 }
-//----- Article --------------------------------------------------------------
-fn article(word: &str) -> &'static str {
-    match word.chars().next().map(|c| c.to_ascii_uppercase()) {
-        Some('A') | Some('E') | Some('I') | Some('O') | Some('U') => "an",
-        _ => "a",
-    }
-}
 //----- Message Building and Sending -----------------------------------------
 pub fn build_message(
     token_a:     &str,
@@ -72,9 +65,8 @@ pub fn build_message(
     } else {
         plural(n, &noun)
     };
-    let article = article(reinvested);
     Ok(format!(
-        "I close {article} {pivots} (see tweet: {url}). \
+        "I close {pivots} (see tweet: {url}). \
          I reinvest {amount} {reinvested} into the {pool} pivot pool for you."
     ))
 }
@@ -112,7 +104,7 @@ pub async fn runoff_with_args() -> ErrStr<()> {
             let do_send = send.parse::<bool>()
                 .map_err(|_| format!("send must be true or false, got: {send}"))?;
             if do_send {
-                let chat_id      = chat_id_for(investor)?;
+                let chat_id   = chat_id_for(investor)?;
                 let bot_token = get_env("REINVESTED_BOT")?;
                 send_telegram(&bot_token, chat_id, &msg).await?;
             }
@@ -128,7 +120,7 @@ pub async fn runoff_with_args() -> ErrStr<()> {
 #[cfg(test)]
 mod unit_tests {
     use super::*;
- 
+
 
     #[test]
     fn test_exact_sample_message() -> ErrStr<()> {
@@ -139,7 +131,7 @@ mod unit_tests {
         )?;
         assert_eq!(
             msg,
-            "I close an UNDEAD-on-USDC pivot (see tweet: \
+            "I close UNDEAD-on-USDC pivot (see tweet: \
              https://x.com/pivocateur/status/2056884438156398786). \
              I reinvest 1552 UNDEAD into the UNDEAD+USDC pivot pool for you."
         );
@@ -172,8 +164,8 @@ mod unit_tests {
     #[test]
     fn test_singular_pivot_count() -> ErrStr<()> {
         let msg = build_message("AVAX", "BTC", "1", "0.25", "https://x.com/pivocateur", false)?;
-        assert!(msg.contains("an AVAX-on-BTC pivot "),
-            "singular should not append 's' and article should be 'an': {msg}");
+        assert!(msg.contains("AVAX-on-BTC pivot "),
+            "singular should not append 's': {msg}");
         Ok(())
     }
      
@@ -198,22 +190,6 @@ mod unit_tests {
     }
 
     #[test]
-    fn test_article_an_for_vowel() -> ErrStr<()> {
-        let msg = build_message("AVAX", "BTC", "1", "0.25", "https://x.com/pivocateur", false)?;
-        assert!(msg.starts_with("I close an AVAX-on-BTC pivot"),
-            "AVAX starts with vowel so article should be 'an': {msg}");
-        Ok(())
-    }
-
-    #[test]
-    fn test_article_a_for_consonant() -> ErrStr<()> {
-        let msg = build_message("BTC", "ETH", "1", "0.01", "https://x.com/pivocateur", false)?;
-        assert!(msg.starts_with("I close a BTC-on-ETH pivot"),
-            "BTC starts with consonant so article should be 'a': {msg}");
-        Ok(())
-    }
-
-    #[test]
     fn test_normal_flow() -> ErrStr<()> {
         let msg = build_message(
             "ETH", "UNDEAD", "1", "0.75",
@@ -222,7 +198,7 @@ mod unit_tests {
         )?;
         assert_eq!(
             msg,
-            "I close an ETH-on-UNDEAD pivot (see tweet: \
+            "I close ETH-on-UNDEAD pivot (see tweet: \
              https://x.com/pivocateur/status/2056884438156398786). \
              I reinvest 0.75 ETH into the ETH+UNDEAD pivot pool for you."
         );
@@ -238,7 +214,7 @@ mod unit_tests {
         )?;
         assert_eq!(
             msg,
-            "I close an UNDEAD-on-ETH pivot (see tweet: \
+            "I close UNDEAD-on-ETH pivot (see tweet: \
              https://x.com/pivocateur/status/2056884438156398786). \
              I reinvest 500 UNDEAD into the ETH+UNDEAD pivot pool for you."
         );
@@ -259,7 +235,7 @@ pub mod functional_tests {
             create_testing
     };
 
-
+ 
     create_testing!("quiz11::a_reinvested");
 
     run!("mock_build_and_send_message", {
