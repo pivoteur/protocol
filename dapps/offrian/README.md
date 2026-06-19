@@ -8,7 +8,7 @@ viable? This determination is `offrian`'s job.
 ![`offrian` usage](../../quizzes/src/quiz08/e_offrian/imgs/01a-usage.png)
 
 ```
-offrian, version 1.00
+offrian, version 1.01
 
 Usage:
 
@@ -37,6 +37,7 @@ depending on the call will get the following output:
 
 ## Revisions
 
+* 1.01, 2026-06-19 (again): added tests and corrected formulæ
 * 1.00, 2026-06-19: release
 * 0.90, 2026-06-16: pre-release, reading calls
 
