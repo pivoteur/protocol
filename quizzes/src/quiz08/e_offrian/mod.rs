@@ -23,7 +23,7 @@ use libs::{
    }
 };
 
-fn version() -> String { s("0.90") }
+fn version() -> String { s("1.00") }
 fn app_name() -> String { s("offrian") }
 fn usage() -> ErrStr<()> {
    let app = app_name();

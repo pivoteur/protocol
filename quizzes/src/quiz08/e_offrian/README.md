@@ -1,11 +1,11 @@
 # `offrian`
 
-Some pivots need to be broken up into smaller trades. Are these smaller trades
-viable? This determination is `offrian`'s job.
+Recomputes a call to a fractional amount. This is useful when slippage is so
+high that closing a pivot is not profitable, but a partial close works.
 
 ## Usage
 
-![`offrian` usage](../../quizzes/src/quiz08/mgs/01a-usage.png)
+![`offrian` usage](imgs/01a-usage.png)
 
 ```
 offrian, version 1.00
@@ -29,14 +29,7 @@ where:
 
 depending on the call will get the following output:
 
-![`offrian` output](../../quizzes/src/quiz08/mgs/01b-runoff.png)
+![`offrian` output](imgs/01b-runoff.png)
 
-* [src](../../quizzes/src/quiz08/mod.rs)
-
-------
-
-## Revisions
-
-* 1.00, 2026-06-19: release
-* 0.90, 2026-06-16: pre-release, reading calls
+* [src](mod.rs)
 
