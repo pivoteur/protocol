@@ -14,7 +14,13 @@ use book::{
 
 use libs::{
    fetchers::{calls::fetch_calls,pivots::fetch_open_pivots},
-   types::{ aliases::aliases, calls::Call, pools::Pool}
+   types::{
+      aliases::aliases,
+      calls::Call,
+      measurable::Measurable,
+      pivots::Pivot,
+      pools::Pool
+   }
 };
 
 fn version() -> String { s("0.90") }
@@ -58,36 +64,73 @@ async fn runoff_continuation(args: &[String], debug: bool) -> ErrStr<()> {
       let root_url = get_env(&format!("{}_URL", auth.to_uppercase()))?;
       let fract = parse_num(&part)?;
       let ix = parse_id(&call)?;
-      let call = grab_call(&root_url, ix, debug).await?;
-      if debug { println!("Examining call\n{call:?}"); }
-      // from the call we get the committed amount and open pivots
-      // from the open pivots we get the virtual amount committed;
-      // that's our play or leeway.
-      let pivot_amt = call.gain_10_percent / 1.1; // total pivoted
-      let target_amt = pivot_amt / fract;
-      let give_up = pivot_amt - target_amt;
+      let (call, pivs) = pivot_data(&root_url, ix, debug).await?;
       let leeway =
-         virtual_pivots_amount(&root_url, &call.pool, &call.ids, debug).await?;
-      if debug { println!("The virtual pivots provide {leeway} leeway"); }
-      let gap = leeway - give_up;
-      if gap < 0.0 {
-         Err(format!("Unable to fracture call {ix} by {fract}; {} derth",
-                     -gap))
-      } else {
-         let new_call = compute_offrian(&call, target_amt);
-         counter_offer(&new_call, debug)
+         compute_virtual_pivot_amount(&call.pool, &pivs, &call.ids, debug)?;
+      if debug {
+         println!("The virtual pivots provide {leeway} {} leeway",
+                  call.pivot_token);
       }
+      let new_start = compute_new_start(&call, fract, debug);
+      let new_pivot_amt = compute_new_pivot(&call, new_start, debug);
+      go_no_go(&call, fract, leeway, new_pivot_amt, debug)
    } else {
       usage()
    }
 }
 
+fn go_no_go(call: &Call, fract: f32, leeway: f32, 
+           new_pivot_amt: f32, debug: bool) -> ErrStr<()> {
+   let give_up = call.amount1 + call.virtual_amount - new_pivot_amt;
+   let gap = leeway - give_up;
+   if gap < 0.0 {
+      Err(format!("Unable to fracture call {} by {fract}; {} derth",
+                  call.ix, -gap))
+   } else {
+      let new_call = compute_offrian(&call, new_pivot_amt);
+      report_counter_offer(&new_call, debug)
+   }
+}
+
+fn compute_new_pivot(call: &Call, principal: f32, debug: bool) -> f32 {
+   let vol = principal * call.quote1.amount();
+   if debug { println!("New volume: {}", mk_usd(vol)); }
+   let new_pivot = vol / call.pivot_close_price.amount();
+   if debug { println!("New pivot amount: {new_pivot} {}", call.pivot_token); }
+   new_pivot
+}
+
+fn compute_new_start(call: &Call, fract: f32, debug: bool) -> f32 {
+   // from the call we get the committed amount and open pivots
+   // from the open pivots we get the virtual amount committed;
+   // that's our play or leeway.
+   let principal_amt = call.gain_10_percent / 1.1; // total pivoted
+   if debug { println!("principal_amt: {principal_amt} {}", call.from_token); }
+   let new_start = principal_amt / fract;
+   if debug { println!("new_start: {new_start} {}", call.from_token); }
+   new_start
+}
+
+async fn pivot_data(root_url: &str, ix: usize, debug: bool)
+      -> ErrStr<(Call, Vec<Pivot>)> {
+   let call = grab_call(&root_url, ix, debug).await?;
+   if debug { println!("Examining call\n{}", as_csv(&[call.clone()])?); }
+   let pool = &call.pool;
+   let a = aliases();
+   let (all_pivs, dt) = fetch_open_pivots(root_url, pool, &a).await?;
+   if debug {
+      println!("Fetched {} open pivots for {pool} pool; max_date: {dt}",
+               all_pivs.len());
+   }
+   Ok((call, all_pivs))
+}
+
 fn compute_offrian(call: &Call, target_amt: f32) -> Call {
-   let piv_qt = call.pivot_close_price;
+   let piv_qt = &call.pivot_close_price;
    let new_vol = target_amt * piv_qt.amount();
    let new_origin = new_vol / call.quote1.amount();
    let new_vol_usd = mk_usd(new_vol);
-   let prop_qt = call.proposed_close_price;
+   let prop_qt = &call.proposed_close_price;
    let landing_at = new_vol / prop_qt.amount();
    let at_least = new_origin * 1.1;
    let gain = landing_at - new_origin;
@@ -110,7 +153,7 @@ fn compute_offrian(call: &Call, target_amt: f32) -> Call {
    new_call
 }
 
-fn counter_offer(nc: &Call, debug: bool) -> ErrStr<()> {
+fn report_counter_offer(nc: &Call, debug: bool) -> ErrStr<()> {
    if debug {
       let prop = &nc.proposed_token;
       let a = format!("swap {} {} (quote: {})", nc.pivot_amount,
@@ -119,7 +162,7 @@ fn counter_offer(nc: &Call, debug: bool) -> ErrStr<()> {
                       prop, nc.proposed_close_price);
       let c  = format!("(expecting swap to {} {})", nc.proposed_amount,
                        prop);
-      println!("Offrian: {a} {b} {c}; ROI {} / {} APR", nc.roi, nc.apr);
+      println!("\nOffrian:\n{a}\n{b}\n{c};\nROI {} / {} APR\n", nc.roi, nc.apr);
    }
    let output = as_csv(&[nc])?;
    println!("{output}");
@@ -133,26 +176,21 @@ async fn grab_call(root_url: &str, ix: usize, debug: bool) -> ErrStr<Call> {
    Ok(call.clone())
 }
 
-async fn virtual_pivots_amount(root_url: &str, pool: &Pool,
-                               pivs: &[usize], debug: bool) -> ErrStr<f32> {
-   let a = aliases();
-   let (all_pivs0, dt) = fetch_open_pivots(root_url, pool, &a).await?;
-   if debug {
-      println!("Fetched {} open pivots; max_date: {dt}", all_pivs0.len());
-   }
-   let pivs_set: HashSet<usize> = pivs.into_iter().collect();
-   let mut all_pivs = all_pivs0.clone();
+fn compute_virtual_pivot_amount(pool: &Pool, all_pivs0: &[Pivot],
+                                opens: &[usize], debug: bool) -> ErrStr<f32> {
+   let pivs_set: HashSet<usize> = opens.iter().copied().collect();
+   let mut all_pivs = all_pivs0.to_vec();
    // filter down to virtual pivots in the call
    all_pivs.retain(|p| p.is_virtual() && pivs_set.contains(&p.index()));
    if debug {
       println!("There are {} virtual pivotes for {pool} call", all_pivs.len());
    }
-   Ok(all_pivs.iter().map(|p| p.committed()?.sz()).sum())
+   let mut ans = 0.0;
+   for p in all_pivs { ans += p.committed()?.sz(); }
+   Ok(ans)
 }
 
-// -----------------------------------------------------------------------------
-// 🚀 RUNTIME VERIFICATION
-// -----------------------------------------------------------------------------
+// ----- TESTS -------------------------------------------------------
 
 #[cfg(test)]
 #[cfg(not(tarpaulin_include))]
