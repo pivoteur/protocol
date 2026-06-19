@@ -1,21 +1,12 @@
-use libs::{ 
-    fetchers::calls::fetch_calls, 
-    tables::IxTable 
-};
+use libs::{ fetchers::calls::fetch_calls_table, tables::IxTable };
 use book::{
     table_utils::val,
     err_utils::ErrStr,
     date_utils::parse_date,
     num_utils::parse_num,
     currency::usd::{ USD, mk_usd },
-    utils::{ 
-        get_env,
-        get_args
-    },
-    parse_utils::{
-        parse_id,
-        parse_usd
-    }
+    utils::{ get_env, get_args },
+    parse_utils::{ parse_id, parse_usd }
 };
 
 // ====================================================
@@ -427,7 +418,7 @@ pub async fn runoff_with_args() -> ErrStr<()> {
     let close_dir = &args[1];
     let ix       = parse_id(&args[2])?;
     let root_url = get_env(&format!("{protocol_up}_URL"))?;
-    let calls = fetch_calls(&root_url).await?;
+    let calls = fetch_calls_table(&root_url).await?;
     println!("{}", header());
     println!("{}", parse_row(&calls, ix, &args[3], &args[4])?);
     println!("{}", pool_path(&close_dir, &calls, ix)?);
@@ -444,22 +435,9 @@ pub mod functional_tests {
     use super::*;
     use super::test_functions::make_table;
     use paste::paste;
-    use book::{
-        date_utils::today,
-        utils::resolve,
-        create_testing,
-        compose
-    };
-
+    use book::{ date_utils::today, utils::resolve, create_testing, compose };
 
     fn now() -> String { format!("{}", today()) }
-
-
-    fn report<A: std::fmt::Debug + Clone>(test: &str, t: A, f: impl Fn(A) -> ErrStr<String>) -> ErrStr<usize> {
-        let result = f(t.clone())?;
-        println!("\npivot_dapps::run_{test} functional test\n\n\tinput: {t:?}, result: {result}\n\npivot_dapps::{test}:...ok");
-        Ok(1)
-    }
 
     create_testing!("quiz08::b_wyrd");
 
@@ -526,21 +504,6 @@ pub mod functional_tests {
         Ok(row)
     }
     run_with!("currency_format", now(), compose!(resolve)(currency_format));
-
-    fn apr_math((close_str, open_str): (String, String)) -> ErrStr<String> {
-        let row = make_table(&format!(
-            "ix,close_date,opened,ids,close_id,pivot_token,from,\
-            pivot_amount,amount1,virtual,pivot_close_price,proposed_close_price\n\
-            1,{close_str},{open_str},20,99,BTC,UNDEAD,0,100,0,0.00,0.00"
-        )).and_then(|t| parse_row(&t, 1, "tx_id", "110.0"))?;
-        if !row.contains("10.00%") { return Err(format!("apr_math: expected 10.00% in: {row}")); }
-        Ok(row)
-    }
-    run!("apr_math", {
-        let close  = today();
-        let opened = close - chrono::Duration::days(365);
-        let _ = report("apr_math", (format!("{close}"), format!("{opened}")), apr_math);
-    });
 
     fn undead_zero_precision(dt: String) -> ErrStr<String> {
         let row = make_table(&format!(

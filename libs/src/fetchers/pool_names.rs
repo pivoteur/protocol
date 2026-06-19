@@ -4,7 +4,7 @@ use book::{
    string_utils::{str2strf,s}
 };
 use super::utils::fetch_lines;
-use crate::types::util::{Pool,mk_pool};
+use crate::types::pools::{Pool,mk_pool};
 
 // ----- POOL NAMES --------------------------------------------------
 
@@ -43,10 +43,7 @@ pub mod functional_tests {
    use super::*;
    use paste::paste;
    use book::{ create_testing, utils::{ deref, now } };
-   use crate::{
-      fetchers::test_helpers::test_functions::marshall,
-      types::util::pool_name
-   };
+   use crate::fetchers::test_helpers::test_functions::marshall;
 
    create_testing!("fetchers::pool_names");
 
@@ -54,7 +51,7 @@ pub mod functional_tests {
       let (root_url, _aliases) = marshall()?;
       let pool_names = now(fetch_pool_names(&root_url))?;
       let pn: Vec<String> =
-         pool_names.into_iter().map(deref(pool_name)).collect();
+         pool_names.into_iter().map(deref(Pool::pool_name)).collect();
       println!("\tpool names:\n\n\t{pn:?}");
    });
 }
@@ -64,7 +61,7 @@ pub mod functional_tests {
 mod tests {
    use super::*;
    use crate::fetchers::test_helpers::test_functions::marshall;
-   use book::tuple_utils::{fst,snd};
+   use book::tuple_utils::fst;
 
    fn sample_pivot_pools() -> Vec<String> { "
    // created by: pools, version: 1.00
@@ -110,8 +107,7 @@ const poolAssets = {
    #[test]
    fn test_pool_btc_eth_medial() -> ErrStr<()> {
       let btc_eth = pool("[ 'BTC', 'ETH' ],")?;
-      assert_eq!("BTC", &fst(btc_eth.clone()));
-      assert_eq!("ETH", &snd(btc_eth));
+      assert_eq!("BTC+ETH", &btc_eth.to_string());
       Ok(())
    }
 
@@ -131,11 +127,10 @@ const poolAssets = {
       Ok(())
    }
 
-   #[tokio::test]
-   async fn test_fetch_pool_names_has_btc_pool() -> ErrStr<()> {
+   #[tokio::test] async fn test_fetch_pool_names_has_btc_pool() -> ErrStr<()> {
       let (root_url, _aliases) = marshall()?;
       let pools = fetch_pool_names(&root_url).await?;
-      assert!(pools.iter().any(|(prim,_)| prim == "BTC"));
+      assert!(pools.iter().any(|x| &fst(x.as_tuple()) == "BTC"));
       Ok(())
    }
 }

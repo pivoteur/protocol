@@ -10,9 +10,9 @@ use book::{
 use crate::collections::assets::{Assets,mk_assets};
 
 use super::{
-   tokens::coins::{Coin,PivotCoin},
    measurable::{Measurable,size,tvl},
-   util::pool_name as pool_nm
+   pools::mk_pool,
+   tokens::coins::{Coin,PivotCoin}
 };
 
 #[derive(Debug,Clone)]
@@ -77,13 +77,14 @@ mod asset_ordering {
    #[cfg(test)]
    mod tests {
       use super::*;
-      use crate::types::{ comps::test_data::*, util::{ Pool, pool_from_str } };
+      use crate::types::{ comps::test_data::*, pools::{ Pool, pool_from_str } };
       use book::err_utils::ErrStr;
 
       fn assert_pool_tokens<'a>(pool: Pool) -> impl Fn(&'a Coin, &'a Coin) {
          move |a: &'a Coin, b: &'a Coin| {
-            assert_eq!(pool.0, snd(a.key()));
-            assert_eq!(pool.1, snd(b.key()));
+            let (x, y) = pool.as_tuple();
+            assert_eq!(x, snd(a.key()));
+            assert_eq!(y, snd(b.key()));
          }
       }
 
@@ -139,7 +140,7 @@ impl Composition {
    pub fn pool_name(&self) -> String { 
       let (_, pri) = self.primary.key();
       let piv = self.pivot.key();
-      pool_nm(&(pri, piv))
+      mk_pool(&pri, &piv).to_string()
    }
 
    pub fn tvl(&self) -> USD { tvl(&self.primary) + tvl(&self.pivot) }

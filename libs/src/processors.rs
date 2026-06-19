@@ -17,8 +17,9 @@ use super::{
       comps::Composition,
       measurable::sort_descending,
       pivots::{Pivot,next_close_id,partition_on},
+      pools::Pool,
       proposals::proposes::{Propose,propose as propose_f},
-      util::{Token,Pool}
+      util::Token
    }
 };
 
@@ -42,10 +43,10 @@ async fn process_pools0(root_url: &str, pools: &Vec<Pool>, date: NaiveDate)
    let mut proposals = Vec::new();
 
    for pool in pools {
-      let (prim, piv) = pool;
+      let (primary, _) = pool.as_tuple();
       let ((opens, closes), max_date) =
-         fetch_pivots(root_url, prim, piv, a).await?;
-      let ans = propose(&proposer, pool, prim, opens, closes, max_date)?;
+         fetch_pivots(root_url, pool, a).await?;
+      let ans = propose(&proposer, pool, &primary, opens, closes, max_date)?;
       if ans.is_empty() {
          no_closes.push(pool.clone());
       } else {
@@ -95,13 +96,8 @@ pub fn available_assets(_asset: Composition, _open_pivots: &Vec<Pivot>)
 pub mod functional_tests {
    use super::*;
    use paste::paste;
-   use book::{
-      create_testing,
-      date_utils::yesterday,
-      utils::now
-   };
-   use crate::{ reports::print_table, types::util::pool_name };
-
+   use book::{ create_testing, date_utils::yesterday, utils::now };
+   use crate::reports::print_table;
 
    create_testing!("processors");
 
@@ -110,7 +106,7 @@ pub mod functional_tests {
       let (calls,nixen) = now(process_pools("pivot", &yday))?;
       let hdr = format!("Calls for {}:\n", yday);
       print_table(&hdr, &calls);
-      let ps: Vec<String> = nixen.iter().map(pool_name).collect();
+      let ps: Vec<String> = nixen.iter().map(Pool::pool_name).collect();
       println!("Pools with no calls:\n\n{}", ps.join("\t"));
    });
 }

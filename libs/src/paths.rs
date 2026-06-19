@@ -1,5 +1,5 @@
 use book::{ err_utils::ErrStr, file_utils::dir_file };
-use super::types::util::{Pool,mk_pool};
+use super::types::pools::{Pool,pool_from_str};
 
 // ----- location of the pivot-files ----------------------------------------
 
@@ -24,17 +24,17 @@ fn open_pivots_url(root_url: &str) -> String {
    format!("{}/open/raw", pivots_dir(root_url))
 }
 
-fn pool_file(primary: &str, pivot: &str) -> String {
-   format!("{primary}-{pivot}.tsv")
+fn pool_file(pool: &Pool) -> String {
+   format!("{}.tsv", pool.file_name())
 }
 
-pub fn pool_assets_url(root_url: &str, primary: &str, pivot: &str) -> String {
-   format!("{}/pools/{}", data_dir(root_url), pool_file(primary, pivot))
+pub fn pool_assets_url(root_url: &str, pool: &Pool) -> String {
+   format!("{}/pools/{}", data_dir(root_url), pool_file(pool))
 }
 
 /// Resolves the pivot-assets to the open pivot pool URL
-pub fn open_pivot_path(root_url: &str, primary: &str, pivot: &str) -> String {
-   format!("{}/{}", open_pivots_url(root_url), pool_file(primary, pivot))
+pub fn open_pivot_path(root_url: &str, pool: &Pool) -> String {
+   format!("{}/{}", open_pivots_url(root_url), pool_file(pool))
 }
 
 /// Constructing a pivot pool from a path
@@ -44,10 +44,7 @@ pub fn pivot_pool_from_file(path: &str) -> ErrStr<Pool> {
    if file.ends_with(".tsv") && file.contains("-") {
       let split1: Vec<&str> = file.split(".").collect();
       let name = split1.first().unwrap();
-      let split2: Vec<&str> = name.split("-").collect();
-      let prim = split2.first().unwrap();
-      let proper = split2.last().unwrap();
-      Ok(mk_pool(prim, proper))
+      pool_from_str(&name)
    } else {
       Err(format!("Cannot parse pool from {file}"))
    }
@@ -92,29 +89,27 @@ pub mod functional_tests {
       let ans = pivot_pool_from_file(&path)?;
       println!("\tpool: {ans:?}\n");
    });
+}
 
 #[cfg(test)]
+#[cfg(not(tarpaulin_include))]
 mod tests {
    use super::*;
+   use super::paths_test_helpers::path_to_btc_eth_pivot_pool;
 
-   #[test]
-   fn test_pivot_pool_from_file_ok() {
+   #[test] fn test_pivot_pool_from_file_ok() {
       let ans = pivot_pool_from_file(&path_to_btc_eth_pivot_pool());
       assert!(ans.is_ok());
    }
 
-   #[test]
-   fn fail_pivot_pool_from_file() {
+   #[test] fn fail_pivot_pool_from_file() {
       let ans = pivot_pool_from_file("ble-blah-blah-bleh");
       assert!(ans.is_err());
    }
 
-   #[test]
-   fn test_btc_eth_pivot_pool_from_file() -> ErrStr<()> {
-      let (btc,eth) = pivot_pool_from_file(&path_to_btc_eth_pivot_pool())?;
-      assert_eq!("BTC", &btc);
-      assert_eq!("ETH", &eth);
+   #[test] fn test_btc_eth_pivot_pool_from_file() -> ErrStr<()> {
+      let btc_eth = pivot_pool_from_file(&path_to_btc_eth_pivot_pool())?;
+      assert_eq!("BTC+ETH", &btc_eth.to_string());
       Ok(())
    }
-}
 }

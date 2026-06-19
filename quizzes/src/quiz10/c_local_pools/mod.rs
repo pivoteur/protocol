@@ -41,7 +41,7 @@ mod pools_impl {
       string_utils::str2strf,
       utils::get_env
    };
-   use libs::{ paths::pivot_pool_from_file, types::util::Pool };
+   use libs::{ paths::pivot_pool_from_file, types::pools::Pool };
 
    pub async fn print_pools_as_js(auth: &str, date: NaiveDate) -> ErrStr<()> {
       let a = pools(auth).await?;
@@ -61,8 +61,8 @@ mod pools_impl {
    
    fn to_js(dt: NaiveDate, pools: Vec<Pool>) -> String {
       fn pool2pool(p: Pool) -> String {
-         let (a, b) = p;
-         format!("[ '{}', '{}' ]", a.to_uppercase(), b.to_uppercase())
+         let (a, b) = p.as_tuple();
+         format!("[ '{a}', '{b}' ]")
       }
       let assets: Vec<String> = pools.into_iter().map(pool2pool).collect();
       format!(" 
@@ -84,7 +84,7 @@ mod tests {
    use super::*;
    use std::collections::HashSet;
    use book::date_utils::today;
-   use libs::types::util:: { mk_pool, Pool };
+   use libs::types::pools::{ mk_pool, Pool };
    use pools_impl::pools;
 
    #[tokio::test] async fn fail_print_pools_as_js() {
