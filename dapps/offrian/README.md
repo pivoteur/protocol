@@ -5,7 +5,7 @@ viable? This determination is `offrian`'s job.
 
 ## Usage
 
-![`offrian` usage](../../quizzes/src/quiz08/mgs/01a-usage.png)
+![`offrian` usage](../../quizzes/src/quiz08/e_offrian/imgs/01a-usage.png)
 
 ```
 offrian, version 1.00
@@ -29,9 +29,9 @@ where:
 
 depending on the call will get the following output:
 
-![`offrian` output](../../quizzes/src/quiz08/mgs/01b-runoff.png)
+![`offrian` output](../../quizzes/src/quiz08/e_offrian/imgs/01b-runoff.png)
 
-* [src](../../quizzes/src/quiz08/mod.rs)
+* [src](../../quizzes/src/quiz08/e_offrian/mod.rs)
 
 ------
 
