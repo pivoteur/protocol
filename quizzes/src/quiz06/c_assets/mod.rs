@@ -22,7 +22,7 @@ use libs::{
    types::{ quotes::Quotes, util::{Token, TVLs} }
 };
 
-fn version() -> String { s("1.08") }
+fn version() -> String { s("1.09") }
 fn app_name() -> String { s("assets") }
 
 fn usage() -> ErrStr<()> { println!("
