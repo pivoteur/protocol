@@ -1,24 +1,66 @@
-use book::{ err_utils::ErrStr, utils::get_args };
+use reqwest::Client;
+use book::{ 
+        err_utils::ErrStr, 
+        utils::{ get_args, get_env }
+};
 
 const DEFAULT_TWEET_URL: &str = "x.com/pivocateur";
 const DEFAULT_TX_URL:    &str = "asdf";
 
-fn version()  -> &'static str { "1.00" }
+fn version()  -> &'static str { "1.01" }
 fn app_name() -> &'static str { "distributed" }
 
-fn usage() -> ErrStr<()> {
-    eprintln!(
-        "Usage: {} <token_a> <token_b> <amount> [tweet_url] [tx_url]",
-        app_name()
-    );
-    eprintln!("  token_a   : distributed token, left side of pool  (e.g. USDC)");
-    eprintln!("  token_b   : paired token,      right side of pool (e.g. UNDEAD)");
-    eprintln!("  amount    : amount distributed to investor         (e.g. 0.4349)");
-    eprintln!("  tweet_url : tweet URL          (default: {DEFAULT_TWEET_URL})");
-    eprintln!("  tx_url    : snowtrace tx URL   (default: {DEFAULT_TX_URL})");
-    Err("Missing five arguments".to_string())
+//============================================================================
+//----- Telegram Configuration -----------------------------------------------
+//============================================================================
+fn chat_id_for(investor: &str) -> ErrStr<i64> {
+    let raw = get_env("INVESTOR_CHAT_IDS")?;
+    let map: serde_json::Value = serde_json::from_str(&raw)
+        .map_err(|e| format!("INVESTOR_CHAT_IDS is not valid JSON: {e}"))?;
+    map.get(investor)
+        .and_then(|v| v.as_i64())
+        .ok_or_else(|| format!("unknown investor/ chat id doesn't exist: {investor}"))
 }
 
+pub async fn send_telegram(bot_token: &str, chat_id: i64, text: &str) -> ErrStr<()> {
+    let url = format!("https://api.telegram.org/bot{bot_token}/sendMessage");
+    Client::new()
+        .post(&url)
+        .json(&serde_json::json!({
+            "chat_id": chat_id,
+            "text":    text,
+        }))
+        .send()
+        .await
+        .map_err(|e| e.to_string())?
+        .error_for_status()
+        .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[cfg(test)]
+pub async fn mock_send_telegram(_bot_token: &str, chat_id: i64, text: &str) -> ErrStr<()> {
+    println!("[mock telegram] chat_id={chat_id} | text={text}");
+    Ok(())
+}
+
+//----- Version/ App_Name/ Usage ---------------------------------------------
+fn usage() -> ErrStr<()> {
+    eprintln!(
+        "Usage: {} <investor> <token_a> <token_b> <amount> [tweet_url] [tx_url] [send]",
+        app_name()
+    );
+    eprintln!("  investor  : investor name / telegram chat         (e.g. alpha)");
+    eprintln!("  token_a   : distributed token, left side of pool  (e.g. USDC)");
+    eprintln!("  token_b   : paired token,      right side of pool (e.g. UNDEAD)");
+    eprintln!("  amount    : amount distributed to investor        (e.g. 0.4349)");
+    eprintln!("  tweet_url : tweet URL                             (default: {DEFAULT_TWEET_URL})");
+    eprintln!("  tx_url    : snowtrace tx URL                      (default: {DEFAULT_TX_URL})");
+    eprintln!("  send      : let Robbie send message?              (default: true)");
+    Err("Missing arguments".to_string())
+}
+
+//----- Message Building -----------------------------------------------------
 pub fn build_message(
     token_a:   &str,
     token_b:   &str,
@@ -32,24 +74,35 @@ pub fn build_message(
     )
 }
 
+//----- fn runoff_with_args --------------------------------------------------
 pub async fn runoff_with_args() -> ErrStr<()> {
     eprintln!("{}, version: {}\n", app_name(), version());
     let args = get_args();
-    let (token_a, token_b, tweet_url, amount, tx_url) = match args.as_slice() {
-        [token_a, token_b, amount] =>
-            (token_a.as_str(), token_b.as_str(), DEFAULT_TWEET_URL, amount.as_str(), DEFAULT_TX_URL),
-        [token_a, token_b, amount, tweet_url] =>
-            (token_a.as_str(), token_b.as_str(), tweet_url.as_str(), amount.as_str(), DEFAULT_TX_URL),
-        [token_a, token_b, amount, tweet_url, tx_url] =>
-            (token_a.as_str(), token_b.as_str(), tweet_url.as_str(), amount.as_str(), tx_url.as_str()),
+    let (investor, token_a, token_b, tweet_url, amount, tx_url, do_send) = match args.as_slice() {
+        [investor, token_a, token_b, amount] =>
+            (investor.as_str(), token_a.as_str(), token_b.as_str(), DEFAULT_TWEET_URL, amount.as_str(), DEFAULT_TX_URL, true),
+        [investor, token_a, token_b, amount, tweet_url] =>
+            (investor.as_str(), token_a.as_str(), token_b.as_str(), tweet_url.as_str(), amount.as_str(), DEFAULT_TX_URL, true),
+        [investor, token_a, token_b, amount, tweet_url, tx_url] =>
+            (investor.as_str(), token_a.as_str(), token_b.as_str(), tweet_url.as_str(), amount.as_str(), tx_url.as_str(), true),
+        [investor, token_a, token_b, amount, tweet_url, tx_url, send] => {
+            let do_send = send.parse::<bool>()
+                .map_err(|_| format!("send must be true or false, got: {send}"))?;
+            (investor.as_str(), token_a.as_str(), token_b.as_str(), tweet_url.as_str(), amount.as_str(), tx_url.as_str(), do_send)
+        },
         _ => return usage(),
     };
-    let msg       = build_message(token_a, token_b, tweet_url, amount, tx_url);
+    let msg = build_message(token_a, token_b, tweet_url, amount, tx_url);
+    if do_send {
+        let chat_id   = chat_id_for(investor)?;
+        let bot_token = get_env("REINVESTED_BOT")?;
+        send_telegram(&bot_token, chat_id, &msg).await?;
+    }
     println!("{msg}");
     Ok(())
 }
 
-//----- UNIT TESTS ------------------------------------------------------------------------
+//----- UNIT TESTS -----------------------------------------------------------
 #[cfg(test)]
 mod unit_tests {
     use super::*;
@@ -80,23 +133,23 @@ mod unit_tests {
         assert!(msg.contains("1.00 USDC"),      "amount token_a must appear");
         assert!(msg.contains("tx_id: tx"),       "tx_url must appear after tx_id:");
     }
- 
+
     #[test]
     fn test_different_token_pair() {
         let msg = build_message("AVAX", "BTC", "tweet", "3.14", "tx");
         assert!(msg.contains("AVAX-on-BTC"));
         assert!(msg.contains("3.14 AVAX"));
     }
- 
+
     #[test]
     fn test_default_urls_appear_correctly() {
         let msg = build_message("USDC", "UNDEAD", DEFAULT_TWEET_URL, "0.5", DEFAULT_TX_URL);
         assert!(msg.contains(DEFAULT_TWEET_URL));
         assert!(msg.contains(DEFAULT_TX_URL));
     }
-} 
+}
 
-//----- FUNCTIONAL TESTS -------------------------------------------------------------------
+//----- FUNCTIONAL TESTS -----------------------------------------------------
 #[cfg(test)]
 #[cfg(not(tarpaulin_include))]
 pub mod functional_tests {
@@ -104,8 +157,9 @@ pub mod functional_tests {
     use paste::paste;
     use book::create_testing;
 
+
     create_testing!("quiz11::b_distributed", "", true);
- 
+
     run!("build_and_send_message", {
         let msg = build_message(
             "USDC",
