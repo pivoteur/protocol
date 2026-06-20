@@ -21,7 +21,7 @@ use libs::{
    types::{ tokens::coins::Coin, comps::Composition }
 };
 
-fn version() -> String { "1.01".to_string() }
+fn version() -> String { "1.02".to_string() }
 fn app_name() -> String { "hwaet".to_string() }
 fn usage() -> ErrStr<()> {
    let app = app_name();
