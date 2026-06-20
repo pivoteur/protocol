@@ -85,7 +85,7 @@ struct NewClosePivotRow {
     apr: Percentage,
 }
 
-fn version() -> String { s("1.00") }
+fn version() -> String { s("1.01") }
 fn app_name() -> String { s("convcls") }
 
 fn usage() -> ErrStr<()> {
