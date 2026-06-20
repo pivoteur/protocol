@@ -8,7 +8,7 @@ use libs::{
    reports::{ Proposal, print_table, proposal, report_proposes }
 };
 
-fn version() -> String { "2.03".to_string() }
+fn version() -> String { "2.04".to_string() }
 fn app_name() -> String { "dusk".to_string() }
 fn usage() -> ErrStr<()> {
     println!("Usage:
