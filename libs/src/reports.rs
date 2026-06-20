@@ -48,9 +48,9 @@ pub struct Proposal {
    proposal: Propose,
 }
 
-pub fn mk_proposal(pool: &Pool, max_date: NaiveDate, opens: usize, p: Propose)
+pub fn mk_proposal(pool: &Pool, dt: &NaiveDate, opens: usize, p: Propose)
        -> Proposal {
-   Proposal { pool: pool.pool_name(), opens, max_date, proposal: p }
+   Proposal { pool: pool.pool_name(), opens, max_date: dt.clone(), proposal: p }
 }
 
 pub fn proposal(p: &Proposal) -> Propose { p.proposal.clone() }

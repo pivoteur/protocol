@@ -4,6 +4,7 @@ use book::{
    date_utils::parse_date,
    err_utils::ErrStr,
    list_utils::tail,
+   string_utils::s,
    tuple_utils::Partition,
    utils::{get_env,get_args}
 };
@@ -24,8 +25,8 @@ use libs::{
    }
 };
 
-fn version() -> String { "2.03".to_string() }
-fn app_name() -> String { "virtsz".to_string() }
+fn version() -> String { s("2.03") }
+fn app_name() -> String { s("virtsz") }
 
 fn partition_virtual_pivots(all_opns: Vec<Pivot>) -> Partition<Pivot> {
    all_opns.into_iter().partition(Pivot::is_virtual)
@@ -141,7 +142,7 @@ where
 * <path> to the pivot pool file to process,
          e.g. protocol/data/pivots/open/raw/btc-eth.tsv
 ", app_name());
-   "Needs arguments <protocol> <date> <prim> <piv>".to_string()
+   s("Needs arguments <protocol> <date> <prim> <piv>")
 }
 
 pub async fn runoff_with_args() -> ErrStr<()> {
@@ -164,13 +165,9 @@ pub mod functional_tests {
    use super::*;
    use paste::paste;
    use libs::paths::paths_test_helpers::path_to_btc_eth_pivot_pool;
-   use book::{
-      date_utils::yesterday,
-      utils::now,
-      create_testing
-   };
+   use book::{ create_testing, date_utils::yesterday, utils::now };
 
-   create_testing!("quiz07::b_virtual");
+   create_testing!("quiz07::b_virtual", "", true);
 
    run!("update_virtual_pivots", {
       let yday = format!("{}", yesterday());
@@ -196,8 +193,7 @@ mod tests {
       Ok((all_opns, (virts, opns)))
    }
 
-   #[tokio::test]
-   async fn test_partition_virtual_pivots() -> ErrStr<()> {
+   #[tokio::test] async fn test_partition_virtual_pivots() -> ErrStr<()> {
       let (all_opns, (virts, opns)) = virts_n_opns().await?;
       assert_eq!(all_opns.len(), virts.len() + opns.len());
       fn around(a: f32, b: f32) -> bool {
@@ -208,8 +204,7 @@ mod tests {
       Ok(())
    }
 
-   #[tokio::test]
-   async fn test_aggregate_virtual_pivots() -> ErrStr<()> {
+   #[tokio::test] async fn test_aggregate_virtual_pivots() -> ErrStr<()> {
       let (_, (virts, _)) = virts_n_opns().await?;
       assert!(!virts.is_empty());
       let yday = yesterday();

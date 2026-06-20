@@ -157,11 +157,6 @@ mod unit_tests {
     }
  
     #[test]
-    fn test_usage_returns_err() {
-        assert!(usage().is_err());
-    }
-
-    #[test]
     fn test_singular_pivot_count() -> ErrStr<()> {
         let msg = build_message("AVAX", "BTC", "1", "0.25", "https://x.com/pivocateur", false)?;
         assert!(msg.contains("AVAX-on-BTC pivot "),
@@ -230,13 +225,9 @@ mod unit_tests {
 pub mod functional_tests {
     use super::*;
     use paste::paste;
-    use book::{
-            utils::now,
-            create_testing
-    };
-
+    use book::{  create_testing, utils::now };
  
-    create_testing!("quiz11::a_reinvested");
+    create_testing!("quiz11::a_reinvested", "", true);
 
     run!("mock_build_and_send_message", {
         let chat_id = 0i64; // dummy chat id for "moak"

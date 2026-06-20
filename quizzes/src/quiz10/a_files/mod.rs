@@ -1,11 +1,12 @@
 use book::{
    err_utils::ErrStr,
    file_utils::{dirs_files,file_names},
+   string_utils::s,
    utils::get_args
 };
 
-fn app_name() -> String { "files".to_string() }
-fn version() -> String { "1.00".to_string() }
+fn app_name() -> String { s("files") }
+fn version() -> String { s("1.00") }
 
 fn files_as_str(dir: &str) -> String {
    let (_dirs, files) = dirs_files(&dir);
@@ -13,7 +14,10 @@ fn files_as_str(dir: &str) -> String {
    names.join("\n")
 }
 
-fn print_files(dir: &str) { println!("{}", files_as_str(dir)); }
+fn print_files(dir: &str) -> ErrStr<()> {
+   println!("{}", files_as_str(dir));
+   Ok(())
+}
 
 fn usage() -> ErrStr<()> {
    println!("Usage:
@@ -21,7 +25,7 @@ fn usage() -> ErrStr<()> {
 $ {} <dir>
 
 Lists the files in directory <dir>", app_name());
-   Err("Missing <dir> argument".to_string())
+   Err(s("Missing <dir> argument"))
 }
 
 #[cfg(not(tarpaulin_include))]
@@ -29,8 +33,7 @@ pub fn runoff_get_args() -> ErrStr<()> {
    println!("\n{}, version: {}\n", app_name(), version());
    let args = get_args();
    if let Some(dir) = args.first() {
-      print_files(&dir);
-      Ok(())
+      print_files(&dir)
    } else {
       usage()
    }
@@ -46,7 +49,7 @@ mod functional_tests {
    use paste::paste;
    use book::create_testing;
 
-   create_testing!("quiz10::a_files");
+   create_testing!("quiz10::a_files", "", true);
 
    run_with!("files_as_str", "../libs/src", files_as_str);
 }

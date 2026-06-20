@@ -200,11 +200,7 @@ mod sample_data {
    pub fn sample_open_pivots() -> String {
       s("\
 open\tclose\ttx_id\t10% gain
-1\t0\txx1\t12.0
-2\t1\txx2\t22.6
-4\t2\tyyy\t1939.31
-13\t1\txx3\t26.9
-")
+1\t0\txx1\t12.0\n2\t1\txx2\t22.6\n4\t2\tyyy\t1939.31\n13\t1\txx3\t26.9\n")
    }
 
    pub fn sample_old_close_pivots() -> String {

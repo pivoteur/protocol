@@ -4,6 +4,7 @@ use book::{
    csv_utils::{CsvHeader,print_csv},
    date_utils::parse_date,
    err_utils::ErrStr,
+   string_utils::s,
    utils::get_args
 };
 
@@ -69,8 +70,8 @@ fn report_proposes(rpt: Report) {
    }
 }
 
-fn app_name() -> String { "chihuahua".to_string() }
-fn version() -> String { "1.01".to_string() }
+fn app_name() -> String { s("chihuahua") }
+fn version() -> String { s("1.01") }
 fn print_heading() { println!("{}, version: {}\n", app_name(), version()); }
 
 fn usage() -> ErrStr<()> {
@@ -116,7 +117,7 @@ pub mod functional_tests {
       create_testing, 
    };
 
-   create_testing!("quiz02::b_compute_close");
+   create_testing!("quiz02::b_compute_close", "", true);
 
    run!("report_calls", {
       println!("\nquiz02: b_compute_close functional test\n");
@@ -125,7 +126,6 @@ pub mod functional_tests {
          .into_iter().map(to_string).collect();
       match now(report_calls(args)) { Ok(()) => Ok(1), Err(x) => Err(x) }
    });
-
 }
 
 #[cfg(test)]
