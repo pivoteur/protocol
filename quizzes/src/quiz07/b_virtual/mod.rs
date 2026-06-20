@@ -25,7 +25,7 @@ use libs::{
    }
 };
 
-fn version() -> String { s("2.03") }
+fn version() -> String { s("2.04") }
 fn app_name() -> String { s("virtsz") }
 
 fn partition_virtual_pivots(all_opns: Vec<Pivot>) -> Partition<Pivot> {
