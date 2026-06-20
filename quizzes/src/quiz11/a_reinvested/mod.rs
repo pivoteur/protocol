@@ -26,7 +26,7 @@ fn chat_id_for(investor: &str) -> ErrStr<i64> {
 // * error 400 means:   bot was kicked from chat
 
 //----- Version/ App_Name/ Usage ---------------------------------------------
-fn version()  -> &'static str { "1.03" }
+fn version()  -> &'static str { "1.04" }
 fn app_name() -> &'static str { "reinvested" }
  
 fn usage() -> ErrStr<()> {
