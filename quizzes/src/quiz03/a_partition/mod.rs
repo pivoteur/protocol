@@ -23,7 +23,7 @@ The pivot pools are reposed (in git, currently) at <root URL>.
 
 Open pivots are stored as raw-CSV files in git at protocol <root URL>.
 ");
-    Err("Needs <root URL> <primary> <pivot> arguments".to_string())
+   Err("Needs <root URL> <primary> <pivot> arguments".to_string())
 }
 
 fn list_open_pivots(piv: &str, opens: Vec<Pivot>) {
@@ -64,26 +64,20 @@ async fn fetch_and_list_open_pivots(root_url: &str, pool: &Pool) -> ErrStr<()> {
 }
 
 // ----- TESTS -------------------------------------------------------
+
 #[cfg(test)]
 #[cfg(not(tarpaulin_include))]
 pub mod functional_tests {
    use super::*;
    use paste::paste;
-   use book::{
-      err_utils::ErrStr,
-      utils:: { get_env, now },
-      create_testing
-   };
+   use book::{ create_testing, err_utils::ErrStr, utils:: { get_env, now } };
    use libs::types::pools::pool_from_str;
 
-   create_testing!("quiz03::a_partition");
+   create_testing!("quiz03::a_partition", "", true);
 
    run!("partition", {
       let root_url = get_env("PIVOT_URL")?;
       let pool = pool_from_str("btc-eth")?;
-      match now(fetch_and_list_open_pivots(&root_url, &pool)) {
-         Ok(_) => Ok(1),
-         Err(x) => Err(x)
-      }
+      let _ = now(fetch_and_list_open_pivots(&root_url, &pool));
    });
 }

@@ -56,7 +56,7 @@ pub mod functional_tests {
    use paste::paste;
    use book::{ create_testing, utils::now };
 
-   create_testing!("quiz06::a_pool_table");
+   create_testing!("quiz06::a_pool_table", "", true);
 
    run!("fetch_pool_assets",
         now(fetch_pool_assets("pivot", &mk_pool("btc", "eth"))));

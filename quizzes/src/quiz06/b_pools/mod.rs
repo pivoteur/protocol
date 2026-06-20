@@ -3,6 +3,7 @@ use book::{
    csv_utils::CsvWriter,
    err_utils::ErrStr,
    num_utils::parse_or,
+   string_utils::s,
    utils::{get_env,get_args}
 };
 
@@ -16,8 +17,8 @@ use libs::{
   }
 };
 
-fn version() -> String { "1.06".to_string() }
-fn app_name() -> String { "assets".to_string() }
+fn version() -> String { s("1.06") }
+fn app_name() -> String { s("assets") }
 fn min_default() -> f32 { 10000.0 }
 fn min_value(mini: Option<&String>) -> USD {
    mk_usd(parse_or(mini, min_default()))
@@ -102,14 +103,15 @@ pub mod functional_tests {
    use paste::paste;
    use book::{ create_testing, utils::now };
 
-   create_testing!("quiz06::b_pools");
+   create_testing!("quiz06::b_pools", "", true);
+
    run!("fetch_all_pool_assets", {
-      let _ =
-         now(do_it(Some(&"PIVOT".to_string()), Some(&"10000".to_string())));
+      let _ = now(do_it(Some(&s("PIVOT")), Some(&s("10000"))));
    });
 }
 
 #[cfg(test)]
+#[cfg(not(tarpaulin_include))]
 mod tests {
 
    use super::*;

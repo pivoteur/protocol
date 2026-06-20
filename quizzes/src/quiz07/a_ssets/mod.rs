@@ -2,6 +2,7 @@ use book::{
    date_utils::parse_date,
    err_utils::ErrStr,
    num_utils::parse_or,
+   string_utils::s,
    utils::{get_env,get_args}
 };
 
@@ -48,7 +49,7 @@ where
 * <date> to check availability, e.g.: $LE_DATE
 * [min] minimum pivot amount (default $1000.00)
 ");
-   "Needs arguments <protocol> <date>, optionally [min=1000]".to_string()
+   s("Needs arguments <protocol> <date>, optionally [min=1000]")
 }
 
 pub async fn runoff_with_args() -> ErrStr<()> {
@@ -74,7 +75,7 @@ pub mod functional_tests {
       utils::now
    };
 
-   create_testing!("quiz07::a_ssets");
+   create_testing!("quiz07::a_ssets", "", true);
 
    run!("list_quotes_and_assets", {
       let yday = yesterday();

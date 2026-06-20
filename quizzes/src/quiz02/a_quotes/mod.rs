@@ -45,35 +45,43 @@ async fn parse_quotes() -> ErrStr<(HashMap<String, f32>, NaiveDate)> {
    Ok((quotes, max_date.clone()))
 }
 
-pub async fn runoff() -> ErrStr<usize> {
-   println!("quiz02: a_quotes functional test\n");
+pub async fn runoff_no_args() -> ErrStr<()> {
    let (quotes, max_date) = parse_quotes().await?;
    println!("Quotes are {quotes:?} for date: {}", max_date);
-   Ok(1)
+   Ok(())
 }
 
 // ----- TESTS -------------------------------------------------------
-#[cfg(test)]
-mod tests {
 
+#[cfg(test)]
+#[cfg(not(tarpaulin_include))]
+mod functional_tests {
+   use super::*;
+   use paste::paste;
+   use book::{ create_testing, utils::now };
+
+   create_testing!("quiz02::a_quotes");
+   run!("a_quotes", now(runoff_no_args()));
+}
+
+#[cfg(test)]
+#[cfg(not(tarpaulin_include))]
+mod tests {
    use super::*;
 
-   #[tokio::test]
-   async fn test_parse_quotes_ok() {
+   #[tokio::test] async fn test_parse_quotes_ok() {
       let ans = parse_quotes().await;
       assert!(ans.is_ok());
    }
 
-   #[tokio::test]
-   async fn test_quote_max_date() -> ErrStr<()> {
+   #[tokio::test] async fn test_quote_max_date() -> ErrStr<()> {
       let (_qts, dt) = parse_quotes().await?;
       let new_year = parse_date("2026-01-01")?;
       assert!(dt > new_year);
       Ok(())
    }
 
-   #[tokio::test]
-   async fn test_btc_quote() -> ErrStr<()> {
+   #[tokio::test] async fn test_btc_quote() -> ErrStr<()> {
       let (qts, _dt) = parse_quotes().await?;
       let btc = qts.get("BTC").ok_or("No quote for BTC!".to_string())?;
       assert!(*btc > 8000.0); // remember when BTC was $8k? I do.

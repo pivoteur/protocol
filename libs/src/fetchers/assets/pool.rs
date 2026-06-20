@@ -97,9 +97,9 @@ pub async fn available_assets_fetcher
 
 pub fn subtractor(assets: &mut Assets, coin: &Coin) { assets.subtract(coin); }
 
-pub async fn fetch_available_assets(auth: &str, quotes: &Quotes, pool: &Pool)
+pub async fn fetch_available_assets(root_url: &str, q: &Quotes, p: &Pool)
       -> ErrStr<Composition> {
-   available_assets_fetcher(subtractor, auth, quotes, pool).await
+   available_assets_fetcher(subtractor, root_url, q, p).await
 }
 
 // ----- TESTS -------------------------------------------------------

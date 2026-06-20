@@ -74,20 +74,20 @@ pub async fn runoff_get_args() -> ErrStr<()> {
 }
 
 // ----- TESTS -------------------------------------------------------
+
 #[cfg(test)]
 #[cfg(not(tarpaulin_include))]
-pub mod functional_tests {
+mod functional_tests {
    use super::*;
    use paste::paste;
-   use book::{ create_testing, utils::get_env };
+   use book::{ create_testing, utils::{ get_env, now } };
 
-   create_testing!("quiz03::b_aggregate");
+   create_testing!("quiz03::b_aggregate", "", true);
 
    run!("aggregate", {
-      println!("\nquiz03: b_aggregate functional test\n");
       let piv = get_env("PIVOT_URL")?;
       let dt = parse_date("2026-02-02")?;
       let pool = mk_pool("btc", "eth");
-      let _ = aggregate(&piv, &pool, dt);
+      let _ = now(aggregate(&piv, &pool, dt));
    });
 }

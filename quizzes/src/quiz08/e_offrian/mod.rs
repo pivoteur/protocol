@@ -220,7 +220,7 @@ mod functional_tests {
    use book::{ create_testing, csv_utils::{as_csv,enumerate_csv}, utils::now };
    use libs::fetchers::test_helpers::test_functions::marshall;
 
-   create_testing!("quizzes::quiz08::e_offrian");
+   create_testing!("quizzes::quiz08::e_offrian", "", true);
 
    run!("debug_offrian",
         now(runoff_continuation(&[s("pivot"),s("1"),s("9")],true)));

@@ -38,7 +38,7 @@ where
 }
 
 async fn health_computer(f: impl Fn(&mut Assets, &Coin),
-      root_url: &str, date: &NaiveDate, debug: bool) 
+                         root_url: &str, date: &NaiveDate, debug: bool) 
       -> ErrStr<Vec<Composition>> {
    if debug { println!("Computing pivot pool health"); }
    let pools = fetch_pool_names(&root_url).await?;
@@ -116,7 +116,7 @@ mod functional_tests {
    use book::{ create_testing, date_utils::yesterday, utils::now };
    use libs::fetchers::test_helpers::test_functions::marshall;
 
-   create_testing!("quiz07::d_health");
+   create_testing!("quiz07::d_health", "", true);
 
    run!("compute_health", " (using mock subtractor)", {
       let yday = yesterday();

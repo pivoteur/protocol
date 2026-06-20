@@ -5,11 +5,12 @@ use libs::fetchers::pool_names::fetch_pool_names;
 use book::{
    date_utils::parse_date,
    err_utils::ErrStr,
+   string_utils::s,
    utils::{ get_args, get_env }
 };
 
-fn app_name() -> String { "pools".to_string() }
-fn version() -> String { "1.00".to_string() }
+fn app_name() -> String { s("pools") }
+fn version() -> String { s("1.00") }
 
 async fn print_pool_assets(auth: &str, dt: &NaiveDate) -> ErrStr<()> {
    let ogori_cap = auth.to_uppercase();
@@ -60,14 +61,12 @@ mod functional_tests {
    use super::*;
    use paste::paste;
 
-   use book::{ create_testing, date_utils::today, utils::now };
+   use book::{ create_testing, date_utils::yesterday, utils::now };
 
-   create_testing!("quiz10::b_pools");
+   create_testing!("quiz10::b_pools", "", true);
 
    run!("pivot_pool_assets", {
-      let td = today();
-      let auth = "PIVOT";
-      let _ = now(print_pool_assets(&auth, &td))?;
+      let _ = now(print_pool_assets("pivot", &yesterday()))?;
    });
 }
 
@@ -76,21 +75,18 @@ mod functional_tests {
 mod tests {
 
    use super::*;
-   use book::date_utils::today;
+   use book::date_utils::yesterday;
 
    #[tokio::test]
    async fn test_print_pool_assets_ok() -> ErrStr<()> {
-      let td = today();
-      let auth = "PIVOT";
-      let ans = print_pool_assets(&auth, &td).await;
+      let ans = print_pool_assets("pivot", &yesterday()).await;
       assert!(ans.is_ok());
       Ok(())
    }
 
    #[tokio::test]
    async fn fail_print_pool_assets_bad_auth() {
-      let td = today();
-      let ans = print_pool_assets("ARBITRAM", &td).await; // geddit?
+      let ans = print_pool_assets("ARBITRAM", &yesterday()).await; // geddit?
       assert!(ans.is_err());
    }
 }

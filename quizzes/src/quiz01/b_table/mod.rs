@@ -297,7 +297,7 @@ pub fn print_actives(actives: &Vec<Pivot>) {
 }
 
 
-pub async fn runoff() -> ErrStr<usize> {
+pub async fn runoff_no_args() -> ErrStr<()> {
    println!("quiz01: b_table functional test.\n");
    // let's read in real open pivot data and first, put those data into a 
    // (untyped) table
@@ -316,22 +316,34 @@ pub async fn runoff() -> ErrStr<usize> {
          let amt: f32 = if k == "BTC" { btc } else { eth };
          println!("There are {v} {k} open pivots, totaling {amt} {k}");
       }
-   Ok(1)
+   Ok(())
 }   
    
 // ----- TESTS -------------------------------------------------------
+
 #[cfg(test)]
+#[cfg(not(tarpaulin_include))]
+mod functional_tests {
+   use super::*;
+   use paste::paste;
+   use book::{ create_testing, utils::now };
+
+   create_testing!("quiz01::b_table");
+
+   run!("b_table", now(runoff_no_args()));
+}
+
+#[cfg(test)]
+#[cfg(not(tarpaulin_include))]
 mod tests {
    use super::*;
 
-   #[tokio::test]
-   async fn test_ingest_table_ok() {
+   #[tokio::test] async fn test_ingest_table_ok() {
       let table = ingest_table().await;
       assert!(table.is_ok());
    }
 
-   #[tokio::test]
-   async fn test_actives_closeds() -> ErrStr<()> {
+   #[tokio::test] async fn test_actives_closeds() -> ErrStr<()> {
       let table = ingest_table().await?;
       let (acts, pass) = actives_closeds(&table)?;
       assert!(!acts.is_empty());
@@ -339,8 +351,7 @@ mod tests {
       Ok(())
    }
 
-   #[tokio::test]
-   async fn test_amounts() -> ErrStr<()> {
+   #[tokio::test] async fn test_amounts() -> ErrStr<()> {
       let table = ingest_table().await?;
       let (acts, _pass) = actives_closeds(&table)?;
       let (bag, btc, eth) = amounts(&acts);
