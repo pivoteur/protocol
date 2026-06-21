@@ -1,6 +1,8 @@
 use std::collections::HashMap;
 
 use chrono::NaiveDate;
+use serde::Serialize;
+use serde_with::{ serde_as, DisplayFromStr };
 
 use book::{
    currency::usd::mk_usd,
@@ -17,10 +19,13 @@ use super::{
 
 /// One populates the quotes with the fetcher.
 
-#[derive(Clone, Debug)]
+#[serde_as]
+#[derive(Clone, Debug, Serialize)]
 pub struct Quotes {
+   #[serde_as(as = "DisplayFromStr")]
    pub date: NaiveDate,
    quotes: HashMap<Token, f32>,
+   #[serde(skip_serializing)]
    pub aliases: Aliases
 }
 
@@ -63,13 +68,15 @@ impl Quotes {
 
 #[cfg(test)]
 #[cfg(not(tarpaulin_include))]
-pub mod functional_tests {
-   use super::*;
-   use paste::paste;
-   use std::iter::once;
-   use book::{ create_testing, date_utils::yesterday };
+pub mod sample_data {
 
-   pub fn test_mk_quotes(q: &[(&str, f32)]) -> Quotes {
+   use super::{mk_quotes,Quotes};
+
+   use std::iter::once;
+
+   use book::date_utils::yesterday;
+
+   pub fn sample_quotes_maker(q: &[(&str, f32)]) -> Quotes {
       let quotes: Vec<(String, f32)> =
          once(&("USDC", 1.0)).chain(q.into_iter())
                              .map(|(a,b)| (a.to_string(), *b))
@@ -77,11 +84,36 @@ pub mod functional_tests {
       mk_quotes(yesterday(), quotes.into_iter().collect())
    }
 
+   pub fn sample_btc_eth_quotes() -> Quotes {
+      sample_quotes_maker(&[("BTC", 76603.0), ("ETH", 2086.77)])
+   }
+}
+
+#[cfg(test)]
+#[cfg(not(tarpaulin_include))]
+pub mod functional_tests {
+
+   use super::*;
+   use super::sample_data::sample_btc_eth_quotes;
+
+   use paste::paste;
+   use serde_json;
+
+   use book::{ create_testing, err_utils::err_or };
+
    create_testing!("types::quotes");
+
    run!("as_table", {
-      let qts = test_mk_quotes(&[("BTC", 76603.0), ("ETH", 2086.77)]);
+      let qts = sample_btc_eth_quotes();
       println!("quotes are:
 {}", qts.as_table().as_csv());
+   });
+
+   run!("serialized_quotes", {
+      let quotes = sample_btc_eth_quotes();
+      let json = err_or(serde_json::to_string_pretty(&quotes),
+                        "Could not serialize quotes as JSON")?;
+      println!("Converting {quotes:?} to JSON:\n\n{json}");
    });
 }
 
@@ -89,10 +121,10 @@ pub mod functional_tests {
 #[cfg(not(tarpaulin_include))]
 mod tests {
    use super::*;
-   use super::functional_tests::test_mk_quotes;
+   use super::sample_data::sample_quotes_maker;
 
    fn looking(token: &str) -> ErrStr<f32> {
-      test_mk_quotes(&[("BTC", 68732.0)]).lookup(token)
+      sample_quotes_maker(&[("BTC", 68732.0)]).lookup(token)
    }
 
    #[test]
