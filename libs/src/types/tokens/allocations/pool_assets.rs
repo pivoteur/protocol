@@ -1,3 +1,4 @@
+/*
 use chrono::NaiveDate;
 use serde::{Serialize, ser::SerializeStruct, Serializer};
 use serde_json;
@@ -5,13 +6,26 @@ use serde_json;
 use crate::types::{ measurable::Measurable, pools::Pool, util::Token };
 
 use book::{ compose, err_utils::{ErrStr, err_or} };
+*/
 
-#[derive(Debug, Clone)]
+use serde::Serialize;
+
+use super::allocations::Allocation;
+
+// pub struct Pools 
+   // quotes: Quotes,
+
+#[derive(Debug, Clone, Serialize)]
 pub struct PoolAssets {
-   generated: NaiveDate,
    primary: Allocation,
+   pivot: Allocation
 }
 
+pub fn mk_pool_assets(primary: Allocation, pivot: Allocation) -> PoolAssets {
+   PoolAssets { primary, pivot }
+}
+
+/*
 impl Serialize for PoolAssets {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -53,3 +67,28 @@ pub fn as_json(dt: &NaiveDate, v: &[PoolAssets]) -> ErrStr<String> {
       {allocs}
    ]
 serde_json::to_string_pretty(&user)
+*/
+
+// ----- TESTS -------------------------------------------------------
+
+#[cfg(test)]
+#[cfg(not(tarpaulin_include))]
+mod functional_tests {
+   use super::*;
+   use crate::types::tokens::allocations::allocations::test_data::sample_allocation;
+   use paste::paste;
+   use serde_json;
+
+   use book::{ create_testing, err_utils::{ err_or, ErrStr } };
+
+   create_testing!("types::tokens::allocations::pool_assets");
+
+   run!("serialize_pool_assets", {
+      let btc = sample_allocation("BTC", 0.3, 0.1)?;
+      let eth = sample_allocation("ETH", 2.2, 9.8)?;
+      let pa = mk_pool_assets(btc, eth);
+      let json = err_or(serde_json::to_string_pretty(&pa),
+                        "Cannot serizalize PoolAssets to JSON")?;
+      println!("{pa:?} as JSON is:\n\n{json}");
+   });
+}

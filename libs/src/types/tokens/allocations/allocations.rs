@@ -53,22 +53,26 @@ impl Serialize for Allocation {
 
 #[cfg(test)]
 #[cfg(not(tarpaulin_include))]
-mod test_data {
+pub mod test_data {
    use super::*;
    use crate::types::tokens::allocations::committed::mk_committed;
    use book::err_utils::ErrStr;
 
-   pub fn sample_allocation() -> ErrStr<Allocation> {
-      let commit = mk_committed(1.2, 9.7);
+   pub fn sample_allocation(tok: &str, virt: f32, act: f32)
+         -> ErrStr<Allocation> {
+      let commit = mk_committed(virt, act);
       Allocation::builder()
-                .token("BTC").total(12.0).committed(commit).build()
+         .token(tok).total(commit.sz() * 1.2).committed(commit).build()
+   }
+   pub fn sample_allocation0() -> ErrStr<Allocation> {
+      sample_allocation("BTC", 1.2, 9.7)
    }
 }
 
 #[cfg(test)]
 #[cfg(not(tarpaulin_include))]
 mod functional_tests {
-   use super::test_data::sample_allocation;
+   use super::test_data::sample_allocation0;
    use paste::paste;
    use book::{ create_testing, err_utils::{ ErrStr, err_or } };
    use serde_json;
@@ -76,7 +80,7 @@ mod functional_tests {
    create_testing!("types::tokens::allocations");
 
    run!("serialize_allocation", {
-      let alloc = sample_allocation()?;
+      let alloc = sample_allocation0()?;
       let json = err_or(serde_json::to_string_pretty(&alloc),
                         "Unable to serialize Allocation to JSON")?;
       println!("{alloc:?} as JSON:\n\n{json}");
@@ -86,13 +90,14 @@ mod functional_tests {
 #[cfg(test)]
 #[cfg(not(tarpaulin_include))]
 mod tests {
-   use super::test_data::sample_allocation;
+   use super::test_data::sample_allocation0;
    use book::{ err_utils::ErrStr, num::estimate::mk_estimate };
 
    #[test] fn test_available_assets_for_allocation() -> ErrStr<()> {
-      let alloc = sample_allocation()?;
-      let estimate = mk_estimate(1.1);
-      assert!(estimate.approximates(alloc.available()));
+      let alloc = sample_allocation0()?;
+      let estimate = mk_estimate(2.18);
+      let avail = alloc.available();
+      assert!(estimate.approximates(avail), "Available amount is {avail}");
       Ok(())
    }
 }

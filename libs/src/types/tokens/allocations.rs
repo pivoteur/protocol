@@ -1,7 +1,7 @@
 // ----- POOL ASSETS -------------------------------------------------------
 
 /// Shows how the pool assets are allocated to pivots or are available
-// pub mod pool_assets;
+pub mod pool_assets;
 
 /// Shows the allocation of a token in a pool
 pub mod allocations;
