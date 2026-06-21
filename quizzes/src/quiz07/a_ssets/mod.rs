@@ -2,6 +2,7 @@ use book::{
    date_utils::parse_date,
    err_utils::ErrStr,
    num_utils::parse_or,
+   string_utils::s,
    utils::{get_env,get_args}
 };
 
@@ -12,7 +13,7 @@ use libs::{
       pool_names::fetch_pool_names,
       pivots::fetch_open_pivots
    },
-   reports::{header,print_table}
+   reports::print_table,
 };
 
 async fn list_quotes_and_assets(args: Vec<String>) -> ErrStr<()> {
@@ -26,11 +27,12 @@ async fn list_quotes_and_assets(args: Vec<String>) -> ErrStr<()> {
       let aliases = &quotes.aliases.clone();
       print_table("Quotes:", &[quotes]);
       let pool_names = fetch_pool_names(&root_url).await?;
-      for (pri, piv) in pool_names {
-         let pool = fetch_assets(&root_url, &pri, &piv, aliases).await?;
-         print_table(&format!("Pool {}:", header(&pri, &piv)), &[pool]);
+      for pool in pool_names {
+         let pn = pool.pool_name();
+         let comp = fetch_assets(&root_url, &pool, aliases).await?;
+         print_table(&format!("Pool {}:", pn), &[comp]);
          let (open_pivs, _) =
-            fetch_open_pivots(&root_url, &pri, &piv, aliases).await?;
+            fetch_open_pivots(&root_url, &pool, aliases).await?;
          print_table("Open Pivots:", &open_pivs);
       }
    }
@@ -47,7 +49,7 @@ where
 * <date> to check availability, e.g.: $LE_DATE
 * [min] minimum pivot amount (default $1000.00)
 ");
-   "Needs arguments <protocol> <date>, optionally [min=1000]".to_string()
+   s("Needs arguments <protocol> <date>, optionally [min=1000]")
 }
 
 pub async fn runoff_with_args() -> ErrStr<()> {
@@ -73,7 +75,7 @@ pub mod functional_tests {
       utils::now
    };
 
-   create_testing!("quiz07::a_ssets");
+   create_testing!("quiz07::a_ssets", "", true);
 
    run!("list_quotes_and_assets", {
       let yday = yesterday();

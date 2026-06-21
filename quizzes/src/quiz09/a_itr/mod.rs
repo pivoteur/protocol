@@ -3,12 +3,12 @@ use std::process::{Command,Stdio};
 use book::{
    err_utils::ErrStr,
    file_utils::subdirs,
-   string_utils::plural,
+   string_utils::{plural,s},
    tuple_utils::Partition,
    utils::get_args
 };
 
-fn app_name() -> String { "itr".to_string() }
+fn app_name() -> String { s("itr") }
 
 fn build_dapps(dir: &str) -> Partition<String> {
    let dirs = subdirs(dir);
@@ -84,7 +84,7 @@ fn build_dapps_and_report(mb_dir: Option<&str>) -> ErrStr<usize> {
    report_build_results(res)
 }
 
-fn version() -> String { "1.01".to_string() }
+fn version() -> String { s("1.01") }
 fn print_heading() { println!("{}, version: {}\n", app_name(), version()); }
 
 // ----- TESTS -------------------------------------------------------
@@ -96,7 +96,7 @@ pub mod functional_tests {
    use paste::paste;
    use book::create_testing;
 
-   create_testing!("quiz09::a_itr");
+   create_testing!("quiz09::a_itr", "", true);
 
    run!("build_dapps_success", " (successes)",
         build_dapps_and_report(Some("data/sample_dapps")));
@@ -108,18 +108,16 @@ pub mod functional_tests {
 mod tests {
    use super::*;
 
-   fn good_dir() -> String { "data/sample_dapps".to_string() }
-   fn bad_dir() -> String { "data/sample_broken_dapp".to_string() }
+   fn good_dir() -> String { s("data/sample_dapps") }
+   fn bad_dir() -> String { s("data/sample_broken_dapp") }
 
-   #[test]
-   fn test_build_dapps() {
+   #[test] fn test_build_dapps() {
       let (a, b) = build_dapps(&good_dir());
       assert!(a.len() > 0);
       assert!(b.is_empty());
    }
 
-   #[test]
-   fn fail_build_dapps() {
+   #[test] fn fail_build_dapps() {
       let (_a, b) = build_dapps(&bad_dir());
       assert!(!b.is_empty());
    }

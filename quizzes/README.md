@@ -34,6 +34,10 @@ directory directly, locally.
 
 * [10](src/quiz10): list files of a directory. Yes. I know
 
+## Telegram
+
+* [11](src/quiz11): Telegram bots (reinvest and distribute)
+
 # Resources
 
 The quizzes and infrastructure uses [libraries from @logicalgraphs crypto-n-rust
@@ -44,8 +48,14 @@ on github.
 
 To test quizzes, run the following command:
 
-`$ cargo make test-flow`
+`$ cargo make tests
 
 The reason for this is the test-suite needs to clean up data files after all
 testing is completed.
+
+## Code coverage
+
+For code-coverage data for quizzes, run the following command:
+
+`$ cargo make coverage`
 

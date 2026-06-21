@@ -16,12 +16,13 @@ use crate::types::{
       assets::{Asset,coalesce,gain_10_percent},
       asset_types::AssetType::*
    },
-   coins::Coin,
+   tokens::coins::Coin,
    gains::Gains,
    measurable::{Measurable,weight,size},
    pivots::{Pivot,headers,froms},
+   pools::{Pool,mk_pool},
    quotes::Quotes,
-   util::{Blockchain,Id,Pool}
+   util::{Blockchain,Id}
 };
 
 // ----- CLOSE PIVOTS -------------------------------------------------------
@@ -71,7 +72,7 @@ impl Propose {
           .and_then(|q| 
              self.pivot
               .first()
-              .and_then(|r| Some((q.token(), r.token())))) {
+              .and_then(|r| Some(mk_pool(&q.token(), &r.token())))) {
          pool
       } else {
          panic!("Missing principal or pivot (or both) asset from proposal")

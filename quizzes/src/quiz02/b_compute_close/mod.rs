@@ -4,28 +4,32 @@ use book::{
    csv_utils::{CsvHeader,print_csv},
    date_utils::parse_date,
    err_utils::ErrStr,
+   string_utils::s,
    utils::get_args
 };
 
 use libs::{
    fetchers::{ pivots::fetch_pivots, quotes::fetch_quotes},
-   types::{ pivots::next_close_id, proposals::proposes::{propose,Propose} }
+   types::{
+      pivots::next_close_id,
+      pools::{Pool,mk_pool},
+      proposals::proposes::{propose,Propose}
+   }
 };
 
 struct Report {
-   primary: String,
-   pivot: String,
+   pool: Pool,
    opens: usize,
    date: NaiveDate,
    props: Vec<Propose>,
    max_date: NaiveDate
 }
 
-async fn compute_closes(root_url: &str, prim: &str, piv: &str, 
-                        date: NaiveDate) -> ErrStr<Report> {
+async fn compute_closes(root_url: &str, pool: &Pool, date: NaiveDate)
+      -> ErrStr<Report> {
    let quotes = fetch_quotes(&date).await?;
    let a = &quotes.aliases;
-   let ((opns, cls), max_date) = fetch_pivots(root_url, prim, piv, a).await?;
+   let ((opns, cls), max_date) = fetch_pivots(root_url, pool, a).await?;
    let mut next_close = next_close_id(&cls);
    let proposer = propose(&quotes);
    let mut props = Vec::new();
@@ -38,17 +42,12 @@ async fn compute_closes(root_url: &str, prim: &str, piv: &str,
       }
    }
 
-   Ok(Report { primary: prim.to_string(),
-               pivot: piv.to_string(),
-               opens: opns.len(),
-               date, props, max_date })
+   Ok(Report { pool: pool.clone(), opens: opns.len(), date, props, max_date })
 }
 
 fn report_proposes(rpt: Report) {
    let mut print_header: bool = true;
-   let cap_prim = rpt.primary.to_uppercase();
-   let cap_piv = rpt.pivot.to_uppercase();
-   let header = format!("{cap_prim}+{cap_piv}");
+   let header = rpt.pool.pool_name();
    let pool = format!("{header} pivot pool");
    let len = rpt.opens;
 
@@ -71,8 +70,8 @@ fn report_proposes(rpt: Report) {
    }
 }
 
-fn app_name() -> String { "chihuahua".to_string() }
-fn version() -> String { "1.01".to_string() }
+fn app_name() -> String { s("chihuahua") }
+fn version() -> String { s("1.01") }
 fn print_heading() { println!("{}, version: {}\n", app_name(), version()); }
 
 fn usage() -> ErrStr<()> {
@@ -97,7 +96,8 @@ async fn report_calls(args: Vec<String>) -> ErrStr<()> {
    print_heading();
    if let [root_url, prim, piv, date] = args.as_slice() {
       let dt = parse_date(&date)?;
-      let report = compute_closes(root_url, prim, piv, dt).await?;
+      let pool = mk_pool(&prim, &piv);
+      let report = compute_closes(root_url, &pool, dt).await?;
       report_proposes(report);
       Ok(())
    } else {
@@ -117,7 +117,7 @@ pub mod functional_tests {
       create_testing, 
    };
 
-   create_testing!("quiz02::b_compute_close");
+   create_testing!("quiz02::b_compute_close", "", true);
 
    run!("report_calls", {
       println!("\nquiz02: b_compute_close functional test\n");
@@ -126,20 +126,21 @@ pub mod functional_tests {
          .into_iter().map(to_string).collect();
       match now(report_calls(args)) { Ok(()) => Ok(1), Err(x) => Err(x) }
    });
-
 }
 
 #[cfg(test)]
+#[cfg(not(tarpaulin_include))]
 mod tests {
 
    use super::*;
-
    use book::utils::get_env;
+   use libs::types::pools::pool_from_str;
 
    async fn compute_test_closes() -> ErrStr<Report> {
       let dt = parse_date("2026-01-25")?;
       let pivot_url = get_env("PIVOT_URL")?;
-      compute_closes(&pivot_url, "AVAX", "UNDEAD", dt).await
+      let pool = pool_from_str("avax-undead")?;
+      compute_closes(&pivot_url, &pool, dt).await
    }
 
    #[tokio::test]

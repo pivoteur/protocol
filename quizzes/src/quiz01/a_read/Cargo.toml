@@ -12,3 +12,6 @@ quizzes = { path = "../../.." }
 
 # cwd protocol/quizzes/quiz01/src/a_read
 
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(tarpaulin_include)'] }
+

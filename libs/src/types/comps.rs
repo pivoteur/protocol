@@ -10,9 +10,9 @@ use book::{
 use crate::collections::assets::{Assets,mk_assets};
 
 use super::{
-   coins::{Coin,PivotCoin},
    measurable::{Measurable,size,tvl},
-   util::pool_name as pool_nm
+   pools::mk_pool,
+   tokens::coins::{Coin,PivotCoin}
 };
 
 #[derive(Debug,Clone)]
@@ -27,7 +27,7 @@ mod test_data {
    use super::{ Composition, mk_composition, from_assets };
    use crate::{
       collections::assets::mk_assets,
-      types::coins::functional_tests::coin
+      types::tokens::coins::functional_tests::coin
    };
    
    pub fn mk_btc_eth() -> ErrStr<Composition> {
@@ -45,7 +45,10 @@ mod test_data {
 
 mod asset_ordering {
    use super::Composition;
-   use crate::types::{ coins::{Coin,mk_pivot_coin}, measurable::Measurable };
+   use crate::types::{
+      tokens::coins::{Coin,mk_pivot_coin},
+      measurable::Measurable
+   };
    use book::{ num::floats::mk_safe_float, tuple_utils::{ Partition, snd } };
 
    fn sort_asset_pair<'a>(a: &'a Coin, b: &'a Coin) -> (&'a Coin, &'a Coin) {
@@ -74,13 +77,14 @@ mod asset_ordering {
    #[cfg(test)]
    mod tests {
       use super::*;
-      use crate::types::{ comps::test_data::*, util::{ Pool, pool_from_str } };
+      use crate::types::{ comps::test_data::*, pools::{ Pool, pool_from_str } };
       use book::err_utils::ErrStr;
 
       fn assert_pool_tokens<'a>(pool: Pool) -> impl Fn(&'a Coin, &'a Coin) {
          move |a: &'a Coin, b: &'a Coin| {
-            assert_eq!(pool.0, snd(a.key()));
-            assert_eq!(pool.1, snd(b.key()));
+            let (x, y) = pool.as_tuple();
+            assert_eq!(x, snd(a.key()));
+            assert_eq!(y, snd(b.key()));
          }
       }
 
@@ -136,7 +140,7 @@ impl Composition {
    pub fn pool_name(&self) -> String { 
       let (_, pri) = self.primary.key();
       let piv = self.pivot.key();
-      pool_nm(&(pri, piv))
+      mk_pool(&pri, &piv).to_string()
    }
 
    pub fn tvl(&self) -> USD { tvl(&self.primary) + tvl(&self.pivot) }
@@ -149,7 +153,7 @@ impl Composition {
 }
 
 impl Measurable for Composition {
-   fn sz(&self) -> f32 { self.tvl().amount }
+   fn sz(&self) -> f32 { self.tvl().amount() }
    fn aug(&self) -> f32 { 1.0 }
 }
 
@@ -209,7 +213,7 @@ pub mod functional_tests {
    use super::test_data::*;
    use paste::paste;
    use book::create_testing;
-   use crate::types::coins::functional_tests::coin;
+   use crate::types::tokens::coins::functional_tests::coin;
 
    create_testing!("types::comps");
 

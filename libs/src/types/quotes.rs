@@ -61,11 +61,13 @@ impl Quotes {
 
 // ----- TESTS -------------------------------------------------------
 
+#[cfg(test)]
 #[cfg(not(tarpaulin_include))]
 pub mod functional_tests {
    use super::*;
+   use paste::paste;
    use std::iter::once;
-   use book::date_utils::yesterday;
+   use book::{ create_testing, date_utils::yesterday };
 
    pub fn test_mk_quotes(q: &[(&str, f32)]) -> Quotes {
       let quotes: Vec<(String, f32)> =
@@ -74,9 +76,17 @@ pub mod functional_tests {
                              .collect();
       mk_quotes(yesterday(), quotes.into_iter().collect())
    }
+
+   create_testing!("types::quotes");
+   run!("as_table", {
+      let qts = test_mk_quotes(&[("BTC", 76603.0), ("ETH", 2086.77)]);
+      println!("quotes are:
+{}", qts.as_table().as_csv());
+   });
 }
 
 #[cfg(test)]
+#[cfg(not(tarpaulin_include))]
 mod tests {
    use super::*;
    use super::functional_tests::test_mk_quotes;

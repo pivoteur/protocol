@@ -40,17 +40,14 @@ pub fn runoff_with_args() -> ErrStr<()> {
    }
 }
 
-//----- TEST --------------------------------------------------------------------------------------------------------
+// ----- TEST -------------------------------------------------------
 
 #[cfg(test)]
 #[cfg(not(tarpaulin_include))]
 pub mod functional_tests {
    use paste::paste;
    use super::*;
-   use book::{ create_testing,
-
-   };
-   
+   use book::create_testing;
 
    fn calls() -> Vec<String> {
 "ix,pool,open_pivots,last_pivot_on_dt,opened,ids,close_id,close_date,from,from_blockchain,amount1,virtual,quote1,val1,gain_10_percent,pivot_token,pivot_blockchain,pivot_close_price,pivot_amount,proposed_token,proposed_blockchain,proposed_close_price,proposed_amount,roi,apr

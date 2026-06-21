@@ -8,18 +8,17 @@ name = "libs"
 path = "src/lib.rs"
 
 [dependencies]
-paste = "1.0"
 chrono = "0.4.38"
-tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
-reqwest = { version = "0.12.4", features = ["json"] }
-serde_json = "1.0"
+csv = "1.0"
+paste = "1.0"
+reqwest = { version = "0.13.4", features = ["json"] }
 serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0.150"
+serde_with = "3.0"
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 
 book = { path = "../../crypto-n-rust/src/libs/book" }
 
 [lints.rust.unexpected_cfgs]
 level = "warn"
-check-cfg = [
-    'cfg(tarpaulin_include)'
-]
-
+check-cfg = ['cfg(tarpaulin_include)']

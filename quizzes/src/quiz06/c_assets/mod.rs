@@ -7,6 +7,7 @@ use book::{
    date_utils::parse_date,
    err_utils::ErrStr,
    num_utils::parse_num,
+   string_utils::s,
    table_utils::col,
    utils::{get_env,get_args}
 };
@@ -21,8 +22,8 @@ use libs::{
    types::{ quotes::Quotes, util::{Token, TVLs} }
 };
 
-fn version() -> String { "1.08".to_string() }
-fn app_name() -> String { "assets".to_string() }
+fn version() -> String { s("1.08") }
+fn app_name() -> String { s("assets") }
 
 fn usage() -> ErrStr<()> { println!("
 {}, version: {}
@@ -38,7 +39,7 @@ where
 * <auth> is protocol authenticator
 * <date> the date of the assets-value, e.g.: $LE_DATE
 ", app_name(), version(), app_name());
-   Err("Need <auth> <date> arguments!".to_string())
+   Err(s("Need <auth> <date> arguments!"))
 }
 
 async fn compute_assets(auth: &str, dt: &NaiveDate) -> ErrStr<Vec<USD>> {
@@ -84,7 +85,7 @@ fn amt(wallets: &IxTable) -> impl Fn(&(Token, USD)) -> Option<(Token, f32)> {
    move | (t, _tvl) | {
       col(wallets, &t)
          .and_then(|c|
-             Some((t.to_string(),
+             Some((s(t),
                    c.into_iter().filter_map(|n| parse_num(&n).ok()).sum())))
    }
 }
@@ -94,19 +95,18 @@ fn output_line(dt: &NaiveDate, row: &Vec<USD>) -> String {
    format!("{dt},{}", dollaz.join(","))
 }
 
-async fn print_assets(auth: &str, dt: &str) -> ErrStr<usize> {
-   let date = parse_date(dt)?;
+async fn print_assets(auth: &str, date: &NaiveDate) -> ErrStr<()> {
    let tvls = compute_assets(auth, &date).await?;
    let row = output_line(&date, &tvls);
    println!("{row}\n");
-   Ok(1)
+   Ok(())
 }
 
 pub async fn runoff_get_args() -> ErrStr<()> {
    let args = get_args();
    if let [auth, dt] = args.as_slice() {
-      let _ = print_assets(&auth, &dt).await?;
-      Ok(())
+      let date = parse_date(dt)?;
+      print_assets(&auth, &date).await
    } else {
       usage()
    }
@@ -122,13 +122,13 @@ pub mod functional_tests {
    use paste::paste;
    use book::{ create_testing, date_utils::yesterday, utils::now };
 
-   create_testing!("quiz06::c_assets");
+   create_testing!("quiz06::c_assets", "", true);
 
    run!("compute_assets", {
       println!("\nquizzes::quiz06::c_assets functional test\n");
       let yday = yesterday();
       println!("\tasset row is:\n");
-      let _ = now(print_assets("pivot", &format!("{yday}")));
+      let _ = now(print_assets("pivot", &yday));
    });
 }
 
@@ -136,21 +136,16 @@ pub mod functional_tests {
 mod tests {
    use super::*;
 
-   use book::{
-      date_utils::yesterday,
-      string_utils::{to_string,words}
-   };
+   use book::{ date_utils::yesterday, string_utils::{s,words} };
    use libs::{ tables::index_table, types::quotes::mk_quotes };
 
-   #[tokio::test]
-   async fn test_compute_assets_ok() {
+   #[tokio::test] async fn test_compute_assets_ok() {
       let yday = yesterday();
       let ans = compute_assets("pivot", &yday).await;
       assert!(ans.is_ok());
    }
 
-   #[tokio::test]
-   async fn fail_compute_assets() {
+   #[tokio::test] async fn fail_compute_assets() {
       let yday = yesterday();
       let ans = compute_assets("adsff", &yday).await;
       assert!(ans.is_err());
@@ -163,7 +158,7 @@ BTC+ETH	1.0	34.0	0.0
 BTC+UNDEAD	0.1	0.0	6250000
 ETH+UNDEAD	0.0	5	6250000";
       let lines: Vec<String> =
-         minimi.split("\n").into_iter().map(to_string).collect();
+         minimi.split("\n").into_iter().map(s).collect();
       index_table(lines)
    }
 
@@ -184,8 +179,7 @@ ETH+UNDEAD	0.0	5	6250000";
 
    fn amts() -> Vec<f32> { vec![1.1, 39.0, 12500000.0] }
 
-   #[test]
-   fn test_amounts() -> ErrStr<()> {
+   #[test] fn test_amounts() -> ErrStr<()> {
       let w = wallets()?;
       let ans = amounts(&w, &assets());
       let hdr_amts: Vec<(String, f32)> =
@@ -198,14 +192,13 @@ ETH+UNDEAD	0.0	5	6250000";
       Ok(())
    }
 
-   #[test]
-   fn test_row() -> ErrStr<()> {
+   #[test] fn test_row() -> ErrStr<()> {
       let w = wallets()?;
       let ans = amounts(&w, &assets());
       let r = row(&quotes(), &ans, &assets());
       assert_eq!(3, r.len());
       for (ix, amt) in amts().into_iter().enumerate() {
-         assert_eq!(prices()[ix] * amt, r[ix].amount,
+         assert_eq!(prices()[ix] * amt, r[ix].amount(),
                     "For {}, TVLs mismatch", hdrs()[ix]);
       }
       Ok(())
