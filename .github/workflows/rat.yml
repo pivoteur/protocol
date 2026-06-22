@@ -19,17 +19,6 @@ jobs:
         with:
           path: protocol
 
-      - name: Set up Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Cache Rust
-        id: rust-cache-step
-        uses: Swatinem/rust-cache@v2
-        with: 
-          workspaces: |
-            protocol/libs
-            protocol/quizzes
-
       - name: Checkout crypto-n-rust
         uses: actions/checkout@v4
         with:
@@ -41,7 +30,17 @@ jobs:
         with:
           repository: pivoteur/pivoteur.github.io
           path: pivoteur.github.io
-          
+
+      - name: Cache itr binary
+        id: itr-cache
+        uses: actions/cache@v3
+        with:
+          path: protocol/dapps/itr/target/debug/itr
+          key: itr-binary-${{ hashFiles('protocol/dapps/itr/**/*.rs', 'protocol/dapps/itr/Cargo.toml', 'protocol/dapps/itr/Cargo.lock') }}
+
+      - name: Set up Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
       - name: Install cargo-make
         run: cargo install cargo-make
  
@@ -108,10 +107,12 @@ jobs:
             fi
     
       - name: Build itr
+        if: steps.itr-cache.outputs.cache-hit != 'true'
         working-directory: protocol/dapps/itr
-        run: |
-            cargo build
-            echo "$GITHUB_WORKSPACE/protocol/dapps/itr/target/debug" >> $GITHUB_PATH       
+        run: cargo build
+
+      - name: Add itr to PATH
+        run: echo "$GITHUB_WORKSPACE/protocol/dapps/itr/target/debug" >> $GITHUB_PATH
 
       - name: "[itr] itr . — dapps"
         working-directory: protocol/dapps
