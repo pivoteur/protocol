@@ -38,13 +38,29 @@ jobs:
           path: protocol/dapps/itr/target/debug/itr
           key: itr-binary-${{ hashFiles('protocol/dapps/itr/**/*.rs', 'protocol/dapps/itr/Cargo.toml', 'protocol/dapps/itr/Cargo.lock') }}
 
+      - name: Cache cargo-make binary
+        id: make-cache
+        uses: actions/cache@v3
+        with:
+          path: ~/.cargo/bin/cargo-make
+          key: cargo-make-${{ runner.os }}
+
+      - name: Cache cargo-tarpaulin binary
+        id: tarpaulin-cache
+        uses: actions/cache@v3
+        with:
+          path: ~/.cargo/bin/cargo-tarpaulin
+          key: cargo-tarpaulin-${{ runner.os }}
+
       - name: Set up Rust toolchain
         uses: dtolnay/rust-toolchain@stable
 
       - name: Install cargo-make
+        if: steps.make-cache.outputs.cache-hit != 'true'
         run: cargo install cargo-make
  
       - name: Install cargo-tarpaulin
+        if: steps.tarpaulin-cache.outputs.cache-hit != 'true'
         run: cargo install cargo-tarpaulin
  
       - name: Verify checkouts
