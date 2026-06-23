@@ -246,7 +246,7 @@ Iterates `cargo build` over each subdir in `<dir>`
 
 ### Evolution of `dusk`
 
-* [pools](archived/pools)
+* [pools](archived/pools): lists active pools; superceded by hwaet
 * [chihuahua](archived/chihuahua): close recommendations on one pivot pool
 * [basset](archived/basset): close-pivot recommendations condensed to one 
 trade per asset
