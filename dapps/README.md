@@ -229,13 +229,11 @@ Iterates `cargo build` over each subdir in `<dir>`
 
 * [dusk](dusk): aggregates assets to pivot by blockchain
 * [wyrd](wyrd): closes a pivot based upon a transaction
-
-### Standalone support dapps
-
 * [assets](assets): partitions pools by TVL
 * [virtsz](virtsz): Assets committed to virtual pivots
 * [hwaet](hwaet): Assesses pivot pools health
 * [convcls](convcls): Updates old-style close pivot tables
+* [quotes](quotes): output today's quotes as JSON
 
 ## WIP / Works in Progress
 
@@ -248,7 +246,9 @@ Iterates `cargo build` over each subdir in `<dir>`
 
 ### Evolution of `dusk`
 
-* [chihuahua](chihuahua): close recommendations on one pivot pool
-* [basset](basset): close-pivot recommendations condensed to one trade per asset
+* [pools](archived/pools): lists active pools; superceded by hwaet
+* [chihuahua](archived/chihuahua): close recommendations on one pivot pool
+* [basset](archived/basset): close-pivot recommendations condensed to one 
+trade per asset
 * hound: close pivots for all pivot pools. *OBE*: First attempt using github.
 

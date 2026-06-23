@@ -1,6 +1,6 @@
 # `quotes`
 
-![`quotes` JSON](../../quizzes/src/quiz10/d_quotes/01-quotes.png)
+![`quotes` JSON](../../quizzes/src/quiz10/d_quotes/imgs/01-quotes.png)
 
 Prints today's crypto quotes as JSON.
 
