@@ -1,6 +1,6 @@
 use chrono::NaiveDate;
 
-use book::{ err_utils::{ErrStr,not_implemented}, utils::get_env };
+use book::{ err_utils::ErrStr, utils::get_env };
 
 use super::{
    fetchers::{
@@ -10,7 +10,6 @@ use super::{
    },
    reports::{Proposal,mk_proposal},
    types::{
-      comps::Composition,
       measurable::sort_descending,
       pivots::{Pivot,next_close_id,partition_on},
       pools::Pool,
@@ -73,15 +72,6 @@ fn propose(proposer: impl Fn(Ixs<Pivot>) -> ErrStr<Option<Ix<Propose>>>,
          Some(1)
       });
    Ok(props)
-}
-
-// ---- Available assets ---------------------------------------------
-
-// we transition between composition and pivots and back
-
-pub fn available_assets(_asset: Composition, _open_pivots: &Vec<Pivot>)
-      -> ErrStr<Composition> {
-   not_implemented("available_assets")
 }
 
 // ----- TESTS -------------------------------------------------------
