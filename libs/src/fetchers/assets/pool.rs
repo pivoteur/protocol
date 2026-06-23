@@ -202,7 +202,7 @@ mod tests {
       let (url, _) = marshall()?;
       let pool = pool_from_str("btc-eth")?;
       let quotes = fetch_quotes(&yday).await?;
-      enfetchify(&url, &quotes, &pool).await
+      fetch_assets_and_open_pivots(&url, &quotes, &pool).await
    }
 
    #[tokio::test]
