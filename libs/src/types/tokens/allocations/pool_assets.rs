@@ -12,8 +12,7 @@ use serde::Serialize;
 
 use super::allocations::Allocation;
 
-// pub struct Pools 
-   // quotes: Quotes,
+use crate::types::pools::{ Pool, mk_pool };
 
 #[derive(Debug, Clone, Serialize)]
 pub struct PoolAssets {
@@ -25,57 +24,41 @@ pub fn mk_pool_assets(primary: Allocation, pivot: Allocation) -> PoolAssets {
    PoolAssets { primary, pivot }
 }
 
-/*
-impl Serialize for PoolAssets {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        let mut state = serializer.serialize_struct("PoolAssets", 3)?;
-        
-        state.serialize_field("width", &self.width)?;
-        state.serialize_field("height", &self.height)?;
-        
-        // Compute and inject the virtual field on the fly
-        let area = self.width * self.height;
-        state.serialize_field("area", &area)?;
-        
-        state.end()
-    }
-}
-
-fn as_pool(p: &PoolAssets) -> Pool { mk_pool(&p.primary.token, &p.pivot.token) }
-
-fn as_assets(pools: &[PoolAssets]) -> String {
-   fn pool2pool(p: Pool) -> String {
-      let (a, b) = p.as_tuple();
-      format!("[ '{a}', '{b}' ]")
+impl PoolAssets {
+   pub fn as_pool(&self) -> Pool {
+      mk_pool(&self.primary.key(), &self.pivot.key())
    }
-   let assets: Vec<String> =
-      pools.iter().map(compose!(pool2pool)(as_pool)).collect();
-      format!("assets: [
-      {}
-   ]",  assets.join(",\n      "))
 }
-
-pub fn as_json(dt: &NaiveDate, v: &[PoolAssets]) -> ErrStr<String> {
-   let assets = as_assets(v);
-   let hdr = format!("const poolAssets = {
-   generated: '{dt}',
-   {assets},
-   allocations = [
-      {allocs}
-   ]
-serde_json::to_string_pretty(&user)
-*/
 
 // ----- TESTS -------------------------------------------------------
 
 #[cfg(test)]
 #[cfg(not(tarpaulin_include))]
-mod functional_tests {
+pub mod test_data {
+   use rand::Rng;
    use super::*;
-   use crate::types::tokens::allocations::allocations::test_data::sample_allocation;
+   use crate::types::tokens::allocations::allocations::{
+      Allocation,
+      test_data::sample_allocation
+   };
+   use book::err_utils::ErrStr;
+
+   fn rnd_alloc(tok: &str, alloc: f32) -> ErrStr<Allocation> {
+      let virt: f32 = rand::thread_rng().gen_range(0.0 .. alloc);
+      let act = alloc - virt;
+      let ans = sample_allocation(&tok.to_uppercase(), virt, act)?;
+      Ok(ans)
+   }
+   pub fn sample_pool(prim: &str, alloc_a: f32, piv: &str, alloc_b: f32)
+         -> ErrStr<PoolAssets> {
+      Ok(mk_pool_assets(rnd_alloc(prim, alloc_a)?, rnd_alloc(piv, alloc_b)?))
+   }
+}
+      
+#[cfg(test)]
+#[cfg(not(tarpaulin_include))]
+mod functional_tests {
+   use super::test_data::sample_pool;
    use paste::paste;
    use serde_json;
 
@@ -84,11 +67,9 @@ mod functional_tests {
    create_testing!("types::tokens::allocations::pool_assets");
 
    run!("serialize_pool_assets", {
-      let btc = sample_allocation("BTC", 0.3, 0.1)?;
-      let eth = sample_allocation("ETH", 2.2, 9.8)?;
-      let pa = mk_pool_assets(btc, eth);
-      let json = err_or(serde_json::to_string_pretty(&pa),
+      let pool = sample_pool("btc", 0.5, "eth", 11.0)?;
+      let json = err_or(serde_json::to_string_pretty(&pool),
                         "Cannot serizalize PoolAssets to JSON")?;
-      println!("{pa:?} as JSON is:\n\n{json}");
+      println!("{pool:?} as JSON is:\n\n{json}");
    });
 }

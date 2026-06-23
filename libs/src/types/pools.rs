@@ -1,7 +1,7 @@
 use std::{fmt,hash::Hash,str::FromStr};
 use serde::{Deserialize,Serialize};
 
-use book::err_utils::ErrStr;
+use book::{ err_utils::ErrStr, string_utils::s };
 use super::util::Token;
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Hash)]
@@ -39,7 +39,13 @@ impl Pool {
       let Pool { primary, pivot } = self;
       format!("{}-{}", primary.to_lowercase(), pivot.to_lowercase())
    }
+
+   pub fn as_vec(&self) -> Vec<String> {
+      let Pool { primary, pivot } = self;
+      vec![ s(primary), s(pivot)]
+   }
 }
+
 pub fn pool_from_str(pool: &str) -> ErrStr<Pool> {
    let tokens: Vec<&str> = pool.split(['-','+']).collect();
    let [a, b] = match tokens.as_slice() {
@@ -73,7 +79,6 @@ mod functional_tests {
 #[cfg(not(tarpaulin_include))]
 mod tests {
    use super::*;
-   use book::string_utils::s;
 
    #[test] fn test_mk_pool() {
       assert_eq!("BTC+ETH", &mk_pool("btc","eth").to_string());

@@ -1,5 +1,8 @@
 // ----- POOL ASSETS -------------------------------------------------------
 
+/// The entire set of pools and their allocations
+pub mod pools;
+
 /// Shows how the pool assets are allocated to pivots or are available
 pub mod pool_assets;
 
