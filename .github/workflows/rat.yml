@@ -100,10 +100,10 @@ jobs:
               echo "--- [libs] All tests passed | $(grep 'coverage' /tmp/libs_tarp.txt | tail -1)" | tee -a /tmp/libs_tarp.txt
             fi
 
-      - name: "[quizzes] cargo make test-flow — quizzes"
+      - name: "[quizzes] cargo make tests — quizzes"
         working-directory: protocol/quizzes
         run: |
-            cargo make test-flow 2>&1 | tee /tmp/quizzes_test.txt
+            cargo make tests 2>&1 | tee /tmp/quizzes_test.txt
             if grep -q 'test result: FAILED' /tmp/quizzes_test.txt; then
               echo "--- [quizzes] TESTS FAILED | $(grep 'test result' /tmp/quizzes_test.txt | tail -1)" | tee -a /tmp/quizzes_test.txt
               exit 1
