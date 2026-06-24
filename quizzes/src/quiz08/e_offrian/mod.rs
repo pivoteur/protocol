@@ -23,7 +23,7 @@ use libs::{
    }
 };
 
-fn version() -> String { s("1.01") }
+fn version() -> String { s("1.021") }
 fn app_name() -> String { s("offrian") }
 fn usage() -> ErrStr<()> {
    let app = app_name();
@@ -39,8 +39,9 @@ where:
 * [-d|--debug] show debug information
 * <protocol> is the protocol to make the counter-offer, e.g.: PIVOT
 * <ix> is the call being countered, e.g. 1
-* <part> is the subset of the call being countered,
-  e.g.: 3 is a 1/3rd counter-offer
+* <vol> is the target volume (the volume we want the open pivots to have been)
+  e.g.: if the open pivots were for $15074.88, say, then 3000 reduces the open 
+        pivots to $3000.00
 ", app, version(), app);
    Err(s("offrian requires <protocol> <ix> <part> arguments"))
 }
@@ -60,16 +61,16 @@ pub async fn runoff_with_args() -> ErrStr<()> {
 }
 
 async fn runoff_continuation(args: &[String], debug: bool) -> ErrStr<()> {
-   if let [auth, call, part] = args {
+   if let [auth, call, vol] = args {
       let root_url = get_env(&format!("{}_URL", auth.to_uppercase()))?;
-      let fract = parse_num(&part)?;
+      let volume = parse_num(&vol)?;
       let ix = parse_id(&call)?;
       let (call, pivs) = pivot_data(&root_url, ix, debug).await?;
       let leeway =
          compute_virtual_pivot_amount(&call.pool, &pivs, &call.ids, debug)?;
       if debug {
-         println!("The virtual pivots provide {leeway} {} leeway",
-                  call.from_token);
+         println!("The virtual pivots provide {leeway} {} leeway ({})",
+                  call.from_token, mk_usd(leeway * );
       }
       let new_start = compute_new_start(&call, fract, debug);
       let new_pivot_amt = compute_new_pivot(&call, new_start, debug);
