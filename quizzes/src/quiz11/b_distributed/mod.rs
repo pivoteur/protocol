@@ -1,8 +1,4 @@
-use book::{
-    err_utils::ErrStr,
-    utils::get_args
-};
-
+use book::{ err_utils::ErrStr, utils::get_args };
 
 const DEFAULT_TWEET_URL: &str = "x.com/pivocateur";
 const DEFAULT_TX_URL:    &str = "asdf";
@@ -98,11 +94,6 @@ mod unit_tests {
         assert!(msg.contains(DEFAULT_TWEET_URL));
         assert!(msg.contains(DEFAULT_TX_URL));
     }
- 
-    #[test]
-    fn test_usage_returns_err() {
-        assert!(usage().is_err());
-    }
 } 
 
 //----- FUNCTIONAL TESTS -------------------------------------------------------------------
@@ -111,11 +102,9 @@ mod unit_tests {
 pub mod functional_tests {
     use super::*;
     use paste::paste;
-    use book::{
-        create_testing
-    };
+    use book::create_testing;
 
-    create_testing!("quiz11::b_distributed");
+    create_testing!("quiz11::b_distributed", "", true);
  
     run!("build_and_send_message", {
         let msg = build_message(

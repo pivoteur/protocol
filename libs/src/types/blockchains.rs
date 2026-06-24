@@ -2,7 +2,7 @@ use std::{ fmt, str::FromStr };
 
 use book::{ err_utils::ErrStr, string_utils::s };
 
-#[derive(Debug,PartialEq)]
+#[derive(Clone, Debug,PartialEq)]
 pub enum Blockchain { AVALANCHE, BINANCE, ETHEREUM }
 use Blockchain::*;
 

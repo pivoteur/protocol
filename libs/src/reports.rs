@@ -12,8 +12,8 @@ use super::{
    tables::{c2t, csv2tsv},
    types::{
       measurable::{Measurable,tvl},
-      proposals::proposes::Propose,
-      util::{Pool,pool_name}
+      pools::Pool,
+      proposals::proposes::Propose
    }
 };
 
@@ -48,9 +48,9 @@ pub struct Proposal {
    proposal: Propose,
 }
 
-pub fn mk_proposal(pool: &Pool, max_date: NaiveDate, opens: usize, p: Propose)
+pub fn mk_proposal(pool: &Pool, dt: &NaiveDate, opens: usize, p: Propose)
        -> Proposal {
-   Proposal { pool: pool_name(&pool), opens, max_date, proposal: p }
+   Proposal { pool: pool.pool_name(), opens, max_date: dt.clone(), proposal: p }
 }
 
 pub fn proposal(p: &Proposal) -> Propose { p.proposal.clone() }
@@ -124,6 +124,9 @@ fn print_compact(hdr: &str, no_closers: &[Pool], ncols: usize) {
    let entries_per_row: usize = len / nrows;
    println!("\n{hdr}\n");
    no_closers.chunks(entries_per_row).for_each(|val| {
-      println!("{}", val.iter().map(pool_name).collect::<Vec<_>>().join(", ,"));
+      println!("{}", val.iter()
+                        .map(Pool::to_string)
+                        .collect::<Vec<_>>()
+                        .join(", ,"));
    });
 }

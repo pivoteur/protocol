@@ -1,4 +1,6 @@
-use book::{ err_utils::ErrStr, utils::get_args };
+use chrono::NaiveDate;
+
+use book::{ date_utils::parse_date, err_utils::ErrStr, utils::get_args };
 
 use libs::{
    processors::process_pools,
@@ -20,14 +22,12 @@ where:
 Err("Need <protocol> and <date> arguments".to_string())
 }
 
-pub async fn propose(auth: &str, dt: &str, min: bool) -> ErrStr<usize> {
-   let (proposals, no_closes) = process_pools(&auth, &dt).await?;
+pub async fn propose(auth: &str, date: &NaiveDate, min: bool) -> ErrStr<()> {
+   let (proposals, no_closes) = process_pools(auth, date).await?;
    let x = if min { &vec![] } else { &no_closes };
    report_proposes(proposals.clone(), x, min);
-   if !min && !proposals.is_empty() {
-      tokens_to_pivot(proposals);
-   }
-   Ok(1)
+   if !min && !proposals.is_empty() { tokens_to_pivot(proposals); }
+   Ok(())
 }
 
 fn tokens_to_pivot(proposals: Vec<Proposal>) {
@@ -37,6 +37,22 @@ fn tokens_to_pivot(proposals: Vec<Proposal>) {
       tokens.add(asset);
    });
    print_table("Assets to pivot", &assets_by_tvl(&tokens));
+}
+
+pub async fn runoff_with_args() -> ErrStr<()> {
+    let args = get_args();
+    let min = args.contains(&"--min".to_string());
+    let args: Vec<String> =
+       args.into_iter().filter(|a| a != "--min").collect();
+    if !min {
+        println!("\n{}, version: {}\n", app_name(), version());
+    }
+    if let [auth, dt] = args.as_slice() {
+        let date = parse_date(&dt)?;
+        propose(auth, &date, min).await
+    } else {
+        usage()
+    }
 }
 
 // ----- UNIT TESTS ------------------------------------------------
@@ -54,22 +70,6 @@ mod unit_tests {
    #[test] fn test_tokens_to_pivot_empty() { tokens_to_pivot(vec![]); }
 }
 
-pub async fn runoff_with_args() -> ErrStr<()> {
-    let args = get_args();
-    let min = args.contains(&"--min".to_string());
-    let args: Vec<String> =
-       args.into_iter().filter(|a| a != "--min").collect();
-    if !min {
-        println!("\n{}, version: {}\n", app_name(), version());
-    }
-    if let [auth, dt] = args.as_slice() {
-        let _ = propose(auth, dt, min).await?;
-        Ok(())
-    } else {
-        usage()
-    }
-}
-
 // ----- FUNCTIONAL TESTS ------------------------------------------
 
 #[cfg(test)]
@@ -77,31 +77,10 @@ pub async fn runoff_with_args() -> ErrStr<()> {
 pub mod functional_tests {
     use super::*;
     use paste::paste;
-    use book:: { 
-        date_utils::yesterday,
-        create_testing
-    };
+    use book::{ create_testing, date_utils::yesterday, utils::now };
 
-    async fn run_full_dusk() -> ErrStr<usize> {
-        println!("quiz05:b_dusk_min full functional test\n");
-        let yday = format!("{}", yesterday());
-        propose("pivot", &yday, false).await?;
-        Ok(1)
-    }
+    create_testing!("quiz05::b_dusk_min", "", true);
 
-    async fn run_min_dusk() -> ErrStr<usize> {
-        println!("quiz05:b_dusk_min min functional test\n");
-        let yday = format!("{}", yesterday());
-        propose("pivot", &yday, true).await?;
-        Ok(1)
-    }
-
-    create_testing!("quiz05::b_dusk_min");
-
-    run!("full_and_min_dusk", {
-        println!("quiz05::b_dusk_min functional tests\n");
-        let _a = run_full_dusk();
-        let _b = run_min_dusk();
-    });
-
+    run!("full_dusk", { let _ = now(propose("pivot", &yesterday(), false)); });
+    run!("dusky_min", { let _ = now(propose("pivot", &yesterday(), true)); });
 }
