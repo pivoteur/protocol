@@ -7,7 +7,7 @@ use book::{
    err_utils::ErrStr,
    list_utils::tail,
    num::floats::mk_safe_float,
-   string_utils::words,
+   string_utils::{s,words},
    utils::{ get_args, get_env }
 };
 
@@ -21,8 +21,8 @@ use libs::{
    types::{ tokens::coins::Coin, comps::Composition }
 };
 
-fn version() -> String { "1.01".to_string() }
-fn app_name() -> String { "hwaet".to_string() }
+fn version() -> String { s("1.01") }
+fn app_name() -> String { s("hwaet") }
 fn usage() -> ErrStr<()> {
    let app = app_name();
    println!("\n{}, version {}\n\n\t$ {} [--debug] <protocol> <date>
