@@ -40,8 +40,7 @@ where:
 * <protocol> is the protocol to make the counter-offer, e.g.: PIVOT
 * <ix> is the call being countered, e.g. 1
 * <part> is the subset of the call being countered,
-  e.g.: 3 is a 1/3rd counter-offer
-", app, version(), app);
+  e.g.: 3 is a 1/3rd counter-offer", app, version(), app);
    Err(s("offrian requires <protocol> <ix> <part> arguments"))
 }
 

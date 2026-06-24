@@ -7,7 +7,7 @@ use book::{
    err_utils::ErrStr,
    list_utils::tail,
    num::floats::mk_safe_float,
-   string_utils::words,
+   string_utils::{s,words},
    utils::{ get_args, get_env }
 };
 

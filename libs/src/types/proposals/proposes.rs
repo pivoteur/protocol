@@ -191,7 +191,7 @@ pub mod functional_tests {
    use paste::paste;
    use crate::types::{
       assets::amounts::mk_amt,
-      quotes::functional_tests::test_mk_quotes,
+      quotes::sample_data::sample_quotes_maker,
       pivots::functional_tests::mk_btc_usdc_piv
    };
    use book::create_testing;
@@ -200,7 +200,7 @@ pub mod functional_tests {
 
    run!("propose", {
       let piv = mk_btc_usdc_piv(78408.88,mk_amt(0.0,0.1),0,"virtual pivot")?;
-      let quotes = test_mk_quotes(&[("BTC", 65000.0)]);
+      let quotes = sample_quotes_maker(&[("BTC", 65000.0)]);
       let proposer = propose(&quotes);
       if let Some((call, next_id)) = proposer((vec![piv], 1))? {
          println!("call:\n{}\n{}\n\nnext_id: {next_id}",
@@ -216,14 +216,14 @@ mod tests {
    use super::*;
    use crate::types::{
       assets::amounts::mk_amt,
-      quotes::functional_tests::test_mk_quotes,
+      quotes::sample_data::sample_quotes_maker,
       pivots::functional_tests::mk_btc_usdc_piv
    };
 
    #[test]
    fn test_propose_ok_no_call() -> ErrStr<()> {
       let piv = mk_btc_usdc_piv(78408.88,mk_amt(0.0, 500.0),0,"virtual_pivot")?;
-      let quotes = test_mk_quotes(&[("BTC",85000.0)]);
+      let quotes = sample_quotes_maker(&[("BTC",85000.0)]);
       let proposer = propose(&quotes);
       let max_id = 1;
       let ans = proposer((vec![piv], max_id));
@@ -236,7 +236,7 @@ mod tests {
    #[test]
    fn test_propose_ok_with_call() -> ErrStr<()> {
       let piv = mk_btc_usdc_piv(78408.88,mk_amt(0.0, 0.1),0,"virtual_pivot")?;
-      let quotes = test_mk_quotes(&[("BTC",65000.0)]);
+      let quotes = sample_quotes_maker(&[("BTC",65000.0)]);
       let max_id = 1;
       let proposer = propose(&quotes);
       let ans = proposer((vec![piv], max_id));
