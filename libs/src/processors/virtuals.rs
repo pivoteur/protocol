@@ -282,7 +282,7 @@ mod tests {
    #[test] fn test_compute_new_pivot() -> ErrStr<()> {
       let call = sample_call()?;
       let new_pivot = compute_new_pivot_amt(&call, &target(), true);
-      assert_eq!(call.quote1.amount() / 100.0, new_pivot);
+      assert_eq!(2500.0, new_pivot);
             // only works on USDC pools which this call happens to be on.
       Ok(())
    }
@@ -290,23 +290,20 @@ mod tests {
    #[test] fn test_compute_new_start() -> ErrStr<()> {
       let call = sample_call()?;
       let btc = compute_new_start(&call, &target(), true);
-      let ans = mk_estimate(0.011);
-      assert!(ans.approximates(btc));
-      Ok(())
+      mk_estimate(0.03).is(btc)
    }
 
    #[test] fn test_compute_offrian() -> ErrStr<()> {
       let call = sample_call()?;
       let new_call = compute_offrian(&call, 1000.0);
       let roi_est = mk_estimate(0.33);
-      assert!(roi_est.approximates(new_call.roi.value()), "ROI");
+      roi_est.is(new_call.roi.value())?;
       let apr_est = mk_estimate(2.16);
-      assert!(apr_est.approximates(new_call.apr.value()), "APR");
+      apr_est.is(new_call.apr.value())?;
       let btc = new_call.amount1;
       assert_eq!(0.0, btc, "BTC: principal asset (actual, not virtual)");
       let btc = new_call.virtual_amount;
       let btc_est = mk_estimate(0.45 / 37.0);
-      assert!(btc_est.approximates(btc), "BTC: principal asset (virtual)");
-      Ok(())
+      btc_est.is(btc)
    }
 }

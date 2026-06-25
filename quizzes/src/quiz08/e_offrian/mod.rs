@@ -1,11 +1,8 @@
-use std::collections::HashSet;
-
 use book::{
    csv_utils::as_csv,
-   currency::usd::{USD,mk_usd,no_monay},
+   currency::usd::mk_usd,
    err_utils::ErrStr,
    list_utils::tail,
-   num::percentage::mk_percentage,
    num_utils::parse_num,
    parse_utils::parse_id,
    string_utils::s,
@@ -13,21 +10,12 @@ use book::{
 };
 
 use libs::{
-   fetchers::{
-      calls::{ fetch_calls, fetch_call_data },
-      pivots::fetch_open_pivots
-   },
+   fetchers::calls::fetch_call_data,
    processors::virtuals::{
-      compute_offrian,
-      compute_virtual_pivot_amount
+      compute_virtual_pivot_amount,
+      compute_counter_offer
    },
-   types::{
-      aliases::aliases,
-      calls::Call,
-      measurable::Measurable,
-      pivots::Pivot,
-      pools::Pool
-   }
+   types::calls::Call
 };
 
 fn version() -> String { s("1.03") }
@@ -72,7 +60,7 @@ async fn runoff_continuation(args: &[String], debug: bool) -> ErrStr<()> {
       let root_url = get_env(&format!("{}_URL", auth.to_uppercase()))?;
       let volume = mk_usd(parse_num(&vol)?);
       let ix = parse_id(&call)?;
-      let (call, pivs) = pivot_data(&root_url, ix, debug).await?;
+      let (call, pivs) = fetch_call_data(&root_url, ix, debug).await?;
       let leeway =
          compute_virtual_pivot_amount(&call.pool, &pivs, &call.ids, debug);
       let leeway_vol = mk_usd(leeway * call.proposed_close_price.amount());
@@ -80,7 +68,7 @@ async fn runoff_continuation(args: &[String], debug: bool) -> ErrStr<()> {
          println!("The virtual pivots provide {leeway} {} leeway ({})",
                   call.from_token, leeway_vol);
       }
-      let new_call = compute_counter_offer(&call, volume, leeway_vol, debug)?;
+      let new_call = compute_counter_offer(&call, &volume, leeway_vol, debug)?;
       report_counter_offer(&new_call, debug)
    } else {
       usage()
