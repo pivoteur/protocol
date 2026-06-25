@@ -192,7 +192,7 @@ pub mod functional_tests {
    use crate::types::{
       assets::amounts::mk_amt,
       quotes::sample_data::sample_quotes_maker,
-      pivots::functional_tests::mk_btc_usdc_piv
+      pivots::sample_pivots::mk_btc_usdc_piv
    };
    use book::create_testing;
 
@@ -217,7 +217,7 @@ mod tests {
    use crate::types::{
       assets::amounts::mk_amt,
       quotes::sample_data::sample_quotes_maker,
-      pivots::functional_tests::mk_btc_usdc_piv
+      pivots::sample_pivots::mk_btc_usdc_piv
    };
 
    #[test]

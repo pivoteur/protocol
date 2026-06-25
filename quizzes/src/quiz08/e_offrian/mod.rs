@@ -67,7 +67,7 @@ async fn runoff_continuation(args: &[String], debug: bool) -> ErrStr<()> {
       let ix = parse_id(&call)?;
       let (call, pivs) = pivot_data(&root_url, ix, debug).await?;
       let leeway =
-         compute_virtual_pivot_amount(&call.pool, &pivs, &call.ids, debug)?;
+         compute_virtual_pivot_amount(&call.pool, &pivs, &call.ids, debug);
       let leeway_vol = mk_usd(leeway * call.proposed_close_price.amount());
       if debug {
          println!("The virtual pivots provide {leeway} {} leeway ({})",
@@ -181,19 +181,24 @@ async fn grab_call(root_url: &str, ix: usize, debug: bool) -> ErrStr<Call> {
    Ok(call.clone())
 }
 
-fn compute_virtual_pivot_amount(pool: &Pool, all_pivs0: &[Pivot],
-                                opens: &[usize], debug: bool) -> ErrStr<f32> {
+fn filter_virtuals(pool: &Pool, all_pivots: &[Pivot],
+                   opens: &[usize], debug: bool) -> Vec<Pivot> {
    let pivs_set: HashSet<usize> = opens.iter().copied().collect();
-   let mut all_pivs = all_pivs0.to_vec();
+   let mut virtuals = all_pivots.to_vec();
    // filter down to virtual pivots in the call
-   all_pivs.retain(|p| p.is_virtual() && pivs_set.contains(&p.index()));
+   virtuals.retain(|p| p.is_virtual() && pivs_set.contains(&p.index()));
    if debug {
-      println!("There are {} virtual pivots for {pool} call", all_pivs.len());
+      println!("There are {} virtual pivots for {pool} call", virtuals.len());
    }
-   let mut ans = 0.0;
-   // for p in all_pivs { ans += p.committed()?.sz(); }
-   for p in all_pivs { ans += p.sz(); }
-   Ok(ans)
+   virtuals
+}
+
+fn compute_virtual_pivot_amount(pool: &Pool, all_pivots: &[Pivot],
+                                opens: &[usize], debug: bool) -> f32 {
+   let mut amount = 0.0;
+   let virtuals = filter_virtuals(pool, all_pivots, opens, debug);
+   for v in virtuals { amount += v.sz(); }
+   amount
 }
 
 // ----- TESTS -------------------------------------------------------
@@ -242,7 +247,7 @@ mod functional_tests {
       let pool = &call.pool;
       let opens = &call.ids;
       let tok = s(&call.from_token);
-      let virtual_amt = compute_virtual_pivot_amount(pool, &pivs, opens, true)?;
+      let virtual_amt = compute_virtual_pivot_amount(pool, &pivs, opens, true);
       println!("For call:\n\n{}\nvirtual amount: {virtual_amt} {}",
                as_csv(&[call])?, tok);
    });

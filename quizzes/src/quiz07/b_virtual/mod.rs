@@ -13,12 +13,13 @@ use libs::{
    collections::assets::{Assets,mk_assets,assets_by_price},
    fetchers::{ quotes::fetch_quotes, pivots::fetch_pivots},
    paths::pivot_pool_from_file,
+   processors::virtuals::recompute_pivot,
    reports::{total_line,print_tsv_table_d},
    types::{
       tokens::coins::{Coin,mk_coin},
       comps::{Composition,mk_composition},
       measurable::{Measurable,tvl},
-      pivots::{Pivot,recompute_pivot},
+      pivots::Pivot,
       pools::Pool,
       quotes::Quotes,
       util::{Blockchain,Token}
