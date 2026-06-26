@@ -9,4 +9,3 @@
 --- [quizzes] All tests passed | 78.74% coverage | 168 passed, 0 failed | lines: 859/1091
 
 --- [dapps] itr
-total: 14/14
