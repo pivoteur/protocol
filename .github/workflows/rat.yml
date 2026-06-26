@@ -1,5 +1,5 @@
 name: rat
- 
+
 on:
   workflow_dispatch:
   schedule:
@@ -35,7 +35,7 @@ jobs:
         id: itr-cache
         uses: actions/cache@v3
         with:
-          path: protocol/quizzes/src/quiz09/a_itr/target/debug/itr
+          path: protocol/quizzes/src/quiz09/a_itr/target/release/itr
           key: itr-binary-${{ hashFiles('protocol/quizzes/src/quiz09/a_itr/**/*.rs', 'protocol/quizzes/src/quiz09/a_itr/Cargo.toml', 'protocol/dapps/itr/Cargo.lock') }}
 
       - name: Cache cargo-make binary
@@ -125,10 +125,10 @@ jobs:
       - name: Build itr
         if: steps.itr-cache.outputs.cache-hit != 'true'
         working-directory: protocol/quizzes/src/quiz09/a_itr
-        run: cargo build
+        run: cargo build --release
 
       - name: Add itr to PATH
-        run: echo "$GITHUB_WORKSPACE/protocol/quizzes/src/quiz09/a_itr/target/debug" >> $GITHUB_PATH
+        run: echo "$GITHUB_WORKSPACE/protocol/quizzes/src/quiz09/a_itr/target/release" >> $GITHUB_PATH
 
       - name: "[itr] itr . — dapps"
         working-directory: protocol/dapps
