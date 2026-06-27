@@ -1,6 +1,6 @@
 use book::{
    csv_utils::as_csv,
-   currency::usd::mk_usd,
+   currency::usd::{ USD, mk_usd },
    err_utils::ErrStr,
    list_utils::tail,
    num_utils::parse_num,
@@ -11,14 +11,11 @@ use book::{
 
 use libs::{
    fetchers::calls::fetch_call_data,
-   processors::virtuals::{
-      compute_virtual_pivot_amount,
-      compute_counter_offer
-   },
-   types::calls::Call
+   processors::virtuals::compute_counter_offer,
+   types::{ calls::Call, pivots::Pivot }
 };
 
-fn version() -> String { s("1.03") }
+fn version() -> String { s("1.04") }
 fn app_name() -> String { s("offrian") }
 fn usage() -> ErrStr<()> {
    let app = app_name();
@@ -58,17 +55,10 @@ pub async fn runoff_with_args() -> ErrStr<()> {
 async fn runoff_continuation(args: &[String], debug: bool) -> ErrStr<()> {
    if let [auth, call, vol] = args {
       let root_url = get_env(&format!("{}_URL", auth.to_uppercase()))?;
-      let volume = mk_usd(parse_num(&vol)?);
+      let target = mk_usd(parse_num(&vol)?);
       let ix = parse_id(&call)?;
-      let (call, pivs) = fetch_call_data(&root_url, ix, debug).await?;
-      let leeway =
-         compute_virtual_pivot_amount(&call.pool, &pivs, &call.ids, debug);
-      let leeway_vol = mk_usd(leeway * call.proposed_close_price.amount());
-      if debug {
-         println!("The virtual pivots provide {leeway} {} leeway ({})",
-                  call.from_token, leeway_vol);
-      }
-      let new_call = compute_counter_offer(&call, &volume, leeway_vol, debug)?;
+      let call_data = fetch_call_data(&root_url, ix, debug).await?;
+      let new_call = compute_counter_off((&call_data, &target, debug)?;
       report_counter_offer(&new_call, debug)
    } else {
       usage()
@@ -99,8 +89,8 @@ mod functional_tests {
    use super::*;
 
    use paste::paste;
-   use book::{ create_testing, csv_utils::{as_csv,enumerate_csv}, utils::now };
-   use libs::fetchers::test_helpers::test_functions::marshall;
+   use book::{ create_testing, csv_utils::as_csv, utils::now };
+   use libs::processors::virtuals::test_data::sample_avax_undead_offrian;
 
    create_testing!("quizzes::quiz08::e_offrian", "", true);
 
@@ -108,4 +98,13 @@ mod functional_tests {
         now(runoff_continuation(&[s("pivot"),s("1"),s("9")],true)));
 
    run!("offrian", now(runoff_continuation(&[s("pivot"),s("1"),s("9")],false)));
+
+   run!("with_data_compute_offrian", {
+      let (call, opens) = sample_avax_undead_offrian(".")?;
+      let target = mk_usd(1700.0);
+      let new_call =
+         with_data_compute_offrian(&call, &opens, &target, false)?;
+      println!("The new call of {target} for\n\n{}\nis\n\n{}",
+               as_csv(&[call])?, as_csv(&[new_call])?);
+   });
 }

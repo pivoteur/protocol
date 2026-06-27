@@ -8,15 +8,12 @@ use book::{
    num::percentage::Percentage
 };
 
-use super::{
-   blockchains::Blockchain,
-   pools::Pool
-};
+use super::{ blockchains::Blockchain, pools::Pool, util::Id };
 
 #[serde_as]
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Call {
-    pub ix: usize,
+    pub ix: Id,
     #[serde_as(as = "DisplayFromStr")]
     pub pool: Pool,
     pub open_pivots: usize,
