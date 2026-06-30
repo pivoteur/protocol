@@ -2,7 +2,7 @@ use std::collections::HashSet;
 
 use book::{
    csv_utils::as_csv,
-   currency::usd::{USD,mk_usd},
+   currency::usd::{USD,mk_usd,no_monay},
    err_utils::ErrStr,
    list_utils::tail,
    num::percentage::mk_percentage,
@@ -23,7 +23,7 @@ use libs::{
    }
 };
 
-fn version() -> String { s("1.01") }
+fn version() -> String { s("1.02") }
 fn app_name() -> String { s("offrian") }
 fn usage() -> ErrStr<()> {
    let app = app_name();
@@ -39,8 +39,9 @@ where:
 * [-d|--debug] show debug information
 * <protocol> is the protocol to make the counter-offer, e.g.: PIVOT
 * <ix> is the call being countered, e.g. 1
-* <part> is the subset of the call being countered,
-  e.g.: 3 is a 1/3rd counter-offer
+* <vol> is the target volume (the volume we want the open pivots to have been)
+  e.g.: if the open pivots were for $15074.88, say, then 3000 reduces the open 
+        pivots to $3000.00
 ", app, version(), app);
    Err(s("offrian requires <protocol> <ix> <part> arguments"))
 }
@@ -60,34 +61,34 @@ pub async fn runoff_with_args() -> ErrStr<()> {
 }
 
 async fn runoff_continuation(args: &[String], debug: bool) -> ErrStr<()> {
-   if let [auth, call, part] = args {
+   if let [auth, call, vol] = args {
       let root_url = get_env(&format!("{}_URL", auth.to_uppercase()))?;
-      let fract = parse_num(&part)?;
+      let volume = mk_usd(parse_num(&vol)?);
       let ix = parse_id(&call)?;
       let (call, pivs) = pivot_data(&root_url, ix, debug).await?;
       let leeway =
          compute_virtual_pivot_amount(&call.pool, &pivs, &call.ids, debug)?;
+      let leeway_vol = mk_usd(leeway * call.proposed_close_price.amount());
       if debug {
-         println!("The virtual pivots provide {leeway} {} leeway",
-                  call.from_token);
+         println!("The virtual pivots provide {leeway} {} leeway ({})",
+                  call.from_token, leeway_vol);
       }
-      let new_start = compute_new_start(&call, fract, debug);
+      let new_start = compute_new_start(&call, &volume, debug);
       let new_pivot_amt = compute_new_pivot(&call, new_start, debug);
-      let leeway_vol = mk_usd(leeway * call.quote1.amount());
-      go_no_go(&call, fract, leeway_vol, new_pivot_amt, debug)
+      go_no_go(&call, volume, leeway_vol, new_pivot_amt, debug)
    } else {
       usage()
    }
 }
 
-fn go_no_go(call: &Call, fract: f32, leeway_vol: USD, 
+fn go_no_go(call: &Call, target: USD, leeway_vol: USD, 
             new_pivot_amt: f32, debug: bool) -> ErrStr<()> {
    let give_up = call.pivot_amount - new_pivot_amt;
    let give_up_vol = mk_usd(give_up * call.pivot_close_price.amount());
-   let gap = leeway_vol.amount() - give_up_vol.amount();
-   if gap < 0.0 {
-      Err(format!("Unable to fracture call {} by {fract}; {} derth",
-                  call.ix, mk_usd(-gap)))
+   let gap_vol = leeway_vol - give_up_vol;
+   if gap_vol < no_monay() {
+      Err(format!("Unable to change call {} to {target}; {} derth",
+                  call.ix, gap_vol))
    } else {
       let new_call = compute_offrian(&call, new_pivot_amt);
       report_counter_offer(&new_call, debug)
@@ -102,14 +103,16 @@ fn compute_new_pivot(call: &Call, new_principal: f32, debug: bool) -> f32 {
    new_pivot
 }
 
-fn compute_new_start(call: &Call, fract: f32, debug: bool) -> f32 {
+fn compute_new_start(call: &Call, target: &USD, debug: bool) -> f32 {
    // from the call we get the committed amount and open pivots
    // from the open pivots we get the virtual amount committed;
    // that's our play or leeway.
    let principal_amt = call.gain_10_percent / 1.1; // total pivoted
    if debug { println!("principal_amt: {principal_amt} {}", call.from_token); }
-   let new_start = principal_amt / fract;
-   if debug { println!("new_start: {new_start} {}", call.from_token); }
+   let new_start = target.amount() / call.quote1.amount();
+   if debug {
+      println!("new_start: {new_start} {} ({target})", call.from_token);
+   }
    new_start
 }
 
@@ -253,16 +256,18 @@ mod tests {
    use book::{ num::estimate::mk_estimate, types::values::Value };
    use libs::fetchers::test_helpers::test_functions::marshall;
 
+   fn target() -> USD { mk_usd(900.0) }
+
    #[test] fn fail_go_no_go() -> ErrStr<()> {
       let call = sample_call()?;
-      let truthiness = go_no_go(&call, 9.0, mk_usd(100.0), 4026.0, true);
+      let truthiness = go_no_go(&call, target(),  mk_usd(100.0), 4026.0, true);
       assert!(truthiness.is_err());
       Ok(())
    }
 
    #[test] fn test_go_no_go_ok() -> ErrStr<()> {
       let call = sample_call()?;
-      let truthiness = go_no_go(&call, 9.0, mk_usd(35000.0), 4026.0, true);
+      let truthiness = go_no_go(&call, target(), mk_usd(35000.0), 4026.0, true);
       assert!(truthiness.is_ok(), "Err is {truthiness:?}");
       Ok(())
    }
@@ -277,8 +282,8 @@ mod tests {
 
    #[test] fn test_compute_new_start() -> ErrStr<()> {
       let call = sample_call()?;
-      let btc = compute_new_start(&call, 10.0, true);
-      let ans = mk_estimate(0.045);
+      let btc = compute_new_start(&call, &target(), true);
+      let ans = mk_estimate(0.011);
       assert!(ans.approximates(btc));
       Ok(())
    }

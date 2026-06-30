@@ -73,7 +73,8 @@ fn buidl_asset<'a>(amount: &str, q: impl Fn(&'a Token) -> ErrStr<USD>,
 
 // this gets the assets and the open pivots (so we compute available assets)
 
-async fn enfetchify(root_url: &str, quotes: &Quotes, pool: &Pool)
+pub async fn fetch_assets_and_open_pivots
+      (root_url: &str, quotes: &Quotes, pool: &Pool)
       -> ErrStr<(Composition, Vec<Pivot>)> {
    let aliases = &quotes.aliases;
    let pool_assets = fetch_assets(&root_url, pool, aliases).await?;
@@ -85,7 +86,8 @@ async fn enfetchify(root_url: &str, quotes: &Quotes, pool: &Pool)
 pub async fn available_assets_fetcher
       (subtractor: impl Fn(&mut Assets, &Coin), root_url: &str,
        quotes: &Quotes, pool: &Pool) -> ErrStr<Composition> {
-   let (pool_assets, opens) = enfetchify(root_url, &quotes, pool).await?;
+   let (pool_assets, opens) =
+      fetch_assets_and_open_pivots(root_url, &quotes, pool).await?;
    let mut available = pool_assets.as_assets();
    let all_opens = pivot_assets(&opens)?;
    for a in all_opens.assets() {
@@ -200,7 +202,7 @@ mod tests {
       let (url, _) = marshall()?;
       let pool = pool_from_str("btc-eth")?;
       let quotes = fetch_quotes(&yday).await?;
-      enfetchify(&url, &quotes, &pool).await
+      fetch_assets_and_open_pivots(&url, &quotes, &pool).await
    }
 
    #[tokio::test]

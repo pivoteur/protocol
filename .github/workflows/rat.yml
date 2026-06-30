@@ -1,5 +1,5 @@
 name: rat
- 
+
 on:
   workflow_dispatch:
   schedule:
@@ -19,17 +19,6 @@ jobs:
         with:
           path: protocol
 
-      - name: Set up Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Cache Rust
-        id: rust-cache-step
-        uses: Swatinem/rust-cache@v2
-        with: 
-          workspaces: |
-            protocol/libs
-            protocol/quizzes
-
       - name: Checkout crypto-n-rust
         uses: actions/checkout@v4
         with:
@@ -41,11 +30,37 @@ jobs:
         with:
           repository: pivoteur/pivoteur.github.io
           path: pivoteur.github.io
-          
+
+      - name: Cache itr binary
+        id: itr-cache
+        uses: actions/cache@v3
+        with:
+          path: protocol/quizzes/src/quiz09/a_itr/target/release/itr
+          key: itr-binary-${{ hashFiles('protocol/quizzes/src/quiz09/a_itr/**/*.rs', 'protocol/quizzes/src/quiz09/a_itr/Cargo.toml', 'protocol/dapps/itr/Cargo.lock') }}
+
+      - name: Cache cargo-make binary
+        id: make-cache
+        uses: actions/cache@v3
+        with:
+          path: ~/.cargo/bin/cargo-make
+          key: cargo-make-${{ runner.os }}
+
+      - name: Cache cargo-tarpaulin binary
+        id: tarpaulin-cache
+        uses: actions/cache@v3
+        with:
+          path: ~/.cargo/bin/cargo-tarpaulin
+          key: cargo-tarpaulin-${{ runner.os }}
+
+      - name: Set up Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
       - name: Install cargo-make
+        if: steps.make-cache.outputs.cache-hit != 'true'
         run: cargo install cargo-make
  
       - name: Install cargo-tarpaulin
+        if: steps.tarpaulin-cache.outputs.cache-hit != 'true'
         run: cargo install cargo-tarpaulin
  
       - name: Verify checkouts
@@ -85,10 +100,10 @@ jobs:
               echo "--- [libs] All tests passed | $(grep 'coverage' /tmp/libs_tarp.txt | tail -1)" | tee -a /tmp/libs_tarp.txt
             fi
 
-      - name: "[quizzes] cargo make test-flow — quizzes"
+      - name: "[quizzes] cargo make tests — quizzes"
         working-directory: protocol/quizzes
         run: |
-            cargo make test-flow 2>&1 | tee /tmp/quizzes_test.txt
+            cargo make tests 2>&1 | tee /tmp/quizzes_test.txt
             if grep -q 'test result: FAILED' /tmp/quizzes_test.txt; then
               echo "--- [quizzes] TESTS FAILED | $(grep 'test result' /tmp/quizzes_test.txt | tail -1)" | tee -a /tmp/quizzes_test.txt
               exit 1
@@ -108,10 +123,12 @@ jobs:
             fi
     
       - name: Build itr
-        working-directory: protocol/dapps/itr
-        run: |
-            cargo build
-            echo "$GITHUB_WORKSPACE/protocol/dapps/itr/target/debug" >> $GITHUB_PATH       
+        if: steps.itr-cache.outputs.cache-hit != 'true'
+        working-directory: protocol/quizzes/src/quiz09/a_itr
+        run: cargo build --release
+
+      - name: Add itr to PATH
+        run: echo "$GITHUB_WORKSPACE/protocol/quizzes/src/quiz09/a_itr/target/release" >> $GITHUB_PATH
 
       - name: "[itr] itr . — dapps"
         working-directory: protocol/dapps
