@@ -19,6 +19,7 @@ where:
 
 ## Revisions
 
+* 2.04, 2026-06-30: Fail out if error
 * 2.03, 2026-06-06: sorts calls by volume
 * 2.02, 2026-04-22: `dusk` now determines pivot pools from `libs/pool-assets.js`
 * 2.01, 2026-04-10: moved `dusk` into to the furnctional and unit test framework
