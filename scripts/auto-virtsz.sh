@@ -17,7 +17,7 @@ for file in "$DIRECTORY"/*; do
   if [ -f "$file" ]; then
     # *** Replace the following line with your specific command ***
     echo "processing file $file"
-    b_virtual $PROTOCOL $LE_DATE $file > $file
+    virtsz $PROTOCOL $LE_DATE $file > $file
     # Example: run a data processing command on the file
     # virtsz <protocol> <date> <path or "$file">
   fi
