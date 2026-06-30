@@ -1,9 +1,8 @@
 use reqwest::Client;
-use book::{
-    err_utils::ErrStr,
-    utils::{ get_args, get_env },
+use book::{ 
+        err_utils::ErrStr, 
+        utils::{ get_args, get_env }
 };
-
 
 const DEFAULT_TWEET_URL: &str = "x.com/pivocateur";
 const DEFAULT_TX_URL:    &str = "asdf";
