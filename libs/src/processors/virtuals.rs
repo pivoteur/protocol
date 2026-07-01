@@ -153,8 +153,8 @@ mod counter_offerer {
    #[cfg(test)]
    mod tests {
       use super::*;
-      use crate::processors::virtual::test_data::{ sample_call, target };
-      use book::num::estimates::mk_estimate;
+      use crate::processors::virtuals::test_data::{ sample_call, target };
+      use book::num::estimate::mk_estimate;
 
       #[test] fn test_compute_new_pivot() -> ErrStr<()> {
          let call = sample_call(1)?;
@@ -253,6 +253,7 @@ pub mod functional_tests {
    run!("compute_virtual_pivot_amount", " (offrian)", {
       let (root_url, _) = marshall()?;
       let call_data = now(fetch_call_data(&root_url, 1, true))?;
+      let (call, _) = &call_data;
       let pool = &call.pool;
       let opens = &call.ids;
       let tok = s(&call.from_token);
@@ -266,7 +267,7 @@ pub mod functional_tests {
 #[cfg(not(tarpaulin_include))]
 mod tests {
    use super::*;
-   use super::test_data::{ sample_call, sample_avax_undead_offrian };
+   use super::test_data::{ sample_call, sample_avax_undead_offrian, target };
    use crate::{
       types::{
          assets::amounts::mk_amt,
@@ -332,23 +333,24 @@ mod tests {
    // ----- offrian tests -----------------------------------------------------
 
    #[test] fn fail_compute_counter_offer() -> ErrStr<()> {
-      let call_data = sample_avax_undead_offrian("../quizzes"1?;
-      let truthiness = compute_counter_offer(&call_data, true);
+      let call_data = sample_avax_undead_offrian("../quizzes")?;
+      let truthiness = compute_counter_offer(&call_data, &mk_usd(1000.0), true);
       assert!(truthiness.is_err());
       Ok(())
    }
 
    #[test] fn test_compute_counter_offer_ok() -> ErrStr<()> {
-      let call_data = sample_avax_undead_offrian("../quizzes"1?;
+      let call_data = sample_avax_undead_offrian("../quizzes")?;
+      let (call, _) = &call_data;
       let truthiness =
-         compute_counter_offer(&call, &target(), mk_usd(35000.0), true);
+         compute_counter_offer(&call, &mk_usd(35000.0), true);
       assert!(truthiness.is_ok(), "Err is {truthiness:?}");
       Ok(())
    }
 
    #[test] fn test_compute_offrian() -> ErrStr<()> {
       let call = sample_call(1)?;
-      let new_call = compute_offrian(&call, mk_usd(1000.0));
+      let new_call = compute_offrian(&call, &target(),  mk_usd(1000.0), true)?;
       let roi_est = mk_estimate(0.33);
       roi_est.is(new_call.roi.value())?;
       let apr_est = mk_estimate(2.16);
