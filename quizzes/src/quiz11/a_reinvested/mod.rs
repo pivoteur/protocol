@@ -40,8 +40,9 @@ fn chat_id_for(investor: &str) -> ErrStr<i64> {
 }
 
 //============================================================================
-//----- CSV Row Parsing -------------------------------------------------------
+//----- CSV Row Parsing ------------------------------------------------------
 //============================================================================
+#[derive(Debug)]
 pub struct InvestorRow {
     pub name:    String,
     pub amount:  u64,
@@ -92,7 +93,12 @@ pub fn parse_row(line: &str) -> ErrStr<Option<InvestorRow>> {
     }
 
     // skip investors with nothing reinvested this run
-    let amount_val: u64 = amount.parse().unwrap_or(0);
+    let amount_val: u64 = match amount.parse() {
+        Ok(v) => v,
+        Err(e) => return Err(format!(
+            "row '{name}': invalid amount '{amount}': {e}"
+        )),
+    };
     if amount_val == 0 {
         return Ok(None);
     }
@@ -366,6 +372,14 @@ mod unit_tests {
              https://x.com/pivocateur/status/2056884438156398786). \
              I reinvest 500 UNDEAD into the BTC+UNDEAD pivot pool for you."
         );
+        Ok(())
+    }
+
+    #[test]
+    fn test_parse_row_amount_invalid_errors() -> ErrStr<()> {
+        let err = parse_row(&make_row("ψ", "not-a-number", "yes", "yes"))
+            .unwrap_err();
+        assert!(err.contains("invalid amount"), "should error loudly, not skip");
         Ok(())
     }
 }
