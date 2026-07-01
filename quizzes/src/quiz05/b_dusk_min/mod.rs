@@ -1,6 +1,11 @@
 use chrono::NaiveDate;
 
-use book::{ date_utils::parse_date, err_utils::ErrStr, utils::get_args };
+use book::{
+   date_utils::parse_date,
+   err_utils::ErrStr,
+   string_utils::s,
+   utils::get_args
+};
 
 use libs::{
    processors::process_pools,
@@ -8,8 +13,8 @@ use libs::{
    reports::{ Proposal, print_table, proposal, report_proposes }
 };
 
-fn version() -> String { "2.03".to_string() }
-fn app_name() -> String { "dusk".to_string() }
+fn version() -> String { s("2.04") }
+fn app_name() -> String { s("dusk") }
 fn usage() -> ErrStr<()> {
     println!("Usage:
 
@@ -23,7 +28,8 @@ Err("Need <protocol> and <date> arguments".to_string())
 }
 
 pub async fn propose(auth: &str, date: &NaiveDate, min: bool) -> ErrStr<()> {
-   let (proposals, no_closes) = process_pools(auth, date).await?;
+   if !min { println!("Processing pools for {auth} on date {date}"); }
+   let (proposals, no_closes) = process_pools(auth, date, !min).await?;
    let x = if min { &vec![] } else { &no_closes };
    report_proposes(proposals.clone(), x, min);
    if !min && !proposals.is_empty() { tokens_to_pivot(proposals); }

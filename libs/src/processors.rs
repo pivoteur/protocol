@@ -27,16 +27,16 @@ use super::{
 
 // ---- Proposals -------------------------------------------------------
 
-pub async fn process_pools(auth_name: &str, date: &NaiveDate)
+pub async fn process_pools(auth_name: &str, date: &NaiveDate, debug: bool)
       -> ErrStr<(Vec<Proposal>, Vec<Pool>)> {
    let auth = auth_name.to_uppercase();
    let root_url = get_env(&format!("{auth}_URL"))?;
    let pools = fetch_pool_names(&root_url).await?;
-   process_pools0(&root_url, &pools, date).await
+   process_pools0(&root_url, &pools, date, debug).await
 }
 
-async fn process_pools0(root_url: &str, pools: &Vec<Pool>, date: &NaiveDate)
-      -> ErrStr<(Vec<Proposal>, Vec<Pool>)> {
+async fn process_pools0(root_url: &str, pools: &Vec<Pool>,
+      date: &NaiveDate, debug: bool) -> ErrStr<(Vec<Proposal>, Vec<Pool>)> {
    let quotes = fetch_quotes(&date).await?;
    let a = &quotes.aliases;
    let proposer = propose_f(&quotes);
@@ -44,6 +44,7 @@ async fn process_pools0(root_url: &str, pools: &Vec<Pool>, date: &NaiveDate)
    let mut proposals = Vec::new();
 
    for pool in pools {
+      if debug { println!("Processing pool {pool}"); }
       let (primary, _) = pool.as_tuple();
       let ((opens, closes), max_date) =
          fetch_pivots(root_url, pool, a).await?;
@@ -119,7 +120,7 @@ pub mod functional_tests {
 
    run!("process_pools", {
       let yday = yesterday();
-      let (calls,nixen) = now(process_pools("pivot", &yday))?;
+      let (calls,nixen) = now(process_pools("pivot", &yday, true))?;
       let hdr = format!("Calls for {}:\n", yday);
       print_table(&hdr, &calls);
       let ps: Vec<String> = nixen.iter().map(Pool::pool_name).collect();
@@ -136,13 +137,13 @@ mod tests {
 
    #[tokio::test]
    async fn fail_process_pools() {
-      let ans = process_pools("asdf", &yesterday()).await;
+      let ans = process_pools("asdf", &yesterday(), true).await;
       assert!(ans.is_err());
    }
 
    #[tokio::test]
    async fn test_process_pools_ok() {
-      let ans = process_pools("pivot", &yesterday()).await;
+      let ans = process_pools("pivot", &yesterday(), true).await;
       assert!(ans.is_ok());
    }
 
@@ -150,7 +151,7 @@ mod tests {
    async fn test_process_pools_all_pools_considered() -> ErrStr<()> {
       let (root_url, _aliases) = marshall()?;
       let pools = fetch_pool_names(&root_url).await?;
-      let (calls, neins) = process_pools("pivot", &yesterday()).await?;
+      let (calls, neins) = process_pools("pivot", &yesterday(), true).await?;
       let npools = pools.len();
       let cnn = calls.len() + neins.len();
       assert!(cnn >= npools,

@@ -22,8 +22,8 @@ where:
 Err("Need <protocol> and <date> arguments".to_string())
 }
 
-async fn propose(auth: &str, dt: &NaiveDate) -> ErrStr<usize> {
-    let (proposals, no_closes) = process_pools(&auth, &dt).await?;
+async fn propose(auth: &str, dt: &NaiveDate, debug: bool) -> ErrStr<usize> {
+    let (proposals, no_closes) = process_pools(&auth, &dt, debug).await?;
     report_proposes(proposals.clone(), &no_closes, false);
     if !proposals.is_empty() { tokens_to_pivot(proposals); }
     Ok(1)
@@ -42,7 +42,7 @@ pub async fn runoff_with_args() -> ErrStr<()> {
     println!("{}, version: {}", app_name(), version());
     if let [ath, dt] = get_args().as_slice() {
         let date = parse_date(&dt)?;
-        let _ = propose(ath, &date).await?;
+        let _ = propose(ath, &date, true).await?;
         Ok(())
     } else {
         usage()
@@ -60,5 +60,5 @@ pub mod functional_tests {
 
     create_testing!("quiz05::a_assets", "", true);
 
-    run!("propose", now(propose("pivot", &yesterday())));
+    run!("propose", now(propose("pivot", &yesterday(), true)));
 }
