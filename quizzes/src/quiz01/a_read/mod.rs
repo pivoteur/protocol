@@ -1,21 +1,34 @@
 use book::{err_utils::ErrStr, rest_utils::read_rest};
 
-pub async fn reader() -> ErrStr<String> {
+async fn reader() -> ErrStr<String> {
    let piv = "https://raw.githubusercontent.com/pivoteur/pivoteur.github.io";
    let opens = "refs/heads/main/data/pivots/open/raw";
    let btc_eth = format!("{}/{}/btc-eth.tsv", piv, opens);
    read_rest(&btc_eth).await
 }
 
-pub async fn runoff() -> ErrStr<usize> {
-   println!("quiz01: a_read functional test.\n");
+pub async fn runoff_no_args() -> ErrStr<()> {
    let body = reader().await?;
    println!("I got {body}");
-   Ok(1)
+   Ok(())
 }
 
 // ----- TESTS -------------------------------------------------------
+
 #[cfg(test)]
+#[cfg(not(tarpaulin_include))]
+mod functional_tests {
+   use super::*;
+   use paste::paste;
+   use book::{ create_testing, utils::now };
+
+   create_testing!("quiz01::a_read");
+
+   run!("a_read", now(runoff_no_args()) );
+}
+
+#[cfg(test)]
+#[cfg(not(tarpaulin_include))]
 mod tests {
    use super::*;
 

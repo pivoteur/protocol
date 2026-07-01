@@ -7,28 +7,25 @@ use book::{
    tuple_utils::{Partition,fst}
 };
 
-use super::utils::{ enlowerify, fetch_lines };
+use super::utils::fetch_lines;
 
 use crate::{
    paths::open_pivot_path,
    tables::index_table,
-   types::{ aliases::Aliases, pivots::{Pivot,parse_pivot} }
+   types::{ aliases::Aliases, pivots::{Pivot,parse_pivot}, pools::Pool }
 };
 
 // ----- PIVOTS -------------------------------------------------------
 
 /// Fetch the pivots for pivot pool A+B; open pivots are reposed in git
-pub async fn fetch_pivots(root_url: &str, primary: &str,
-                          pivot: &str, a: &Aliases)
+pub async fn fetch_pivots(root_url: &str, pool: &Pool, a: &Aliases)
       -> ErrStr<(Partition<Pivot>, NaiveDate)> {
-   let (pri, seggs) = enlowerify(primary, pivot);
-   let pool = format!("{pri}+{seggs}");
-   let url = open_pivot_path(root_url, &pri, &seggs);
+   let url = open_pivot_path(root_url, pool);
    let lines = fetch_lines(&url).await?;
-   parse_pivots(&pool, lines, a)
+   parse_pivots(pool, lines, a)
 }
 
-pub fn parse_pivots(pool: &str, lines: Vec<String>, a: &Aliases)
+pub fn parse_pivots(pool: &Pool, lines: Vec<String>, a: &Aliases)
       -> ErrStr<(Partition<Pivot>, NaiveDate)> {
    let table = index_table(lines)?;
 
@@ -49,7 +46,7 @@ pub fn parse_pivots(pool: &str, lines: Vec<String>, a: &Aliases)
    Ok(((acts, pass), max_date.clone()))
 }
 
-fn max_diem<T>(table: &Table<T, String, String>, ix: usize, pool: &str)
+fn max_diem<T>(table: &Table<T, String, String>, ix: usize, pool: &Pool)
       -> ErrStr<NaiveDate> {
    table.data
         .iter()
@@ -59,9 +56,9 @@ fn max_diem<T>(table: &Table<T, String, String>, ix: usize, pool: &str)
 }
 
 /// Filter to only the open pivots for pivot pool A+B
-pub async fn fetch_open_pivots(root_url: &str, primary: &str, pivot: &str,
-                               a: &Aliases) -> ErrStr<(Vec<Pivot>, NaiveDate)> {
-   let (part, max_date) = fetch_pivots(root_url, primary, pivot, a).await?;
+pub async fn fetch_open_pivots(root_url: &str, pool: &Pool, a: &Aliases)
+      -> ErrStr<(Vec<Pivot>, NaiveDate)> {
+   let (part, max_date) = fetch_pivots(root_url, pool, a).await?;
    Ok((fst(part), max_date))
 }
 
@@ -96,7 +93,7 @@ mod tests {
    use crate::{
       fetchers::test_helpers::test_functions::btc_eth_pivots,
       tables::{c2t,csv2tsv},
-      types::aliases::aliases
+      types::{aliases::aliases,pools::pool_from_str}
    };
    use book::{ csv_utils::CsvHeader, date_utils::tomorrow };
 
@@ -139,7 +136,8 @@ mod tests {
    async fn test_reparse_pivots_ok() -> ErrStr<()> {
       let tsv = btc_eth_pool_as_tsv().await?;
       let a = aliases();
-      let ans = parse_pivots("BTC+ETH", tsv, &a);
+      let pool = pool_from_str("BTC+ETH")?;
+      let ans = parse_pivots(&pool, tsv, &a);
       assert!(ans.is_ok());
       Ok(())
    }
@@ -148,7 +146,8 @@ mod tests {
    async fn test_reparse_pivots() -> ErrStr<()> {
       let tsv = btc_eth_pool_as_tsv().await?;
       let a = aliases();
-      let ((o,c),m) = parse_pivots("BTC+ETH", tsv, &a)?;
+      let pool = pool_from_str("btc-eth")?;
+      let ((o,c),m) = parse_pivots(&pool, tsv, &a)?;
       let ((opns, cls), mx) = btc_eth_pivots().await?;
       assert_eq!(opns.len(), o.len());
       assert_eq!(cls.len(), c.len());

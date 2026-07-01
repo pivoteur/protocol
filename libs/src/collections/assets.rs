@@ -22,6 +22,12 @@ pub struct Assets { map: HashMap<(Blockchain,Token), Coin> }
 pub fn mk_assets() -> Assets { Assets { map: HashMap::new() } }
 
 impl Assets {
+   pub fn brief(&self) -> String {
+      self.map.iter()
+          .map(|((_,tok), coin)| format!("{} {tok}", coin.sz()))
+          .collect::<Vec<_>>()
+          .join(", ")
+   }
    pub fn add(&mut self, asset: Coin) {
       self.map.entry(asset.key())
               .and_modify(|a| { *a += asset.sz(); })
@@ -29,15 +35,17 @@ impl Assets {
    }
    pub fn subtract(&mut self, asset: &Coin) {
       let k = asset.key();
+      let (_, tok) = &k;
       if let Some(a) = self.map.get_mut(&k) {
          let sub = asset.sz();
          let amt = a.sz() - sub;
-         if amt < 0.0 { panic!("Cannot have a negative amount of {}
-Trying to subtract this amount: {sub}
-Coin: {}
+         if amt < 0.0 {
+            panic!("
+Cannot have a negative amount of {tok}
 
-assets:
-{}", a.as_csv(), asset.as_csv(), self.as_csv());
+Trying to subtract this amount: {sub} {tok}
+from assets {}
+", self.brief())
          }
          if amt == 0.0 { self.map.remove(&k); } else { *a += -sub; }
       } else {

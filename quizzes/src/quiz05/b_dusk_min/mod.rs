@@ -1,31 +1,22 @@
-use book:: { 
-    err_utils::ErrStr,
-    utils::get_args
-};
-use libs:: {
-    processors::process_pools,
-    collections::assets:: { 
-        assets_by_tvl, 
-        mk_assets
-    },
-    reports:: {
-        Proposal, 
-        print_table, 
-        proposal, 
-        report_proposes
-    },
+use chrono::NaiveDate;
+
+use book::{
+   date_utils::parse_date,
+   err_utils::ErrStr,
+   string_utils::s,
+   utils::get_args
 };
 
-fn version() -> String {
-    "2.02".to_string()
-}
-fn app_name() -> String {
-    "dusk".to_string()
-}
+use libs::{
+   processors::process_pools,
+   collections::assets::{ assets_by_tvl, mk_assets },
+   reports::{ Proposal, print_table, proposal, report_proposes }
+};
 
+fn version() -> String { s("2.04") }
+fn app_name() -> String { s("dusk") }
 fn usage() -> ErrStr<()> {
-    println!(
-        "Usage:
+    println!("Usage:
 
 $ {} [--min] <protocol> <date>
 
@@ -36,48 +27,22 @@ where:
 Err("Need <protocol> and <date> arguments".to_string())
 }
 
-pub async fn propose(auth: &str, dt: &str, min: bool) -> ErrStr<usize> {
-    let (proposals, no_closes) = process_pools(&auth, &dt).await?;
-    let x = if min { &vec![] } else { &no_closes };
-    report_proposes(&proposals, x, min);
-    if !min && !proposals.is_empty() {
-        tokens_to_pivot(proposals);
-    }
-    Ok(1)
+pub async fn propose(auth: &str, date: &NaiveDate, min: bool) -> ErrStr<()> {
+   if !min { println!("Processing pools for {auth} on date {date}"); }
+   let (proposals, no_closes) = process_pools(auth, date, !min).await?;
+   let x = if min { &vec![] } else { &no_closes };
+   report_proposes(proposals.clone(), x, min);
+   if !min && !proposals.is_empty() { tokens_to_pivot(proposals); }
+   Ok(())
 }
 
 fn tokens_to_pivot(proposals: Vec<Proposal>) {
-    let mut tokens = mk_assets();
-    proposals.iter().for_each(|p| {
-        let asset = proposal(p).pivot_amount();
-        tokens.add(asset);
-    });
-    print_table("Assets to pivot", &assets_by_tvl(&tokens));
-}
-
-// ----- UNIT TESTS ------------------------------------------------
-
-#[cfg(test)]
-mod unit_tests {
-    use super::*;
-
-
-    #[test]
-    fn test_app_name() {
-        assert_eq!(app_name(), "dusk");
-    }
-
-    #[test]
-    fn test_usage_returns_err() {
-        let result = usage();
-        assert!(result.is_err());
-        assert_eq!(result.unwrap_err(), "Need <protocol> and <date> arguments");
-    }
-
-    #[test]
-    fn test_tokens_to_pivot_empty() {
-        tokens_to_pivot(vec![]);
-    }
+   let mut tokens = mk_assets();
+   proposals.iter().for_each(|p| {
+      let asset = proposal(p).pivot_amount();
+      tokens.add(asset);
+   });
+   print_table("Assets to pivot", &assets_by_tvl(&tokens));
 }
 
 pub async fn runoff_with_args() -> ErrStr<()> {
@@ -89,11 +54,26 @@ pub async fn runoff_with_args() -> ErrStr<()> {
         println!("\n{}, version: {}\n", app_name(), version());
     }
     if let [auth, dt] = args.as_slice() {
-        let _ = propose(auth, dt, min).await?;
-        Ok(())
+        let date = parse_date(&dt)?;
+        propose(auth, &date, min).await
     } else {
         usage()
     }
+}
+
+// ----- UNIT TESTS ------------------------------------------------
+
+#[cfg(test)]
+mod unit_tests {
+   use super::*;
+
+   #[test] fn test_usage_returns_err() {
+      let result = usage();
+      assert!(result.is_err());
+      assert_eq!(result.unwrap_err(), "Need <protocol> and <date> arguments");
+   }
+
+   #[test] fn test_tokens_to_pivot_empty() { tokens_to_pivot(vec![]); }
 }
 
 // ----- FUNCTIONAL TESTS ------------------------------------------
@@ -103,32 +83,10 @@ pub async fn runoff_with_args() -> ErrStr<()> {
 pub mod functional_tests {
     use super::*;
     use paste::paste;
-    use book:: { 
-        date_utils::yesterday,
-        create_testing
-    };
-    
+    use book::{ create_testing, date_utils::yesterday, utils::now };
 
-    async fn run_full_dusk() -> ErrStr<usize> {
-        println!("quiz05:b_dusk_min full functional test\n");
-        let yday = format!("{}", yesterday());
-        propose("pivot", &yday, false).await?;
-        Ok(1)
-    }
+    create_testing!("quiz05::b_dusk_min", "", true);
 
-    async fn run_min_dusk() -> ErrStr<usize> {
-        println!("quiz05:b_dusk_min min functional test\n");
-        let yday = format!("{}", yesterday());
-        propose("pivot", &yday, true).await?;
-        Ok(1)
-    }
-
-    create_testing!("quiz05::b_dusk_min");
-
-    run!("full_and_min_dusk", {
-        println!("quiz05::b_dusk_min functional tests\n");
-        let _a = run_full_dusk();
-        let _b = run_min_dusk();
-    });
-
+    run!("full_dusk", { let _ = now(propose("pivot", &yesterday(), false)); });
+    run!("dusky_min", { let _ = now(propose("pivot", &yesterday(), true)); });
 }

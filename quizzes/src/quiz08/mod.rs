@@ -1,3 +1,5 @@
 pub mod a_table;
 pub mod b_wyrd;
 pub mod c_appender;
+pub mod d_convcls;
+pub mod e_offrian;

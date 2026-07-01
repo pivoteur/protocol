@@ -1,4 +1,4 @@
-use book::{ currency::usd::USD, err_utils::ErrStr };
+use book::currency::usd::USD;
 
 // ----- Your basic types used across all domains -------------------------
 
@@ -24,41 +24,4 @@ pub fn pool_from_str(pool: &str) -> ErrStr<Pool> {
 }
 
 pub type TVLs = Vec<(Token,USD)>;
-
-// ----- TESTS -------------------------------------------------------
-
-#[cfg(test)]
-mod tests {
-   use super::*;
-   use book::string_utils::s;
-
-   #[test] fn test_mk_pool() {
-      assert_eq!((s("BTC"), s("ETH")), mk_pool("btc","eth"));
-   }
-
-   #[test] fn test_pool_name() {
-      assert_eq!(s("BTC+USDC"), pool_name(&mk_pool("btc", "usdc")));
-   }
-
-   #[test] fn fail_pool_from_nonpool_str() {
-      let ans = pool_from_str("asdfadsf");
-      assert!(ans.is_err());
-   }
-
-   #[test] fn fail_pool_from_too_many_tokens() {
-      let ans = pool_from_str("a-b-c");
-      assert!(ans.is_err());
-   }
-
-   #[test] fn test_pool_from_str_ok() {
-      let ans = pool_from_str("eth-undead");
-      assert!(ans.is_ok());
-   }
-
-   #[test] fn test_pool_from_str() -> ErrStr<()> {
-      let ans = pool_from_str("btc-avax")?;
-      assert_eq!((s("BTC"), s("AVAX")), ans);
-      Ok(())
-   }
-}
 

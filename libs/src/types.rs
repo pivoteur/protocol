@@ -1,14 +1,26 @@
-/// Representation of tokens, blockchains, and their amounts
-pub mod tokens;
+/// Alias one wrapped or synthetic token-name to the base asset
+pub mod aliases;
 
-/// a simple enumerated, jsonable, type
+/// Assets used across pivots and proposals
+pub mod assets;
+
+/// Enumerated blockchains that we support-...ish.
 pub mod blockchains;
 
-/// structure to fetch wallets from the blockchain
-pub mod wallets;
+/// A proposed call
+pub mod calls;
 
 /// A composition of two assets: a pivot pool
 pub mod comps;
+
+/// trait to define gains (ROI and APR)
+pub mod gains;
+
+/// header information for pivots and aggregate headers for proposals
+pub mod headers;
+
+/// trait that measures types (across divers types)
+pub mod measurable;
 
 /// The historical-data of quotes of all the assets in the portfolio
 pub mod quotes;
@@ -16,24 +28,15 @@ pub mod quotes;
 /// Represents a pivot (from -> to swap)
 pub mod pivots;
 
-/// Assets used across pivots and proposals
-pub mod assets;
+/// (prim, piv) but as a struct now for de/serialization
+pub mod pools;
 
 /// recommends proposals
 pub mod proposals;
 
-/// Alias one wrapped or synthetic token-name to the base asset
-pub mod aliases;
-
-/// trait that measures types (across divers types)
-pub mod measurable;
+/// Representation of tokens, blockchains, and their amounts
+pub mod tokens;
 
 /// types used across the systems, like Id, Token, Blochcain
 pub mod util;
-
-/// trait to define gains (ROI and APR)
-pub mod gains;
-
-/// header information for pivots and aggregate headers for proposals
-pub mod headers;
 

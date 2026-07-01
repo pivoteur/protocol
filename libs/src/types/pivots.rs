@@ -159,7 +159,7 @@ pub mod functional_tests {
       types::{
          aliases::aliases,
          assets::{assets::mk_asset, amounts::{Amount,mk_amt} },
-         quotes::functional_tests::test_mk_quotes,
+         quotes::sample_data::sample_quotes_maker,
          headers::mk_hdr
       }
    };
@@ -203,7 +203,7 @@ s("opened	open	close	tx_id	updated	from	from_blockchain	amount1	virtual	quote1	v
 
    run!("recompute_pivot", {
       let piv = mk_btc_usdc_piv(78408.88,mk_amt(0.0,0.1),0,"virtual pivot")?;
-      let quotes = test_mk_quotes(&[("BTC", 80000.0)]);
+      let quotes = sample_quotes_maker(&[("BTC", 80000.0)]);
       let _new_piv = recompute_pivot(&quotes, true)(piv)?;
    });
 
@@ -221,7 +221,7 @@ mod tests {
    use super::functional_tests::{btc_eth,btc_eth_pivots,mk_btc_usdc_piv};
    use crate::types::{
       assets::{ assets::functional_tests::assert_price_k, amounts::mk_amt },
-      quotes::functional_tests::test_mk_quotes
+      quotes::sample_data::sample_quotes_maker
    };
 
    #[test] fn test_partition_on_btc() -> ErrStr<()> {
@@ -291,7 +291,7 @@ mod tests {
    #[test] fn fail_recompute_non_virtual_amt_pivot() -> ErrStr<()> {
       let piv = mk_btc_usdc_piv(78408.88, mk_amt(500.0, 0.0), 0, "https://yo")?;
       let reckt =
-         recompute_pivot(&test_mk_quotes(&[("BTC", 80000.0)]), false)(piv);
+         recompute_pivot(&sample_quotes_maker(&[("BTC", 80000.0)]), false)(piv);
       assert!(reckt.is_err());
       if let Err(x) = reckt {
          assert!(x.contains("virtual"));
@@ -304,7 +304,7 @@ mod tests {
    #[test] fn fail_recompute_non_virtual_tx_pivot() -> ErrStr<()> {
       let piv = mk_btc_usdc_piv(78408.88, mk_amt(0.0, 500.0), 0, "https://yo")?;
       let reckt =
-         recompute_pivot(&test_mk_quotes(&[("BTC", 80000.0)]), false)(piv);
+         recompute_pivot(&sample_quotes_maker(&[("BTC", 80000.0)]), false)(piv);
       assert!(reckt.is_err());
       if let Err(x) = reckt {
          assert!(x.contains("virtual"));
@@ -317,7 +317,7 @@ mod tests {
    #[test] fn fail_recompute_closed_pivot() -> ErrStr<()> {
       let piv = mk_btc_usdc_piv(78408.88,mk_amt(0.0,500.0),1,"virtual pivot")?;
       let reckt =
-         recompute_pivot(&test_mk_quotes(&[("BTC",80000.0)]), false)(piv);
+         recompute_pivot(&sample_quotes_maker(&[("BTC",80000.0)]), false)(piv);
       assert!(reckt.is_err());
       if let Err(x) = reckt {
          assert!(x.contains("close"));
@@ -332,7 +332,7 @@ mod tests {
       let piv = mk_btc_usdc_piv(78408.88,mk_amt(0.0, 0.1),0,"virtual_pivot")?;
       assert!(!piv.is_updated());
       let neiner =
-         recompute_pivot(&test_mk_quotes(&[("BTC",65000.0)]), false)(piv);
+         recompute_pivot(&sample_quotes_maker(&[("BTC",65000.0)]), false)(piv);
       assert!(neiner.is_ok());
       assert!(!neiner.unwrap().is_updated());
       Ok(())
@@ -342,7 +342,7 @@ mod tests {
       let piv = mk_btc_usdc_piv(78408.88,mk_amt(0.0, 500.0),0,"virtual_pivot")?;
       assert!(!piv.is_updated());
       let neiner =
-         recompute_pivot(&test_mk_quotes(&[("BTC",85000.0)]), false)(piv);
+         recompute_pivot(&sample_quotes_maker(&[("BTC",85000.0)]), false)(piv);
       assert!(neiner.is_ok());
       assert!(neiner.unwrap().is_updated());
       Ok(())

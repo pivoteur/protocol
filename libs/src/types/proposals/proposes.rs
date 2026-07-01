@@ -21,9 +21,9 @@ use crate::types::{
    gains::Gains,
    measurable::{Measurable,weight,size},
    pivots::{Pivot,headers,froms},
+   pools::{Pool,mk_pool},
    quotes::Quotes,
-   util::{Id,Pool},
-   wallets::Wallet
+   util::{Blockchain,Id}
 };
 
 // ----- CLOSE PIVOTS -------------------------------------------------------
@@ -73,7 +73,7 @@ impl Propose {
           .and_then(|q| 
              self.pivot
               .first()
-              .and_then(|r| Some((q.token(), r.token())))) {
+              .and_then(|r| Some(mk_pool(&q.token(), &r.token())))) {
          pool
       } else {
          panic!("Missing principal or pivot (or both) asset from proposal")
@@ -191,7 +191,7 @@ pub mod test_data {
    use super::*;
    use crate::types::{
       assets::amounts::mk_amt,
-      quotes::functional_tests::test_mk_quotes,
+      quotes::sample_data::sample_quotes_maker,
       pivots::functional_tests::mk_btc_usdc_piv
    };
 
@@ -214,7 +214,10 @@ mod functional_tests {
    create_testing!("types::proposals::proposes");
 
    run!("propose", {
-      if let Some((call, next_id)) = btc_usdc_proposal()? {
+      let piv = mk_btc_usdc_piv(78408.88,mk_amt(0.0,0.1),0,"virtual pivot")?;
+      let quotes = sample_quotes_maker(&[("BTC", 65000.0)]);
+      let proposer = propose(&quotes);
+      if let Some((call, next_id)) = proposer((vec![piv], 1))? {
          println!("call:\n{}\n{}\n\nnext_id: {next_id}",
                   call.header(), call.as_csv());
       } else {
@@ -228,14 +231,14 @@ mod tests {
    use super::*;
    use crate::types::{
       assets::amounts::mk_amt,
-      quotes::functional_tests::test_mk_quotes,
+      quotes::sample_data::sample_quotes_maker,
       pivots::functional_tests::mk_btc_usdc_piv
    };
 
    #[test]
    fn test_propose_ok_no_call() -> ErrStr<()> {
       let piv = mk_btc_usdc_piv(78408.88,mk_amt(0.0, 500.0),0,"virtual_pivot")?;
-      let quotes = test_mk_quotes(&[("BTC",85000.0)]);
+      let quotes = sample_quotes_maker(&[("BTC",85000.0)]);
       let proposer = propose(&quotes);
       let max_id = 1;
       let ans = proposer((vec![piv], max_id));
@@ -248,7 +251,7 @@ mod tests {
    #[test]
    fn test_propose_ok_with_call() -> ErrStr<()> {
       let piv = mk_btc_usdc_piv(78408.88,mk_amt(0.0, 0.1),0,"virtual_pivot")?;
-      let quotes = test_mk_quotes(&[("BTC",65000.0)]);
+      let quotes = sample_quotes_maker(&[("BTC",65000.0)]);
       let max_id = 1;
       let proposer = propose(&quotes);
       let ans = proposer((vec![piv], max_id));
