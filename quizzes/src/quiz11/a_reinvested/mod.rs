@@ -10,6 +10,7 @@ use book::{
     },
 };
 
+
 //============================================================================
 //----- Version/ App_Name/ Usage ---------------------------------------------
 //============================================================================
@@ -18,12 +19,12 @@ fn app_name() -> &'static str { "reinvested" }
 
 fn usage() -> ErrStr<()> {
     eprintln!("Usage: {} <csv_path> <send>", app_name());
-    eprintln!("  csv_path : path to reinvestment TSV file");
+    eprintln!("  csv_path : path to the shared investors TSV file");
     eprintln!("  send     : let Robbie send messages? (true/false)");
     eprintln!();
     eprintln!("TSV columns:");
-    eprintln!("  name | precentage | amount reinvested | primary | pivot");
-    eprintln!("  USD-value | number of pivots closed | tweet url | send? | flipped");
+    eprintln!("  name | reinvested % | precentage | amount reinvested | amount distributed");
+    eprintln!("  primary | pivot | USD-value | number of pivots closed | tweet url | tx url | send? | flipped");
     Err("Need <csv_path> <send> arguments".to_string())
 }
 
@@ -56,9 +57,8 @@ pub struct InvestorRow {
 
 /// Returns `Ok(None)` for rows that should be skipped:
 ///   - blank lines
-///   - the "DO NOT SHOW!" superheader row  (col 1 contains that text)
-///   - the column-name header row           (col 0 == "name")
-///   - data rows where amount == 0          (handled by `distributed`, not `reinvested`)
+///   - the column-name header row              (col 0 == "name")
+///   - data rows where amount reinvested == 0  (handled by `distributed`, not `reinvested`)
 /// Returns `Err` only for rows that look like data but are malformed.
 pub fn parse_row(line: &str) -> ErrStr<Option<InvestorRow>> {
     let line = line.trim();
@@ -68,24 +68,21 @@ pub fn parse_row(line: &str) -> ErrStr<Option<InvestorRow>> {
 
     let cols: Vec<&str> = line.split('\t').collect();
 
-    // superheader row: "DO NOT SHOW!" appears in col 1
-    if cols.get(1).map(|c| c.trim()).unwrap_or("") == "DO NOT SHOW!" {
-        return Ok(None);
-    }
-
     // not enough columns to be a data row
-    if cols.len() < 10 {
+    if cols.len() < 13 {
         return Ok(None);
     }
 
+    // col: 0=name 1=reinvested% 2=precentage 3=amount_reinvested 4=amount_distributed
+    //      5=primary 6=pivot 7=usd 8=pivots 9=tweet_url 10=tx_url 11=send 12=flipped
     let name    = cols[0].trim();
-    let amount  = cols[2].trim();
-    let primary = cols[3].trim();
-    let pivot   = cols[4].trim();
-    let pivots  = cols[6].trim();
-    let url     = cols[7].trim();
-    let send_s  = cols[8].trim().to_lowercase();
-    let flip_s  = cols[9].trim().to_lowercase();
+    let amount  = cols[3].trim();
+    let primary = cols[5].trim();
+    let pivot   = cols[6].trim();
+    let pivots  = cols[8].trim();
+    let url     = cols[9].trim();
+    let send_s  = cols[11].trim().to_lowercase();
+    let flip_s  = cols[12].trim().to_lowercase();
 
     // column-name header row
     if name == "name" {
@@ -96,7 +93,7 @@ pub fn parse_row(line: &str) -> ErrStr<Option<InvestorRow>> {
     let amount_val: u64 = match amount.parse() {
         Ok(v) => v,
         Err(e) => return Err(format!(
-            "row '{name}': invalid amount '{amount}': {e}"
+            "row '{name}': invalid amount reinvested '{amount}': {e}"
         )),
     };
     if amount_val == 0 {
@@ -219,15 +216,18 @@ pub async fn runoff_with_args() -> ErrStr<()> {
 mod unit_tests {
     use super::*;
 
+
     // ---- helpers -----------------------------------------------------------
 
     fn make_row(
         name: &str, amount: &str, send: &str, flipped: &str,
     ) -> String {
-        // col: 0=name 1=pct 2=amount 3=primary 4=pivot 5=usd 6=pivots 7=url 8=send 9=flipped
+        // col: 0=name 1=reinvested% 2=precentage 3=amount_reinvested 4=amount_distributed
+        //      5=primary 6=pivot 7=usd 8=pivots 9=tweet_url 10=tx_url 11=send 12=flipped
         format!(
-            "{name}\t3.46%\t{amount}\tBTC\tUNDEAD\t$12.04\t15\t\
-             https://x.com/pivocateur/status/2069591552733712719\t{send}\t{flipped}"
+            "{name}\t100%\t3.46%\t{amount}\t0\tBTC\tUNDEAD\t$12.04\t15\t\
+             https://x.com/pivocateur/status/2069591552733712719\t\
+             https://snowtrace.io/tx/0xabc\t{send}\t{flipped}"
         )
     }
 
@@ -283,19 +283,9 @@ mod unit_tests {
     }
 
     #[test]
-    fn test_parse_row_superheader_skipped() -> ErrStr<()> {
-        let superheader = "\tDO NOT SHOW!\t\t\t\t\t\t\t\t";
-        assert!(
-            parse_row(superheader)?.is_none(),
-            "DO NOT SHOW! superheader row should be skipped"
-        );
-        Ok(())
-    }
-
-    #[test]
     fn test_parse_row_column_header_skipped() -> ErrStr<()> {
-        let header = "name\tprecentage\tamount reinvested\tprimary\tpivot\t\
-                      USD-value\tnumber of pivots closed\ttweet url\tsend?\tflipped";
+        let header = "name\treinvested %\tprecentage\tamount reinvested\tamount distributed\t\
+                      primary\tpivot\tUSD-value\tnumber of pivots closed\ttweet url\ttx url\tsend?\tflipped";
         assert!(parse_row(header)?.is_none(), "column header row should be skipped");
         Ok(())
     }
@@ -394,18 +384,23 @@ pub mod functional_tests {
     use paste::paste;
     use book::{ create_testing, utils::now };
 
+
     create_testing!("quiz11::a_reinvested", "", true);
 
     run!("mock_process_csv", {
-        let tsv = "\tDO NOT SHOW!\t\t\t\t\t\t\t\t\n\
-                   name\tprecentage\tamount reinvested\tprimary\tpivot\t\
-                   USD-value\tnumber of pivots closed\ttweet url\tsend?\tflipped\n\
-                   α\t3.46%\t14492\tBTC\tUNDEAD\t$12.04\t15\t\
-                   https://x.com/pivocateur/status/2069591552733712719\tyes\tyes\n\
-                   σ\t0.00%\t0\tBTC\tUNDEAD\t$0.00\t15\t\
-                   https://x.com/pivocateur/status/2069591552733712719\tyes\tyes\n";
+        // col: 0=name 1=reinvested% 2=precentage 3=amount_reinvested 4=amount_distributed
+        //      5=primary 6=pivot 7=usd 8=pivots 9=tweet_url 10=tx_url 11=send 12=flipped
+        let tsv = "name\treinvested %\tprecentage\tamount reinvested\tamount distributed\t\
+                   primary\tpivot\tUSD-value\tnumber of pivots closed\ttweet url\ttx url\tsend?\tflipped\n\
+                   α\t100%\t3.46%\t14492\t0\tBTC\tUNDEAD\t$12.04\t15\t\
+                   https://x.com/pivocateur/status/2069591552733712719\t\
+                   https://snowtrace.io/tx/0xabc\tyes\tyes\n\
+                   σ\t0%\t0.00%\t0\t0\tBTC\tUNDEAD\t$0.00\t15\t\
+                   https://x.com/pivocateur/status/2069591552733712719\t\
+                   https://snowtrace.io/tx/0xdef\tyes\tyes\n";
 
-        let path = "/tmp/reinvested_test.tsv";
+        let path_buf = std::env::temp_dir().join("reinvested_test.tsv");
+        let path = path_buf.to_str().ok_or("temp path is not valid UTF-8")?;
         std::fs::write(path, tsv).map_err(|e| e.to_string())?;
 
         let _ = now(process_csv(path, false, |tok, id, txt| {
