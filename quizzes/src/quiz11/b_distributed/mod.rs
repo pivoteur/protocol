@@ -14,12 +14,10 @@ fn app_name() -> &'static str { "distributed" }
 
 fn usage() -> ErrStr<()> {
     eprintln!("Usage: {} <csv_path> <send>", app_name());
+    eprintln!();
     eprintln!("  csv_path : path to the shared investors TSV file");
     eprintln!("  send     : let Robbie send messages? (true/false)");
     eprintln!();
-    eprintln!("TSV columns:");
-    eprintln!("  name | reinvested % | precentage | amount reinvested | amount distributed");
-    eprintln!("  primary | pivot | USD-value | number of pivots closed | tweet url | tx url | send? | flipped");
     Err("Need <csv_path> <send> arguments".to_string())
 }
 
