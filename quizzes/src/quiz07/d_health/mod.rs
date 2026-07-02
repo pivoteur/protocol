@@ -1,4 +1,4 @@
-use std::{ collections::HashSet, io::{ stdout, Write } };
+use std::collections::HashSet;
 
 use chrono::NaiveDate;
 
@@ -21,7 +21,7 @@ use libs::{
    types::{ tokens::coins::Coin, comps::Composition }
 };
 
-fn version() -> String { s("1.02") }
+fn version() -> String { s("1.03") }
 fn app_name() -> String { s("hwaet") }
 fn usage() -> ErrStr<()> {
    let app = app_name();
@@ -45,12 +45,9 @@ async fn health_computer(f: impl Fn(&mut Assets, &Coin),
    let quotes = fetch_quotes(date).await?;
    let mut ans = Vec::new();
    for pool in pools {
-      if debug {
-         print!("Computing health for pool {pool}...");
-         stdout().flush().unwrap();
-      }
+      if debug { println!("Computing health for pool {pool}..."); }
       let comp = available_assets_fetcher(&f, &root_url, &quotes, &pool).await?;
-      if debug { println!("done."); }
+      if debug { println!("...done."); }
       ans.push(comp);
    }
    ans.sort_by_key(|c| mk_safe_float(&c.tvl().amount()));

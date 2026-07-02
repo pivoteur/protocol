@@ -39,7 +39,7 @@ mod test_data {
       let mut assets = mk_assets();
       assets.add(coin("UNDEAD", 1000000.0)?);
       assets.add(coin("USDC", 1400.0)?);
-      from_assets(&assets.assets())
+      from_assets(&assets.assets(), true)
    }
 }
 
@@ -128,7 +128,10 @@ pub fn mk_composition(primary: &Coin, pivot: &Coin) -> Composition {
    arrange_assets(primary, pivot)
 }
 
-pub fn from_assets(assets: &[Coin]) -> ErrStr<Composition> {
+pub fn from_assets(assets: &[Coin], debug: bool) -> ErrStr<Composition> {
+   if debug {
+      println!("types::comps::from_assets received {} assets", assets.len());
+   }
    match assets {
       [a, b] => Ok(arrange_assets(&a, &b)),
       _ => Err(format!("Cannot make a composition from {}",
@@ -226,7 +229,7 @@ pub mod functional_tests {
       let mut assets = mk_assets();
       assets.add(coin("BTC", 0.1)?);
       assets.add(coin("USDC", 8500.0)?);
-      let comp = from_assets(&assets.assets())?;
+      let comp = from_assets(&assets.assets(), true)?;
       println!("\tBTC+USDC assets:\n{}", comp.as_csv());
    });
 
@@ -235,7 +238,7 @@ pub mod functional_tests {
       use book::tuple_utils::snd;
 
       #[test] fn fail_from_0_assets() {
-         let ans = from_assets(&mk_assets().assets());
+         let ans = from_assets(&mk_assets().assets(), true);
          assert!(ans.is_err());
       }
       #[test] fn fail_from_too_many_assets() -> ErrStr<()> {
@@ -243,7 +246,7 @@ pub mod functional_tests {
          assets.add(coin("AVAX", 12.0)?);
          assets.add(coin("BTC", 0.1)?);
          assets.add(coin("USDC", 100.0)?);
-         let ans = from_assets(&assets.assets());
+         let ans = from_assets(&assets.assets(), true);
          assert!(ans.is_err());
          Ok(())
       }

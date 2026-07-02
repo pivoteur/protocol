@@ -2,12 +2,16 @@ use std::collections::HashMap;
 
 use book::{
    csv_utils::{CsvWriter,CsvHeader},
-   err_utils::ErrStr
+   currency::usd::mk_usd,
+   err_utils::ErrStr,
+   string_utils::s
 };
 
 use crate::types::{
-   tokens::coins::Coin,
+   comps::{ Composition, mk_composition },
+   tokens::coins::{ Coin, mk_coin },
    measurable::{Measurable,sort_by_tvl,sort_by_weight},
+   pools::Pool,
    quotes::Quotes,
    util::{Token,Blockchain}
 };
@@ -59,6 +63,44 @@ from assets {}
    }
    pub fn is_empty(&self) -> bool { self.map.is_empty() }
    pub fn assets(&self) -> Vec<Coin> { self.map.values().cloned().collect() }
+   pub fn as_composition(&mut self, pool: &Pool, quotes: &Quotes)
+         -> ErrStr<Composition> {
+/* 4 scenarii:
+
+1. no matches, no virtual pivots
+2. 1 match on primary
+3. 1 match on pivot
+4. 2 matches: primary, pivot
+
+so, you know: handle those.
+*/
+
+      let default_blockchain = s("Avalanche");
+      let blk =
+         self.map.keys()
+                 .next()
+                 .and_then(|(b,_)| Some(b))
+                 .or(Some(&default_blockchain))
+                 .unwrap()
+                 .clone();
+      fn nonce<'a>(b: &'a Blockchain, q: &'a Quotes)
+            -> impl Fn(&'a Token) -> ErrStr<Coin> {
+         move |tok| {
+            let qt = q.lookup(tok)?;
+            Ok(mk_coin(&(b.clone(), tok.clone()), 0.0, &mk_usd(qt), &q.date))
+         }
+      }
+      let (pri, piv) = pool.as_tuple();
+      let zed = nonce(&blk, &quotes);
+      self.add(zed(&pri)?);
+      self.add(zed(&piv)?);
+      let abp = assets_by_price(&self);
+      if let [pr, pv] = abp.as_slice() {
+         Ok(mk_composition(pr, pv))
+      } else {
+         Err(format!("Cannot create a composition from {}", self.as_csv()))
+      }
+   }
 }
 
 impl CsvHeader for Assets { 

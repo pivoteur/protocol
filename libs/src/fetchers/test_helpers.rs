@@ -21,6 +21,6 @@ pub mod test_functions {
    pub async fn btc_eth_pivots() -> ErrStr<(Partition<Pivot>, NaiveDate)> {
       let (root_url, a) = marshall()?;
       let pool = pool_from_str("btc-eth")?;
-      fetch_pivots(&root_url, &pool, &a).await
+      fetch_pivots(&root_url, &pool, &a, true).await
    }
 }

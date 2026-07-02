@@ -26,9 +26,6 @@ pub fn mk_pool(a: &str, b: &str) -> Pool {
 impl Pool {
    pub fn pool_name(&self) -> String {
       let Pool {primary,pivot} = self;
-
-// old enupperfy:    (a.alias(primary), a.alias(pivot))
-
       format!("{}+{}", primary.to_uppercase(), pivot.to_uppercase())
    }
    pub fn as_tuple(&self) -> (String, String) {
