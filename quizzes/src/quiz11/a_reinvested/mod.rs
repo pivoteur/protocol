@@ -57,9 +57,7 @@ fn parse_bool_cell(field: &str, raw: &str) -> ErrStr<bool> {
     match raw.trim().to_lowercase().as_str() {
         "yes" | "true"  => Ok(true),
         "no"  | "false" => Ok(false),
-        other => Err(format!(
-            "column '{field}': expected yes/no/true/false, got '{other}'"
-        )),
+        other => Err(format!("column '{field}': unrecognized value '{other}'. Expected yes/no/true/false.")),
     }
 }
 /// Returns `Ok(None)` for rows that should be skipped:
@@ -381,7 +379,9 @@ mod unit_tests {
     #[test]
     fn test_parse_row_unrecognized_send_errors() -> ErrStr<()> {
         let err = parse_row(&make_row("α", "14492", "maybe", "yes")).unwrap_err();
-        assert!(err.contains("send?"), "unrecognized send must error: {err}");
+        assert!(err.contains("send"), "should mention the field name");
+        assert!(err.contains("maybe"), "should show the bad value");
+        assert!(err.contains("yes/no/true/false"), "should show allowed values");
         Ok(())
     }
 
