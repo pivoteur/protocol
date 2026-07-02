@@ -47,6 +47,15 @@ pub struct DistributionRow {
     pub send:    bool,
 }
 
+fn parse_bool_cell(field: &str, raw: &str) -> ErrStr<bool> {
+    match raw.trim().to_lowercase().as_str() {
+        "yes" | "true"  => Ok(true),
+        "no"  | "false" => Ok(false),
+        other => Err(format!(
+            "column '{field}': expected yes/no/true/false, got '{other}'"
+        )),
+    }
+}
 /// Returns `Ok(None)` for rows that should be skipped:
 ///   - blank lines
 ///   - the column-name header row               (col 0 == "name")
@@ -65,15 +74,14 @@ pub fn parse_row(line: &str) -> ErrStr<Option<DistributionRow>> {
         return Ok(None);
     }
 
-    // col: 0=name 1=reinvested% 2=precentage 3=amount_reinvested 4=amount_distributed
-    //      5=primary 6=pivot 7=usd 8=pivots 9=tweet_url 10=tx_url 11=send 12=flipped
+    // cols: 0=name 1=reinvested% 2=precentage 3=amount_reinvested 4=amount_distributed
+    //        5=primary 6=pivot 7=usd 8=pivots 9=tweet_url 10=tx_url 11=send 12=flipped
     let name    = cols[0].trim();
     let amount  = cols[4].trim();
     let primary = cols[5].trim();
     let pivot   = cols[6].trim();
     let url     = cols[9].trim();
     let tx_url  = cols[10].trim();
-    let send_s  = cols[11].trim().to_lowercase();
 
     // column-name header row
     if name == "name" {
@@ -91,7 +99,7 @@ pub fn parse_row(line: &str) -> ErrStr<Option<DistributionRow>> {
         return Ok(None);
     }
 
-    let send = send_s == "yes" || send_s == "true";
+    let send = parse_bool_cell("send?", cols[11])?;
 
     Ok(Some(DistributionRow {
         name:    name.to_string(),
@@ -201,8 +209,8 @@ mod unit_tests {
     // ---- helpers -----------------------------------------------------------
 
     fn make_row(name: &str, amount: &str, send: &str) -> String {
-        // col: 0=name 1=reinvested% 2=precentage 3=amount_reinvested 4=amount_distributed
-        //      5=primary 6=pivot 7=usd 8=pivots 9=tweet_url 10=tx_url 11=send 12=flipped
+        // cols: 0=name 1=reinvested% 2=precentage 3=amount_reinvested 4=amount_distributed
+        //       5=primary 6=pivot 7=usd 8=pivots 9=tweet_url 10=tx_url 11=send 12=flipped
         format!(
             "{name}\t0%\t10.25%\t0\t{amount}\tBTC\tUNDEAD\t$35.66\t15\t\
              https://x.com/pivocateur/status/2069591552733712719\t\
@@ -315,6 +323,31 @@ mod unit_tests {
         assert!(msg.contains("AVAX-on-BTC"));
         assert!(msg.contains("1851 AVAX"));
     }
+
+    #[test]
+    fn test_parse_row_unrecognized_send_errors() -> ErrStr<()> {
+        let err = parse_row(&make_row("γ", "42910", "maybe")).unwrap_err();
+        assert!(err.contains("send?"), "unrecognized send must error: {err}");
+        Ok(())
+    }
+
+    #[test]
+    fn test_parse_row_short_row_skipped() -> ErrStr<()> {
+        // 12 columns — tx_url omitted (the malformed-export case)
+        let short = "γ\t0%\t10.25%\t0\t42910\tBTC\tUNDEAD\t$35.66\t15\t\
+                     https://x.com/pivocateur/status/2069591552733712719\tyes\tyes";
+        assert!(parse_row(short)?.is_none(), "a 12-column row must be skipped");
+        Ok(())
+    }
+
+    #[test]
+    fn test_parse_row_reads_url_and_tx_url() -> ErrStr<()> {
+        let row = parse_row(&make_row("γ", "42910", "yes"))?.unwrap();
+        assert_eq!(row.url,    "https://x.com/pivocateur/status/2069591552733712719");
+        assert_eq!(row.tx_url, "https://snowtrace.io/tx/0x04454ba7f8484359d821f18a5c5e1e6334fa43c416ec345d1de6df10c3e13765");
+        Ok(())
+    }
+
 }
 
 //============================================================================

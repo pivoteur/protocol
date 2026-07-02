@@ -53,6 +53,15 @@ pub struct InvestorRow {
     pub flipped: bool,
 }
 
+fn parse_bool_cell(field: &str, raw: &str) -> ErrStr<bool> {
+    match raw.trim().to_lowercase().as_str() {
+        "yes" | "true"  => Ok(true),
+        "no"  | "false" => Ok(false),
+        other => Err(format!(
+            "column '{field}': expected yes/no/true/false, got '{other}'"
+        )),
+    }
+}
 /// Returns `Ok(None)` for rows that should be skipped:
 ///   - blank lines
 ///   - the column-name header row              (col 0 == "name")
@@ -71,16 +80,14 @@ pub fn parse_row(line: &str) -> ErrStr<Option<InvestorRow>> {
         return Ok(None);
     }
 
-    // col: 0=name 1=reinvested% 2=precentage 3=amount_reinvested 4=amount_distributed
-    //      5=primary 6=pivot 7=usd 8=pivots 9=tweet_url 10=tx_url 11=send 12=flipped
+    // cols: 0=name 1=reinvested% 2=precentage 3=amount_reinvested 4=amount_distributed
+    //       5=primary 6=pivot 7=usd 8=pivots 9=tweet_url 10=tx_url 11=send 12=flipped
     let name    = cols[0].trim();
     let amount  = cols[3].trim();
     let primary = cols[5].trim();
     let pivot   = cols[6].trim();
     let pivots  = cols[8].trim();
     let url     = cols[9].trim();
-    let send_s  = cols[11].trim().to_lowercase();
-    let flip_s  = cols[12].trim().to_lowercase();
 
     // column-name header row
     if name == "name" {
@@ -98,8 +105,8 @@ pub fn parse_row(line: &str) -> ErrStr<Option<InvestorRow>> {
         return Ok(None);
     }
 
-    let send    = send_s == "yes" || send_s == "true";
-    let flipped = flip_s == "yes" || flip_s == "true";
+    let send    = parse_bool_cell("send", cols[11])?;
+    let flipped = parse_bool_cell("flipped", cols[12])?;
 
     Ok(Some(InvestorRow {
         name:    name.to_string(),
@@ -193,7 +200,7 @@ where
 //----- fn runoff_with_args --------------------------------------------------
 //============================================================================
 pub async fn runoff_with_args() -> ErrStr<()> {
-    eprintln!("{}, version: {}", app_name(), version());
+    eprintln!("{}, version: {}\n", app_name(), version());
     let args = get_args();
     match args.as_slice() {
         [csv_path, send] => {
@@ -220,8 +227,8 @@ mod unit_tests {
     fn make_row(
         name: &str, amount: &str, send: &str, flipped: &str,
     ) -> String {
-        // col: 0=name 1=reinvested% 2=precentage 3=amount_reinvested 4=amount_distributed
-        //      5=primary 6=pivot 7=usd 8=pivots 9=tweet_url 10=tx_url 11=send 12=flipped
+        // cols: 0=name 1=reinvested% 2=precentage 3=amount_reinvested 4=amount_distributed
+        //        5=primary 6=pivot 7=usd 8=pivots 9=tweet_url 10=tx_url 11=send 12=flipped
         format!(
             "{name}\t100%\t3.46%\t{amount}\t0\tBTC\tUNDEAD\t$12.04\t15\t\
              https://x.com/pivocateur/status/2069591552733712719\t\
@@ -370,6 +377,37 @@ mod unit_tests {
         assert!(err.contains("invalid amount"), "should error loudly, not skip");
         Ok(())
     }
+
+    #[test]
+    fn test_parse_row_unrecognized_send_errors() -> ErrStr<()> {
+        let err = parse_row(&make_row("α", "14492", "maybe", "yes")).unwrap_err();
+        assert!(err.contains("send?"), "unrecognized send must error: {err}");
+        Ok(())
+    }
+
+    #[test]
+    fn test_parse_row_unrecognized_flipped_errors() -> ErrStr<()> {
+        let err = parse_row(&make_row("α", "14492", "yes", "perhaps")).unwrap_err();
+        assert!(err.contains("flipped"), "unrecognized flipped must error: {err}");
+        Ok(())
+    }
+
+    #[test]
+    fn test_parse_row_short_row_skipped() -> ErrStr<()> {
+        // 12 columns — tx_url omitted (the malformed-export case)
+        let short = "α\t100%\t3.46%\t14492\t0\tBTC\tUNDEAD\t$12.04\t15\t\
+                     https://x.com/pivocateur/status/2069591552733712719\tyes\tyes";
+        assert!(parse_row(short)?.is_none(), "a 12-column row must be skipped");
+        Ok(())
+    }
+
+    #[test]
+    fn test_parse_row_reads_tweet_url() -> ErrStr<()> {
+        let row = parse_row(&make_row("α", "14492", "yes", "yes"))?.unwrap();
+        assert_eq!(row.url, "https://x.com/pivocateur/status/2069591552733712719");
+        Ok(())
+    }
+
 }
 
 //============================================================================
@@ -386,8 +424,8 @@ pub mod functional_tests {
     create_testing!("quiz11::a_reinvested", "", true);
 
     run!("mock_process_csv", {
-        // col: 0=name 1=reinvested% 2=precentage 3=amount_reinvested 4=amount_distributed
-        //      5=primary 6=pivot 7=usd 8=pivots 9=tweet_url 10=tx_url 11=send 12=flipped
+        // cols: 0=name 1=reinvested% 2=precentage 3=amount_reinvested 4=amount_distributed
+        //       5=primary 6=pivot 7=usd 8=pivots 9=tweet_url 10=tx_url 11=send 12=flipped
         let tsv = "name\treinvested %\tprecentage\tamount reinvested\tamount distributed\t\
                    primary\tpivot\tUSD-value\tnumber of pivots closed\ttweet url\ttx url\tsend?\tflipped\n\
                    α\t100%\t3.46%\t14492\t0\tBTC\tUNDEAD\t$12.04\t15\t\
