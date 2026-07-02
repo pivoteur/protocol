@@ -138,20 +138,86 @@ pub fn assets_by_tvl(a: &Assets) -> Vec<Coin> {
 
 #[cfg(test)]
 #[cfg(not(tarpaulin_include))]
-pub mod functional_tests {
+mod test_data {
    use super::*;
+   use crate::types::tokens::coins::{ Coin, test_data::coin };
+
+   pub fn test_btc_coin() -> ErrStr<Coin> { coin("BTC", 1.0) }
+   pub fn test_eth_coin() -> ErrStr<Coin> { coin("ETH", 34.0) }
+   pub fn test_btc_eth_assets() -> ErrStr<Assets> {
+      let mut assets = mk_assets();
+      for asset in [test_btc_coin(), test_eth_coin()] { assets.add(asset?); }
+      Ok(assets)
+   }
+}
+
+#[cfg(test)]
+#[cfg(not(tarpaulin_include))]
+mod functional_tests {
+   use super::*;
+   use super::test_data::test_btc_eth_assets;
    use paste::paste;
    use book::{ create_testing, err_utils::ErrStr };
-   use crate::types::tokens::coins::functional_tests::coin;
 
    create_testing!("types::pivots");
 
    run!("mk_assets_and_add", {
-      let btc = coin("BTC", 1.0)?;
-      let eth = coin("ETH", 34.0)?;
-      let mut assets = mk_assets();
-      for asset in [btc, eth] { assets.add(asset); }
+      let assets = test_btc_eth_assets()?;
       println!("\tAssets with BTC and ETH:\n\n{}", assets.as_csv());
    });
 }
 
+#[cfg(test)]
+#[cfg(not(tarpaulin_include))]
+mod tests {
+   use super::*;
+   use super::test_data::{ test_btc_coin, test_eth_coin, test_btc_eth_assets };
+   use crate::types::{
+      pools::pool_from_str,
+      quotes::sample_data::sample_btc_eth_quotes,
+      tokens::coins::test_data::coin
+   };
+
+   fn mk_sample_btc_eth_composition(assets: &mut Assets)
+         -> ErrStr<Composition> {
+      let quotes = sample_btc_eth_quotes();
+      let pool = pool_from_str("btc-eth")?;
+      assets.as_composition(&pool, &quotes)
+   }
+
+   fn comp_ok(assets: &mut Assets) -> ErrStr<()> {
+      let comp = mk_sample_btc_eth_composition(assets);
+      assert!(comp.is_ok());
+      Ok(())
+   }
+
+   #[test] fn test_no_assets_composition_ok() -> ErrStr<()> {
+      let mut assets = test_btc_eth_assets()?;
+      assets.subtract(&test_btc_coin()?);
+      assets.subtract(&test_eth_coin()?);
+      assert!(assets.map.is_empty());
+      comp_ok(&mut assets)
+   }
+
+   #[test] fn test_one_asset_composition_ok() -> ErrStr<()> {
+      let mut assets = test_btc_eth_assets()?;
+      assets.subtract(&test_btc_coin()?);
+      assert_eq!(1, assets.map.len());
+      comp_ok(&mut assets)
+   }
+
+   #[test] fn test_two_assets_composition_ok() -> ErrStr<()> {
+      let mut assets = test_btc_eth_assets()?;
+      assert_eq!(2, assets.map.len());
+      comp_ok(&mut assets)
+   }
+
+   #[test] fn fail_three_assets_composition() -> ErrStr<()> {
+      let mut assets = test_btc_eth_assets()?;
+      assets.add(coin("USDC", 72043.0)?);
+      assert_eq!(3, assets.map.len());
+      let comp = mk_sample_btc_eth_composition(&mut assets);
+      assert!(comp.is_err());
+      Ok(())
+   }
+}

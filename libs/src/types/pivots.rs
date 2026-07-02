@@ -201,20 +201,12 @@ s("opened	open	close	tx_id	updated	from	from_blockchain	amount1	virtual	quote1	v
 mod functional_tests {
    use paste::paste;
    use super::*;
-   use book::{
-      create_testing,
-      currency::usd::mk_usd,
-      list_utils::filter_map_or,
-      string_utils::s,
-      table_utils::cols
-   };
+   use super::test_data::{ btc_eth_pivots, mk_btc_usdc_piv };
+   use book::create_testing;
    use crate::{
-      tables::{IxTable,index_table},
       types::{
-         aliases::aliases,
-         assets::{assets::mk_asset, amounts::{Amount,mk_amt} },
-         quotes::sample_data::sample_quotes_maker,
-         headers::mk_hdr
+         assets::amounts::mk_amt,
+         quotes::sample_data::sample_quotes_maker
       }
    };
 

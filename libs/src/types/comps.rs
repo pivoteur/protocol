@@ -27,7 +27,7 @@ mod test_data {
    use super::{ Composition, mk_composition, from_assets };
    use crate::{
       collections::assets::mk_assets,
-      types::tokens::coins::functional_tests::coin
+      types::tokens::coins::test_data::coin
    };
    
    pub fn mk_btc_eth() -> ErrStr<Composition> {
@@ -216,7 +216,7 @@ pub mod functional_tests {
    use super::test_data::*;
    use paste::paste;
    use book::create_testing;
-   use crate::types::tokens::coins::functional_tests::coin;
+   use crate::types::tokens::coins::test_data::coin;
 
    create_testing!("types::comps");
 

@@ -105,16 +105,9 @@ impl PivotCoin {
 
 #[cfg(test)]
 #[cfg(not(tarpaulin_include))]
-pub mod functional_tests {
+pub mod test_data {
    use super::*;
-   use paste::paste;
-   use book::{
-      create_testing,
-      currency::usd::mk_usd,
-      date_utils::yesterday,
-      string_utils::s,
-      utils::{now,deref,composer}
-   };
+   use book::{ date_utils::yesterday, string_utils::s, utils::now };
    use crate::fetchers::quotes::fetch_quotes;
 
    pub fn coin(tok: &str, amt: f32) -> ErrStr<Coin> {
@@ -124,6 +117,15 @@ pub mod functional_tests {
       let qt = quotes.lookup(&t)?;
       Ok(mk_coin(&(s("Avalanche"), t), amt, &mk_usd(qt), &yday))
    }
+}
+
+#[cfg(test)]
+#[cfg(not(tarpaulin_include))]
+mod functional_tests {
+   use super::*;
+   use super::test_data::coin;
+   use paste::paste;
+   use book::{ create_testing, utils::{deref,composer} };
 
    create_testing!("types::coins");
 
