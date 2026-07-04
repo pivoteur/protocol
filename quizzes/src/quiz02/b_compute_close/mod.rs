@@ -4,8 +4,9 @@ use book::{
    csv_utils::{CsvHeader,print_csv},
    date_utils::parse_date,
    err_utils::ErrStr,
+   list_utils::tail,
    string_utils::s,
-   utils::get_args
+   utils::{ get_args, id }
 };
 
 use libs::{
@@ -25,18 +26,20 @@ struct Report {
    max_date: NaiveDate
 }
 
-async fn compute_closes(root_url: &str, pool: &Pool, date: NaiveDate)
-      -> ErrStr<Report> {
+async fn compute_closes(root_url: &str, pool: &Pool, date: NaiveDate,
+                        debug: bool) -> ErrStr<Report> {
    let quotes = fetch_quotes(&date).await?;
    let a = &quotes.aliases;
-   let ((opns, cls), max_date) = fetch_pivots(root_url, pool, a).await?;
+   let ((opns, cls), max_date) = fetch_pivots(root_url, pool, a, debug).await?;
    let mut next_close = next_close_id(&cls);
    let proposer = propose(&quotes);
    let mut props = Vec::new();
 
+   if debug { println!("Processing open pivots for {pool} pivot pool"); }
    for h in &opns {
       let hs = vec![h.clone()];
-      if let Some((prop, next_next)) = proposer((hs, next_close))? {
+      if debug { println!("\tprocessing {pool} open pivot #{}", h.index()); }
+      if let Some((prop, next_next)) = proposer((hs, next_close), debug)? {
          props.push(prop);
          next_close = next_next;
       }
@@ -71,7 +74,7 @@ fn report_proposes(rpt: Report) {
 }
 
 fn app_name() -> String { s("chihuahua") }
-fn version() -> String { s("1.01") }
+fn version() -> String { s("1.02") }
 fn print_heading() { println!("{}, version: {}\n", app_name(), version()); }
 
 fn usage() -> ErrStr<()> {
@@ -88,16 +91,16 @@ Open pivots are stored as raw-CSV files in git at protocol <root URL>.
 }
 
 pub async fn runoff_get_args() -> ErrStr<()> {
-   let args = get_args();
-   report_calls(args).await
+   let (debug, args) = get_args();
+   report_calls(args, debug).await
 }
 
-async fn report_calls(args: Vec<String>) -> ErrStr<()> {
+async fn report_calls(args: Vec<String>, debug: bool) -> ErrStr<()> {
    print_heading();
    if let [root_url, prim, piv, date] = args.as_slice() {
       let dt = parse_date(&date)?;
       let pool = mk_pool(&prim, &piv);
-      let report = compute_closes(root_url, &pool, dt).await?;
+      let report = compute_closes(root_url, &pool, dt, debug).await?;
       report_proposes(report);
       Ok(())
    } else {
@@ -106,15 +109,16 @@ async fn report_calls(args: Vec<String>) -> ErrStr<()> {
 }
 
 // ----- TESTS -------------------------------------------------------
+
 #[cfg(test)]
 #[cfg(not(tarpaulin_include))]
-pub mod functional_tests {
+mod functional_tests {
    use super::*;
    use paste::paste;
    use book:: {
       string_utils::to_string,
       utils:: { get_env, now },
-      create_testing, 
+      create_testing
    };
 
    create_testing!("quiz02::b_compute_close", "", true);
@@ -124,7 +128,7 @@ pub mod functional_tests {
       let pivot_url = get_env("PIVOT_URL")?;
       let args: Vec<String> = [&pivot_url, "AVAX", "UNDEAD", "2026-01-25"]
          .into_iter().map(to_string).collect();
-      match now(report_calls(args)) { Ok(()) => Ok(1), Err(x) => Err(x) }
+      now(report_calls(args, debug))
    });
 }
 

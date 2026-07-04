@@ -40,9 +40,10 @@ fn tokens_to_pivot(proposals: Vec<Proposal>) {
 
 pub async fn runoff_with_args() -> ErrStr<()> {
     println!("{}, version: {}", app_name(), version());
-    if let [ath, dt] = get_args().as_slice() {
+    let (debug, args) = get_args();
+    if let [ath, dt] = args.as_slice() {
         let date = parse_date(&dt)?;
-        let _ = propose(ath, &date, true).await?;
+        let _ = propose(ath, &date, debug).await?;
         Ok(())
     } else {
         usage()

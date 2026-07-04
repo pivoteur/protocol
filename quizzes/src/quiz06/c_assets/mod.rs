@@ -103,7 +103,7 @@ async fn print_assets(auth: &str, date: &NaiveDate) -> ErrStr<()> {
 }
 
 pub async fn runoff_get_args() -> ErrStr<()> {
-   let args = get_args();
+   let (debug, args) = get_args();
    if let [auth, dt] = args.as_slice() {
       let date = parse_date(dt)?;
       print_assets(&auth, &date).await

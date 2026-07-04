@@ -1,8 +1,12 @@
-use book::{ 
-   err_utils::ErrStr,
+use clap::Parser;
+
+use book::{
    csv_utils::{ CsvHeader, print_csv },
-   utils::get_args
+   err_utils::ErrStr,
+   string_utils::UppercaseSing,
+   utils::get_env
 };
+
 use libs::{ 
    fetchers::pivots::fetch_pivots,
    types::{
@@ -11,20 +15,6 @@ use libs::{
       pools::{Pool,mk_pool}
    }
 };
-
-fn usage() -> ErrStr<()> {
-   println!("Usage:
-
-$ cargo run <root URL> <primary asset> <pivot asset>
-
-Partitions open pivots.
-
-The pivot pools are reposed (in git, currently) at <root URL>.
-
-Open pivots are stored as raw-CSV files in git at protocol <root URL>.
-");
-   Err("Needs <root URL> <primary> <pivot> arguments".to_string())
-}
 
 fn list_open_pivots(piv: &str, opens: Vec<Pivot>) {
    if opens.is_empty() {
@@ -43,19 +33,40 @@ fn list_open_pivots(piv: &str, opens: Vec<Pivot>) {
    }
 }
 
-pub async fn runoff_get_args() -> ErrStr<()> {
-   if let [root_url, prim, piv] = get_args().as_slice() {
-      let pool = mk_pool(&prim, &piv);
-      fetch_and_list_open_pivots(root_url, &pool).await
-   } else {
-      usage()
-   }
+#[derive(Debug,Parser)]
+#[command(name = "no_name")]
+#[command(version = "no_version")]
+/// Partitions open pivots.
+///
+/// The pivot pools are reposed (in git, currently) at <root URL>.
+/// Open pivots are stored as raw-CSV files in git at protocol <root URL>.
+struct Args {
+   /// Protocol for which to partition pivots, e.g.: PIVOT
+   protocol: UppercaseString,
+
+   /// Primary pivot pool asset, e.g.: BTC
+   primary: String,
+
+   /// Pivot pivot pool asset, e.g.: ETH
+   pivot: String,
+
+   /// Show debugging information
+   #[arg(short, long)]
+   debug: bool
 }
 
-async fn fetch_and_list_open_pivots(root_url: &str, pool: &Pool) -> ErrStr<()> {
+pub async fn runoff_get_args() -> ErrStr<()> {
+   let args = Args::parse();
+   let pool = mk_pool(&args.primary, &args.pivot);
+   let root_url = get_env(&format!("{}_URL", args.protocol))?;
+   fetch_and_list_open_pivots(&root_url, &pool, debug).await
+}
+
+async fn fetch_and_list_open_pivots(root_url: &str, pool: &Pool, debug: bool)
+      -> ErrStr<()> {
    let a = aliases();
    let ((opens, _closes), _max_date) =
-      fetch_pivots(root_url, pool, &a).await?;
+      fetch_pivots(root_url, pool, &a, debug).await?;
    let (prim, piv) = pool.as_tuple();
    let (lefts, rights) = partition_on(&prim, opens);
    list_open_pivots(&prim, lefts);

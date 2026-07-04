@@ -66,31 +66,32 @@ where
    "<protocol>-argument missing.".to_string()
 }
 
-async fn fetch_all_pools_assets(root_url: &str) -> ErrStr<Vec<Composition>> {
+async fn fetch_all_pools_assets(root_url: &str, debug: bool)
+      -> ErrStr<Vec<Composition>> {
    let aliases = aliases();
    let pool_names = fetch_pool_names(&root_url).await?;
    let mut pools = Vec::new();
    for pool in pool_names {
-      let p = fetch_assets(&root_url, &pool, &aliases).await?;
+      let p = fetch_assets(&root_url, &pool, &aliases, debug).await?;
       pools.push(p);
    }
    Ok(pools)
 }
 
-async fn do_it(mb_auth: Option<&String>, mb_mini: Option<&String>)
+async fn do_it(mb_auth: Option<&String>, mb_mini: Option<&String>, debug: bool)
       -> ErrStr<()> {
    println!("{}, version: {}\n", app_name(), version());
    let auth = mb_auth.ok_or_else(|| usage())?.to_uppercase();
    let root_url = get_env(&format!("{auth}_URL"))?;
    let mini = min_value(mb_mini);
-   let pools = fetch_all_pools_assets(&root_url).await?;
+   let pools = fetch_all_pools_assets(&root_url, debug).await?;
    report_on_assets(pools, mini);
    Ok(())
 }
 
 pub async fn runoff_get_args() -> ErrStr<()> {
-   let args = get_args();
-   do_it(args.first(), args.last()).await
+   let (debug, args) = get_args();
+   do_it(args.first(), args.last(), debug).await
 }
 
 // ----- TESTS -------------------------------------------------------
@@ -106,7 +107,7 @@ pub mod functional_tests {
    create_testing!("quiz06::b_pools", "", true);
 
    run!("fetch_all_pool_assets", {
-      let _ = now(do_it(Some(&s("PIVOT")), Some(&s("10000"))));
+      let _ = now(do_it(Some(&s("PIVOT")), Some(&s("10000"), true)));
    });
 }
 
@@ -119,7 +120,7 @@ mod tests {
 
    async fn fetch_pools() -> ErrStr<Vec<Composition>> {
       let root_url = get_env("PIVOT_URL")?;
-      fetch_all_pools_assets(&root_url).await
+      fetch_all_pools_assets(&root_url, true).await
    }
 
    #[tokio::test] async fn test_fetch_all_pools_assets_ok() -> ErrStr<()> {

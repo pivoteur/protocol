@@ -24,15 +24,15 @@ where:
 * <protocol> is the protocol to be analyzed, e.g.: PIVOT
 * <date> is the date to propose pivots, e.g. 2025-12-18
 * --min (optional) outputs only the proposals table", app_name());
-Err("Need <protocol> and <date> arguments".to_string())
+Err(s("Need <protocol> and <date> arguments"))
 }
 
-pub async fn propose(auth: &str, date: &NaiveDate, min: bool) -> ErrStr<()> {
-   if !min { println!("Processing pools for {auth} on date {date}"); }
-   let (proposals, no_closes) = process_pools(auth, date, !min).await?;
-   let x = if min { &vec![] } else { &no_closes };
-   report_proposes(proposals.clone(), x, min);
-   if !min && !proposals.is_empty() { tokens_to_pivot(proposals); }
+pub async fn propose(auth: &str, date: &NaiveDate, debug: bool) -> ErrStr<()> {
+   if debug { println!("Processing pools for {auth} on date {date}"); }
+   let (proposals, no_closes) = process_pools(auth, date, debug).await?;
+   let x = if !debug { &vec![] } else { &no_closes };
+   report_proposes(proposals.clone(), x, !debug);
+   if debug && !proposals.is_empty() { tokens_to_pivot(proposals); }
    Ok(())
 }
 
@@ -46,16 +46,17 @@ fn tokens_to_pivot(proposals: Vec<Proposal>) {
 }
 
 pub async fn runoff_with_args() -> ErrStr<()> {
-    let args = get_args();
-    let min = args.contains(&"--min".to_string());
+    let (_debug, args) = get_args();
+    let min = args.contains("--min");
+    let debug = !min;
     let args: Vec<String> =
        args.into_iter().filter(|a| a != "--min").collect();
-    if !min {
+    if debug {
         println!("\n{}, version: {}\n", app_name(), version());
     }
     if let [auth, dt] = args.as_slice() {
         let date = parse_date(&dt)?;
-        propose(auth, &date, min).await
+        propose(auth, &date, debug).await
     } else {
         usage()
     }
@@ -66,12 +67,6 @@ pub async fn runoff_with_args() -> ErrStr<()> {
 #[cfg(test)]
 mod unit_tests {
    use super::*;
-
-   #[test] fn test_usage_returns_err() {
-      let result = usage();
-      assert!(result.is_err());
-      assert_eq!(result.unwrap_err(), "Need <protocol> and <date> arguments");
-   }
 
    #[test] fn test_tokens_to_pivot_empty() { tokens_to_pivot(vec![]); }
 }

@@ -1,5 +1,5 @@
 use book::{
-   currency::usd::{USD,mk_usd},
+   currency::usd::USD,
    csv_utils::{CsvWriter,CsvHeader},
    date_utils::parse_date,
    err_utils::ErrStr,
@@ -10,18 +10,17 @@ use book::{
 };
 
 use libs::{
-   collections::assets::{Assets,mk_assets},
+   collections::assets::mk_assets,
    fetchers::{ quotes::fetch_quotes, pivots::fetch_pivots},
    paths::pivot_pool_from_file,
    reports::{total_line,print_tsv_table_d},
    types::{
-      tokens::coins::{Coin,mk_coin},
-      comps::{Composition,mk_composition},
+      comps::Composition,
       measurable::{Measurable,tvl},
       pivots::{Pivot,recompute_pivot},
       pools::Pool,
       quotes::Quotes,
-      util::{Blockchain,Token}
+      util::Blockchain
    }
 };
 
@@ -151,7 +150,7 @@ mod test_data {
 #[cfg(not(tarpaulin_include))]
 mod functional_tests {
    use super::*;
-   use super::test_data:virts_n_opns;
+   use super::test_data::virts_n_opns;
    use paste::paste;
    use libs::paths::paths_test_helpers::path_to_btc_eth_pivot_pool;
    use book::{ create_testing, date_utils::yesterday, utils::now };
@@ -180,7 +179,7 @@ mod functional_tests {
 #[cfg(test)]
 mod tests {
    use super::*;
-   use super::test_data:virts_n_opns;
+   use super::test_data::virts_n_opns;
    use book::{
       date_utils::yesterday,
       num::estimate::mk_estimate,
