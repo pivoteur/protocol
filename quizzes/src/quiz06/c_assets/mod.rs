@@ -1,15 +1,17 @@
 use chrono::NaiveDate;
+use clap::Parser;
 
 use std::collections::HashMap;
 
 use book::{
+   parse_args_add_banner,
+   cli_utils::add_banner,
    currency::usd::{USD,mk_usd},
-   date_utils::parse_date,
    err_utils::ErrStr,
    num_utils::parse_num,
-   string_utils::s,
+   string_utils::{ UppercaseString, s },
    table_utils::col,
-   utils::{get_env,get_args}
+   utils::get_env
 };
 
 use libs::{
@@ -21,26 +23,6 @@ use libs::{
    tables::IxTable,
    types::{ quotes::Quotes, util::{Token, TVLs} }
 };
-
-fn version() -> String { s("1.08") }
-fn app_name() -> String { s("assets") }
-
-fn usage() -> ErrStr<()> { println!("
-{}, version: {}
-
-Prints the assets of the protocol, giving the TVL
-
-Usage:
-
-	$ {} <auth> <date>
-
-where
-
-* <auth> is protocol authenticator
-* <date> the date of the assets-value, e.g.: $LE_DATE
-", app_name(), version(), app_name());
-   Err(s("Need <auth> <date> arguments!"))
-}
 
 async fn compute_assets(auth: &str, dt: &NaiveDate) -> ErrStr<Vec<USD>> {
    let root_url = get_env(&format!("{}_URL", auth.to_uppercase()))?;
@@ -102,30 +84,40 @@ async fn print_assets(auth: &str, date: &NaiveDate) -> ErrStr<()> {
    Ok(())
 }
 
+/// Prints the assets of the protocol, giving the TVL
+#[derive(Debug, Parser)]
+#[command(name = "assets")]
+#[command(version = "1.09")]
+struct Args {
+   /// The protocol to compute TVL, e.g.: PIVOT
+   protocol: UppercaseString,
+
+   /// The date to compute the TVL, e.g.: $LE_DATE
+   date: NaiveDate,
+
+   /// print debugging information
+   #[arg(short, long)]
+   debug: bool
+}
+
 pub async fn runoff_get_args() -> ErrStr<()> {
-   let (debug, args) = get_args();
-   if let [auth, dt] = args.as_slice() {
-      let date = parse_date(dt)?;
-      print_assets(&auth, &date).await
-   } else {
-      usage()
-   }
+   let args = parse_args_add_banner!(Args);
+   print_assets(&args.protocol, &args.date).await
 }
 
 // ----- TESTS -------------------------------------------------------
 
 #[cfg(test)]
 #[cfg(not(tarpaulin_include))]
-pub mod functional_tests {
+mod functional_tests {
 
    use super::*;
    use paste::paste;
    use book::{ create_testing, date_utils::yesterday, utils::now };
 
-   create_testing!("quiz06::c_assets", "", true);
+   create_testing!("quiz06::c_assets");
 
    run!("compute_assets", {
-      println!("\nquizzes::quiz06::c_assets functional test\n");
       let yday = yesterday();
       println!("\tasset row is:\n");
       let _ = now(print_assets("pivot", &yday));
@@ -133,10 +125,11 @@ pub mod functional_tests {
 }
 
 #[cfg(test)]
+#[cfg(not(tarpaulin_include))]
 mod tests {
    use super::*;
 
-   use book::{ date_utils::yesterday, string_utils::{s,words} };
+   use book::{ date_utils::yesterday, string_utils::words };
    use libs::{ tables::index_table, types::quotes::mk_quotes };
 
    #[tokio::test] async fn test_compute_assets_ok() {

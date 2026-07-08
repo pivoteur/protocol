@@ -1,25 +1,12 @@
 use std::pin::Pin;
+use clap::Parser;
 use reqwest::Client;
 use book::{
-    err_utils::ErrStr,
-    utils::{ get_args, get_env },
+   parse_args_add_banner,
+   cli_utils::add_banner,
+   err_utils::{ ErrStr, err_or },
+   utils::get_env
 };
-
-
-//============================================================================
-//----- Version/ App_Name/ Usage ---------------------------------------------
-//============================================================================
-fn version()  -> &'static str { "2.00" }
-fn app_name() -> &'static str { "distributed" }
-
-fn usage() -> ErrStr<()> {
-    eprintln!("Usage: {} <csv_path> <send>", app_name());
-    eprintln!();
-    eprintln!("  csv_path : path to the shared investors TSV file");
-    eprintln!("  send     : let Robbie send messages? (true/false)");
-    eprintln!();
-    Err("Need <csv_path> <send> arguments".to_string())
-}
 
 //============================================================================
 //----- Telegram Configuration -----------------------------------------------
@@ -56,6 +43,7 @@ fn parse_bool_cell(field: &str, raw: &str) -> ErrStr<bool> {
         )),
     }
 }
+
 /// Returns `Ok(None)` for rows that should be skipped:
 ///   - blank lines
 ///   - the column-name header row               (col 0 == "name")
@@ -183,28 +171,38 @@ where
 //============================================================================
 //----- fn runoff_with_args --------------------------------------------------
 //============================================================================
+
+/// Sends distribution message to investors
+///
+/// The investors and their distributions are listed in CSV file
+#[derive(Debug, Parser)]
+#[command(name = "distributed")]
+#[command(version = "1.01")]
+struct Args {
+   /// The path to the list of the investors and their distributions
+   csv_path: String,
+
+   /// Send a telegram? (yes/no)
+   send: String
+}
+
 pub async fn runoff_with_args() -> ErrStr<()> {
-    eprintln!("{}, version: {}\n", app_name(), version());
-    let args = get_args();
-    match args.as_slice() {
-        [csv_path, send] => {
-            let global_send = send.parse::<bool>()
-                .map_err(|_| format!("send must be true or false, got: {send}"))?;
-            process_csv(csv_path, global_send, |tok, id, txt| {
+   let args = parse_args_add_banner!(Args);
+   let sned: bool = 
+      err_or(args.send.parse(),
+             &format!("Cannot parse {} to a boolean-value", args.send))?;
+   process_csv(&args.csv_path, sned, |tok, id, txt| {
                 Box::pin(send_telegram(tok, id, txt))
-            }).await
-        }
-        _ => usage(),
-    }
+   }).await
 }
 
 //============================================================================
 //----- UNIT TESTS -----------------------------------------------------------
 //============================================================================
+
 #[cfg(test)]
 mod unit_tests {
     use super::*;
-
 
     // ---- helpers -----------------------------------------------------------
 
@@ -360,8 +358,7 @@ pub mod functional_tests {
     use paste::paste;
     use book::{ create_testing, utils::now };
 
-
-    create_testing!("quiz11::b_distributed", "", true);
+    create_testing!("quiz11::b_distributed");
 
     run!("mock_process_csv", {
         // col: 0=name 1=reinvested% 2=precentage 3=amount_reinvested 4=amount_distributed

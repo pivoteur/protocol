@@ -1,12 +1,15 @@
+use chrono::NaiveDate;
+use clap::Parser;
+
 use book::{
+   parse_args_add_banner,
+   cli_utils::add_banner,
    currency::usd::USD,
    csv_utils::{CsvWriter,CsvHeader},
-   date_utils::parse_date,
    err_utils::ErrStr,
-   list_utils::tail,
-   string_utils::s,
+   string_utils::UppercaseString,
    tuple_utils::Partition,
-   utils::{get_env,get_args}
+   utils::get_env
 };
 
 use libs::{
@@ -19,20 +22,15 @@ use libs::{
       measurable::{Measurable,tvl},
       pivots::{Pivot,recompute_pivot},
       pools::Pool,
-      quotes::Quotes,
-      util::Blockchain
+      quotes::Quotes
    }
 };
-
-fn version() -> String { s("2.04") }
-fn app_name() -> String { s("virtsz") }
 
 fn partition_virtual_pivots(all_opns: Vec<Pivot>) -> Partition<Pivot> {
    all_opns.into_iter().partition(Pivot::is_virtual)
 }
 
-fn aggregate_virtual_pivots(virts: &[Pivot], blk: &Blockchain,
-                            quotes: &Quotes, pool: &Pool)
+fn aggregate_virtual_pivots(virts: &[Pivot], quotes: &Quotes, pool: &Pool)
       -> ErrStr<Composition> {
    let mut asts = mk_assets();
    virts.iter().for_each(|v| {
@@ -47,23 +45,20 @@ fn aggregate_virtual_pivots(virts: &[Pivot], blk: &Blockchain,
 
 fn tvls<T:Measurable>(rows: &[T]) -> USD { rows.iter().map(tvl).sum() }
 
-async fn update_virtual_pivots(protocol: &str, dt: &str, path: &str,
+async fn update_virtual_pivots(protocol: &str, date: &NaiveDate, path: &str,
                              debug: bool) -> ErrStr<()> {
    let pool = pivot_pool_from_file(path)?;
-   let auth = protocol.to_uppercase();
-   let root_url = get_env(&format!("{auth}_URL"))?;
-   let date = parse_date(&dt)?;
+   let root_url = get_env(&format!("{protocol}_URL"))?;
    let quotes = fetch_quotes(&date).await?;
    let truz = &quotes.aliases;
-   let (pivots, _mx) = fetch_pivots(&root_url, &pool, truz).await?;
+   let (pivots, _mx) = fetch_pivots(&root_url, &pool, truz, debug).await?;
    let (all_opns, cls) = pivots;
    let (virts, opns) = partition_virtual_pivots(all_opns);
    let pool_name = pool.pool_name();
 
    if debug {
       if !virts.is_empty() {
-         let blk = virts.first().unwrap().blockchain();
-         let agg = aggregate_virtual_pivots(&virts, &blk, &quotes, &pool)?;
+         let agg = aggregate_virtual_pivots(&virts, &quotes, &pool)?;
          report_on_assets(&[agg], &virts);
       } else {
          println!("Pivot pool {pool_name} has no virtual pivots.");
@@ -83,7 +78,6 @@ async fn update_virtual_pivots(protocol: &str, dt: &str, path: &str,
 }
 
 fn report_on_assets(pools: &[Composition], virts: &[Pivot]) {
-   println!("{}, version: {}", app_name(), version());
    tabl("Virtual Pivot Assets", pools, 3, true);
    tabl("Virtual pivots", virts, 3, true);
 }
@@ -97,36 +91,29 @@ fn tabl<T:CsvWriter + CsvHeader + Measurable>
    if debug { total_line(skip, " ,total", &tvls(rows)); }
 }
 
-fn usage() -> String {
-   println!("\n$ ./{} [--debug|-d] <protocol> <date> <path>
+/// Computes assets committed to virtual pivots.
+#[derive(Debug, Parser)]
+#[command(name = "virtsz")]
+#[command(version = "2.05")]
+struct Args {
+   /// Protocol to compute assets committed to virtual pivots, e.g.: PIVOT
+   protocol: UppercaseString,
 
-Computes assets committed to virtual pivots.
+   /// date on which to compute assets committed to virtual pivots
+   date: NaiveDate,
 
-where
-* -d or --debug, if present, means print debug information
+   /// path to pivot pool to analyze, e.g. data/pivots/open/raw/btc-eth.tsv
+   path: String,
 
-* <protocol> is the protocol,
-         e.g. PIVOT
-
-* <date> to check availability,
-         e.g.: $LE_DATE
-
-* <path> to the pivot pool file to process,
-         e.g. protocol/data/pivots/open/raw/btc-eth.tsv
-", app_name());
-   s("Needs arguments <protocol> <date> <prim> <piv>")
+   /// prints debugging information
+   #[arg(short, long)]
+   debug: bool
 }
 
 pub async fn runoff_with_args() -> ErrStr<()> {
-   let args = get_args();
-   if let Some(arg) = args.first() {
-      let (args1, debug) = if arg == "--debug" || arg == "-d" {
-         (tail(&args), true)
-      } else { (args.clone(), false) };
-      if let [protocol, dt, path] = args1.as_slice() {
-         update_virtual_pivots(&protocol, &dt, path, debug).await
-      } else { Err(usage()) }
-   } else { Err(usage()) }
+   let args = parse_args_add_banner!(Args);
+   update_virtual_pivots(&args.protocol, &args.date, &args.path,
+                         args.debug).await
 }
 
 // ----- TESTS -------------------------------------------------------
@@ -138,7 +125,7 @@ mod test_data {
    use libs::fetchers::test_helpers::test_functions::btc_eth_pivots;
    use book::tuple_utils::fst;
 
-   async fn virts_n_opns() -> ErrStr<(Vec<Pivot>, Partition<Pivot>)> {
+   pub async fn virts_n_opns() -> ErrStr<(Vec<Pivot>, Partition<Pivot>)> {
       let (pivots, _mx) = btc_eth_pivots().await?;
       let all_opns = fst(pivots);
       let (virts, opns) = partition_virtual_pivots(all_opns.clone());
@@ -152,24 +139,30 @@ mod functional_tests {
    use super::*;
    use super::test_data::virts_n_opns;
    use paste::paste;
-   use libs::paths::paths_test_helpers::path_to_btc_eth_pivot_pool;
-   use book::{ create_testing, date_utils::yesterday, utils::now };
+   use libs::{
+      paths::paths_test_helpers::path_to_btc_eth_pivot_pool,
+      types::pools::mk_pool
+   };
+   use book::{
+      create_testing,
+      date_utils::yesterday,
+      utils::now
+   };
 
-   create_testing!("quiz07::b_virtual", "", true);
+   create_testing!("quiz07::b_virtual");
 
    run!("update_virtual_pivots", {
-      let yday = format!("{}", yesterday());
-      let path = path_to_btc_eth_pivot_pool()
-      let _ = now(update_virtual_pivots("pivot", &yday, &path, true));
+      let path = path_to_btc_eth_pivot_pool();
+      let _ = now(update_virtual_pivots("pivot", &yesterday(), &path, true));
    });
+
    run!("aggregate_virtual_pivots", {
-      let (_, (virts, _)) = virts_n_opns().await?;
+      let (_, (virts, _)) = now(virts_n_opns())?;
       assert!(!virts.is_empty());
       let yday = yesterday();
-      let qt = fetch_quotes(&yday).await?;
+      let qt = now(fetch_quotes(&yday))?;
       let pool = mk_pool("BTC", "ETH");
-      let blk = s("Avalanche");
-      let comp = aggregate_virtual_pivots(&virts, &blk, &qt, &pool);
+      let comp = aggregate_virtual_pivots(&virts, &qt, &pool)?;
       println!("The virtual assets for {pool} are:
 {}", comp.as_csv());
    });
@@ -180,12 +173,7 @@ mod functional_tests {
 mod tests {
    use super::*;
    use super::test_data::virts_n_opns;
-   use book::{
-      date_utils::yesterday,
-      num::estimate::mk_estimate,
-      string_utils::s,
-   };
-   use libs::types::pools::mk_pool;
+   use book::num::estimate::mk_estimate;
 
    #[tokio::test] async fn test_partition_virtual_pivots() -> ErrStr<()> {
       let (all_opns, (virts, opns)) = virts_n_opns().await?;

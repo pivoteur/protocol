@@ -1,6 +1,6 @@
 [package]
 name = "assets"
-version = "0.1.0"
+version = "1.0.9"
 edition = "2024"
 
 [[bin]]
@@ -8,16 +8,13 @@ name = "assets"
 path = "../../quizzes/src/quiz06/c_assets/src/main.rs"
 
 [dependencies]
+clap = { version = "4.5", features = ["derive"] }
 tokio = { version = "1.52.2", features = ["macros", "rt-multi-thread"] }
 
 libs = { path = "../../libs" }
-
 book = { path = "../../../crypto-n-rust/src/libs/book" }
-
 quizzes = { path = "../../quizzes" }
 
 [lints.rust.unexpected_cfgs]
 level = "warn"
-check-cfg = [
-    'cfg(tarpaulin_include)'
-]
+check-cfg = [ 'cfg(tarpaulin_include)' ]

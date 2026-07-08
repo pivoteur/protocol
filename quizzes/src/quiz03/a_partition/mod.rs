@@ -1,9 +1,11 @@
 use clap::Parser;
 
 use book::{
+   parse_args_add_banner,
+   cli_utils::add_banner,
    csv_utils::{ CsvHeader, print_csv },
    err_utils::ErrStr,
-   string_utils::UppercaseSing,
+   string_utils::UppercaseString,
    utils::get_env
 };
 
@@ -34,8 +36,6 @@ fn list_open_pivots(piv: &str, opens: Vec<Pivot>) {
 }
 
 #[derive(Debug,Parser)]
-#[command(name = "no_name")]
-#[command(version = "no_version")]
 /// Partitions open pivots.
 ///
 /// The pivot pools are reposed (in git, currently) at <root URL>.
@@ -56,10 +56,10 @@ struct Args {
 }
 
 pub async fn runoff_get_args() -> ErrStr<()> {
-   let args = Args::parse();
+   let args = parse_args_add_banner!(Args);
    let pool = mk_pool(&args.primary, &args.pivot);
    let root_url = get_env(&format!("{}_URL", args.protocol))?;
-   fetch_and_list_open_pivots(&root_url, &pool, debug).await
+   fetch_and_list_open_pivots(&root_url, &pool, args.debug).await
 }
 
 async fn fetch_and_list_open_pivots(root_url: &str, pool: &Pool, debug: bool)
@@ -84,11 +84,11 @@ pub mod functional_tests {
    use book::{ create_testing, err_utils::ErrStr, utils:: { get_env, now } };
    use libs::types::pools::pool_from_str;
 
-   create_testing!("quiz03::a_partition", "", true);
+   create_testing!("quiz03::a_partition");
 
    run!("partition", {
       let root_url = get_env("PIVOT_URL")?;
       let pool = pool_from_str("btc-eth")?;
-      let _ = now(fetch_and_list_open_pivots(&root_url, &pool));
+      let _ = now(fetch_and_list_open_pivots(&root_url, &pool, true));
    });
 }

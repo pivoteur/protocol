@@ -1,7 +1,13 @@
 use chrono::NaiveDate;
 use clap::Parser;
 
-use book::{ err_utils::ErrStr, string_utils::UppercaseString,  utils::get_env };
+use book::{
+   parse_args_add_banner,
+   cli_utils::add_banner,
+   err_utils::ErrStr,
+   string_utils::UppercaseString,
+   utils::get_env
+};
 
 use libs::{
    reports::print_table,
@@ -17,7 +23,7 @@ async fn aggregate(root_url: &str, pool: &Pool, date: NaiveDate, debug: bool)
       -> ErrStr<()> {
    let quotes = fetch_quotes(&date).await?;
    let a = &quotes.aliases;
-   let ((opns, cls), max_date) = fetch_pivots(root_url, pool, a).await?;
+   let ((opns, cls), max_date) = fetch_pivots(root_url, pool, a, debug).await?;
    let next_close = next_close_id(&cls);
    preamble(pool, opns.len(), &max_date, &date);
    let proposer = propose(&quotes);
@@ -53,9 +59,6 @@ fn preamble(pool: &Pool, len: usize, max_date: &NaiveDate, date: &NaiveDate) {
 /// The pivot pools are reposed (in git, currently) at <root URL>.
 /// pivots are stored as raw-CSV files in git at protocol <root URL>.",
 #[derive(Parser,Debug)]
-#[command(about, long_about = None)]
-#[command(version = "1.00")]
-#[command(name = "basset")]
 struct Args {
    /// Protocol holding the assets, e.g.: PIVOT
    protocol: UppercaseString,
@@ -75,7 +78,7 @@ struct Args {
 }
 
 pub async fn runoff_get_args() -> ErrStr<()> {
-   let args = Args::parse();
+   let args = parse_args_add_banner!(Args);
    let pool = mk_pool(&args.primary, &args.pivot);
    let root_url = get_env(&format!("{}_URL", args.protocol))?;
    aggregate(&root_url, &pool, args.date, args.debug).await
@@ -88,14 +91,13 @@ pub async fn runoff_get_args() -> ErrStr<()> {
 mod functional_tests {
    use super::*;
    use paste::paste;
-   use book::{ create_testing, utils::now };
+   use book::{ create_testing, date_utils::yesterday, utils::now };
 
    create_testing!("quiz03::b_aggregate");
 
    run!("aggregate", {
       let piv = get_env("PIVOT_URL")?;
-      let dt = parse_date("2026-02-02")?;
       let pool = mk_pool("btc", "eth");
-      let _ = now(aggregate(&piv, &pool, dt));
+      let _ = now(aggregate(&piv, &pool, yesterday(), true));
    });
 }

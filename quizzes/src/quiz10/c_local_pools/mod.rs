@@ -1,35 +1,33 @@
-use book:: {
-   err_utils::ErrStr,
-   date_utils::parse_date,
-   string_utils::s,
-   utils::get_args
-};
-use pools_impl::print_pools_as_js;
-fn app_name() -> String { s("pools") }
-fn version() -> String { s("2.02") }
+use chrono::NaiveDate;
+use clap::{ Parser, CommandFactory };
 
-fn usage() -> ErrStr<()> {
-   println!("
-Usage:
-      
-$ {} <auth> <date>
-      
-Given <auth> access and <date>, {} prints a Javascript object of pool assets.
-", app_name(), app_name());
-   Err("Need <auth> and <date> arguments".to_string()) 
-}     
+use book:: {
+   parse_args_add_banner,
+   cli_utils::add_banner,
+   err_utils::ErrStr,
+   string_utils::UppercaseString
+};
+
+use pools_impl::print_pools_as_js;
+
+/// Determines active pivot pools
+///
+/// pools prints a Javascript object of pool assets.
+#[derive(Debug, Parser)]
+struct Args {
+   /// Protocol to analyze active pivot pools, e.g.: PIVOT
+   protocol: UppercaseString,
+
+   /// Date to compute active pivot pools, e.g.: $LE_DATE
+   date: NaiveDate
+}
 
 #[cfg(not(tarpaulin_include))]
 pub async fn runoff_with_args() -> ErrStr<()> {
-   println!("\n// created by: {}, version: {}\n", app_name(), version());
+   let args = parse_args_add_banner!(Args);
+   println!("\n// created by: {}\n", Args::command().render_version());
 
-   let args = get_args();
-   if let [auth, dt] = args.as_slice() {
-      let date = parse_date(&dt)?;
-      print_pools_as_js(&auth, &date).await
-   } else {
-      usage()
-   }
+   print_pools_as_js(&args.protocol, &args.date).await
 }
 
 mod pools_impl {
@@ -107,7 +105,6 @@ mod tests {
 #[cfg(test)]
 #[cfg(not(tarpaulin_include))]
 pub mod functional_tests {
-   use super::*;
    use super::pools_impl::print_pools_as_js;
    use paste::paste;
    use book::{
@@ -117,7 +114,7 @@ pub mod functional_tests {
       utils::now
    };
 
-   create_testing!("quiz10::c_local_pools", "", true);
+   create_testing!("quiz10::c_local_pools");
 
    run!("print_pools_as_js", {
       let _ = now(print_pools_as_js("pivot", &yesterday()));

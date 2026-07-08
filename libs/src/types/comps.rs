@@ -49,7 +49,10 @@ mod asset_ordering {
       tokens::coins::{Coin,mk_pivot_coin},
       measurable::Measurable
    };
-   use book::{ num::floats::mk_safe_float, tuple_utils::{ Partition, snd } };
+   use book::{
+      num::floats::safe_floats::mk_safe_float,
+      tuple_utils::{ Partition, snd }
+   };
 
    fn sort_asset_pair<'a>(a: &'a Coin, b: &'a Coin) -> (&'a Coin, &'a Coin) {
       let mut coins = vec![a, b];
