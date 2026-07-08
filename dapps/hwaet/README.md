@@ -17,6 +17,7 @@ where:
 
 ## Revision history
 
+* 1.04, 2026-07-08, hot-fix: handle pivot pools with one-sided assets
 * 1.03, 2026-07-05: using clap to process arguments and for usage-documentation
 * 1.02, 2026-06-27: Clarified which pool is over-committed on error.
 * 1.01, 2026-05-26: Added debugging-flow to pool-processing.
