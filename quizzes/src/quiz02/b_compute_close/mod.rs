@@ -1,17 +1,19 @@
 use chrono::NaiveDate;
+use clap::Parser;
 
 use book::{
+   parse_args_add_banner,
+   cli_utils::add_banner,
    csv_utils::{CsvHeader,print_csv},
-   date_utils::parse_date,
    err_utils::ErrStr,
-   string_utils::s,
-   utils::get_args
+   string_utils::UppercaseString,
+   utils::get_env
 };
 
 use libs::{
    fetchers::{ pivots::fetch_pivots, quotes::fetch_quotes},
    types::{
-      pivots::next_close_id,
+      pivots::{ Pivot, next_close_id },
       pools::{Pool,mk_pool},
       proposals::proposes::{propose,Propose}
    }
@@ -24,28 +26,38 @@ struct Report {
    props: Vec<Propose>,
    max_date: NaiveDate
 }
+fn mk_report(pool: &Pool, opns: &[Pivot], date: &NaiveDate, props: &[Propose],
+             max_date: &NaiveDate) -> ErrStr<Report> {
+   Ok(Report { pool: pool.clone(),
+               opens: opns.len(),
+               date: date.clone(),
+               props: props.to_vec(),
+               max_date: max_date.clone() })
+}
 
-async fn compute_closes(root_url: &str, pool: &Pool, date: NaiveDate)
-      -> ErrStr<Report> {
+async fn compute_closes(root_url: &str, pool: &Pool, date: &NaiveDate,
+                        debug: bool) -> ErrStr<Report> {
    let quotes = fetch_quotes(&date).await?;
    let a = &quotes.aliases;
-   let ((opns, cls), max_date) = fetch_pivots(root_url, pool, a).await?;
+   let ((opns, cls), max_date) = fetch_pivots(root_url, pool, a, debug).await?;
    let mut next_close = next_close_id(&cls);
    let proposer = propose(&quotes);
    let mut props = Vec::new();
 
+   if debug { println!("Processing open pivots for {pool} pivot pool"); }
    for h in &opns {
       let hs = vec![h.clone()];
-      if let Some((prop, next_next)) = proposer((hs, next_close))? {
+      if debug { println!("\tprocessing {pool} open pivot #{}", h.index()); }
+      if let Some((prop, next_next)) = proposer((hs, next_close), debug)? {
          props.push(prop);
          next_close = next_next;
       }
    }
 
-   Ok(Report { pool: pool.clone(), opens: opns.len(), date, props, max_date })
+   mk_report(pool, &opns, date, &props, &max_date)
 }
 
-fn report_proposes(rpt: Report) {
+fn report_proposes(rpt: Report) -> ErrStr<()> {
    let mut print_header: bool = true;
    let header = rpt.pool.pool_name();
    let pool = format!("{header} pivot pool");
@@ -68,63 +80,63 @@ fn report_proposes(rpt: Report) {
    if no_close_pivots {
       println!("No close pivot recommendations for {pool}.");
    }
+   Ok(())
 }
 
-fn app_name() -> String { s("chihuahua") }
-fn version() -> String { s("1.01") }
-fn print_heading() { println!("{}, version: {}\n", app_name(), version()); }
+fn print_heading() { println!("chihuahua, version: 1.02\n"); }
 
-fn usage() -> ErrStr<()> {
-   println!("Usage:
+/// Proposes close pivots for a selected pivot pool
+///
+/// The pivot pools are reposed (in git, currently)
+/// Open pivots are stored as raw-CSV files in git at protocol
+#[derive(Debug, Parser)]
+struct Args {
 
-	$ {} <root URL> <primary asset> <pivot asset> <date>
+   /// Protocol to analyze for close pivot calls, e.g.: PIVOT
+   protocol: UppercaseString,
 
-Proposes close pivots for the <prim>+<piv> pivot pool for <date>.
-The pivot pools are reposed (in git, currently) at <root URL>.
+   /// Primary asset of pivot pool, e.g.: BTC
+   primary: String,
 
-Open pivots are stored as raw-CSV files in git at protocol <root URL>.
-", app_name());
-   Err("Needs <root URL> <primary> <pivot> <date> arguments".to_string())
+   /// Pivot asset of pivot pool, e.g.: ETH
+   pivot: String,
+
+   /// Date to analyze close pivots, e.g.: $LE_DATE
+   date: NaiveDate,
+
+   /// Print debugging information
+   #[arg(short, long)]
+   debug: bool
 }
 
 pub async fn runoff_get_args() -> ErrStr<()> {
-   let args = get_args();
-   report_calls(args).await
+   let args = parse_args_add_banner!(Args);
+   let pool = mk_pool(&args.primary, &args.pivot);
+   report_calls(&args.protocol, &pool, &args.date, args.debug).await
 }
 
-async fn report_calls(args: Vec<String>) -> ErrStr<()> {
+async fn report_calls(protocol: &str, pool: &Pool, date: &NaiveDate,
+                      debug: bool) -> ErrStr<()> {
+   let root_url = get_env(&format!("{}_URL", protocol))?;
    print_heading();
-   if let [root_url, prim, piv, date] = args.as_slice() {
-      let dt = parse_date(&date)?;
-      let pool = mk_pool(&prim, &piv);
-      let report = compute_closes(root_url, &pool, dt).await?;
-      report_proposes(report);
-      Ok(())
-   } else {
-      usage()
-   }
+   let report = compute_closes(&root_url, pool, date, debug).await?;
+   report_proposes(report)
 }
 
 // ----- TESTS -------------------------------------------------------
+
 #[cfg(test)]
 #[cfg(not(tarpaulin_include))]
-pub mod functional_tests {
+mod functional_tests {
    use super::*;
    use paste::paste;
-   use book:: {
-      string_utils::to_string,
-      utils:: { get_env, now },
-      create_testing, 
-   };
+   use book::{ create_testing, date_utils::yesterday, utils::now };
 
-   create_testing!("quiz02::b_compute_close", "", true);
+   create_testing!("quiz02::b_compute_close");
 
    run!("report_calls", {
-      println!("\nquiz02: b_compute_close functional test\n");
-      let pivot_url = get_env("PIVOT_URL")?;
-      let args: Vec<String> = [&pivot_url, "AVAX", "UNDEAD", "2026-01-25"]
-         .into_iter().map(to_string).collect();
-      match now(report_calls(args)) { Ok(()) => Ok(1), Err(x) => Err(x) }
+      let pool = mk_pool("avax", "undead");
+      now(report_calls("PIVOT", &pool, &yesterday(), true))?;
    });
 }
 
@@ -133,21 +145,19 @@ pub mod functional_tests {
 mod tests {
 
    use super::*;
-   use book::utils::get_env;
+   use book::{ date_utils::{ parse_date, yesterday }, utils::get_env };
    use libs::types::pools::pool_from_str;
 
    async fn compute_test_closes() -> ErrStr<Report> {
-      let dt = parse_date("2026-01-25")?;
       let pivot_url = get_env("PIVOT_URL")?;
       let pool = pool_from_str("avax-undead")?;
-      compute_closes(&pivot_url, &pool, dt).await
+      compute_closes(&pivot_url, &pool, &yesterday(), true).await
    }
 
    #[tokio::test]
-   async fn test_compute_closes_ok() -> ErrStr<()> {
+   async fn test_compute_closes_ok() {
       let report = compute_test_closes().await;
       assert!(report.is_ok());
-      Ok(())
    }
 
    #[tokio::test]

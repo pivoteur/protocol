@@ -1,32 +1,15 @@
 use chrono::NaiveDate;
+use clap::Parser;
 
 use serde_json;
 
 use book::{
+   parse_args_add_banner,
+   cli_utils::add_banner,
    err_utils::{ ErrStr, err_or },
-   date_utils::parse_date,
-   string_utils::s,
-   utils::get_args
 };
 
 use libs::fetchers::quotes::fetch_quotes;
-
-fn version() -> String { s("1.00") }
-fn app_name() -> String { s("quotes") }
-
-fn usage() -> ErrStr<()> {
-   let app = app_name();
-   println!("{}, version: {}
-
-usage:
-
-$ {} <date>
-
-where:
-* <date> is the date of the crypto quotes
-", app, version(), app);
-   Err(s("missing <date> argument"))
-}
 
 async fn print_quotes_as_json(dt: &NaiveDate) -> ErrStr<String> {
    let quotes = fetch_quotes(dt).await?;
@@ -35,18 +18,21 @@ async fn print_quotes_as_json(dt: &NaiveDate) -> ErrStr<String> {
    Ok(json)
 }
 
-pub async fn runoff_with_args() -> ErrStr<()> {
-   let args = get_args();
-   if let Some(date) = args.first() {
-      let dt = parse_date(&date)?;
-      let quotes = print_quotes_as_json(&dt).await?;
-      println!("{quotes}");
-      Ok(())
-   } else {
-      usage()
-   }
+/// fetches the quotes for the protocol
+#[derive(Debug, Parser)]
+#[command(name = "quotes")]
+#[command(version = "1.01")]
+struct Args {
+   /// Date to run protocol-quotes
+   date: NaiveDate
 }
 
+pub async fn runoff_with_args() -> ErrStr<()> {
+   let args = parse_args_add_banner!(Args);
+   let quotes = print_quotes_as_json(&args.date).await?;
+   println!("{quotes}");
+   Ok(())
+}
 
 // ----- TESTS -------------------------------------------------------
 
@@ -57,7 +43,7 @@ mod functional_tests {
    use paste::paste;
    use book::{ create_testing, date_utils::yesterday, utils::now };
 
-   create_testing!("quizzes::quiz10::d_quotes", "", true);
+   create_testing!("quizzes::quiz10::d_quotes");
 
    run!("print_quotes", {
       let json = now(print_quotes_as_json(&yesterday()))?;

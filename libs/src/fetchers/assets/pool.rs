@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use chrono::NaiveDate;
 
 use book::{
+   csv_utils::CsvWriter,
    currency::usd::USD,
    date_utils::parse_date,
    err_utils::{err_or,ErrStr},
@@ -30,11 +31,15 @@ use crate::{
 
 // this one fetches all the assets of the pool
 
-pub async fn fetch_assets(root_url: &str, pool: &Pool, aliases: &Aliases)
-      -> ErrStr<Composition> {
+pub async fn fetch_assets(root_url: &str, pool: &Pool, aliases: &Aliases,
+                          debug: bool) -> ErrStr<Composition> {
    let url = pool_assets_url(root_url, pool);
    let lines = fetch_lines(&url).await?;
    let table = ingest(parse_date, parse_str, parse_str, &lines, "\t")?;
+   if debug {
+      println!("fetchers::assets::pool::fetch_assets:
+	for {pool}, assets table size: {}", table.data.len());
+   }
    let hdrs = aliases.enum_headers(cols(&table));
    let max_date = rows(&table).iter().max().cloned()
                               .ok_or(format!("No max_date for {pool}"))?;
@@ -42,13 +47,13 @@ pub async fn fetch_assets(root_url: &str, pool: &Pool, aliases: &Aliases)
                 .ok_or(format!("No row for date {max_date}"))?;
    let blk = top[hdrs["blockchain"]].clone();
    let (p, s) = pool.as_tuple();
-   let primary = buidl_asset(&top[hdrs[&p]], qt_f(&top, &hdrs),
-                             &blk, &p, &max_date)?;
+   let primary = buidl_asset("primary", &top[hdrs[&p]], qt_f(&top, &hdrs),
+                             &blk, &p, &max_date, debug)?;
    let h_s = hdrs.get(&s)
       .expect(&format!("No header labeled {}; headers are {:?}", s, hdrs));
    let s_amt = &top.get(*h_s).expect(&format!("No value at index {}", h_s));
    let f = qt_f(&top, &hdrs);
-   let pivot = buidl_asset(s_amt, f, &blk, &s, &max_date)?;
+   let pivot = buidl_asset("pivot", s_amt, f, &blk, &s, &max_date, debug)?;
    Ok(mk_composition(&primary, &pivot))
 }
 
@@ -61,12 +66,15 @@ fn qt_f<'a>(v: &'a Vec<String>, hdrs: &'a HashMap<String, usize>)
    }
 }
    
-fn buidl_asset<'a>(amount: &str, q: impl Fn(&'a Token) -> ErrStr<USD>, 
-                   blk: &Blockchain, t: &'a Token, dt: &NaiveDate)
+fn buidl_asset<'a>(asset_type: &str, amount: &str,
+                   q: impl Fn(&'a Token) -> ErrStr<USD>, 
+                   blk: &Blockchain, t: &'a Token, dt: &NaiveDate, debug: bool)
       -> ErrStr<Coin> {
    let amt = parse_commaless(amount)?;
    let quote = q(t)?;
-   Ok(mk_coin(&(blk.clone(), t.clone()), amt, &quote, dt))
+   let asset = mk_coin(&(blk.clone(), t.clone()), amt, &quote, dt);
+   if debug { println!("\t{asset_type} asset is {}", asset.as_csv()); }
+   Ok(asset)
 }
 
 // ----- AVAILABLE ASSETS -------------------------------------------------
@@ -74,34 +82,34 @@ fn buidl_asset<'a>(amount: &str, q: impl Fn(&'a Token) -> ErrStr<USD>,
 // this gets the assets and the open pivots (so we compute available assets)
 
 pub async fn fetch_assets_and_open_pivots
-      (root_url: &str, quotes: &Quotes, pool: &Pool)
+      (root_url: &str, quotes: &Quotes, pool: &Pool, debug: bool)
       -> ErrStr<(Composition, Vec<Pivot>)> {
    let aliases = &quotes.aliases;
-   let pool_assets = fetch_assets(&root_url, pool, aliases).await?;
+   let pool_assets = fetch_assets(&root_url, pool, aliases, debug).await?;
    let ((opens, _closes), _max_date) =
-      fetch_pivots(&root_url, pool, aliases).await?;
+      fetch_pivots(&root_url, pool, aliases, debug).await?;
    Ok((pool_assets, opens))
 }
 
 pub async fn available_assets_fetcher
       (subtractor: impl Fn(&mut Assets, &Coin), root_url: &str,
-       quotes: &Quotes, pool: &Pool) -> ErrStr<Composition> {
+       quotes: &Quotes, pool: &Pool, debug: bool) -> ErrStr<Composition> {
    let (pool_assets, opens) =
-      fetch_assets_and_open_pivots(root_url, &quotes, pool).await?;
+      fetch_assets_and_open_pivots(root_url, &quotes, pool, debug).await?;
    let mut available = pool_assets.as_assets();
    let all_opens = pivot_assets(&opens)?;
    for a in all_opens.assets() {
       subtractor(&mut available, &a);
    }
    available.update_prices(&quotes)?;
-   from_assets(&available.assets())
+   from_assets(&available.assets(), debug)
 }
 
 pub fn subtractor(assets: &mut Assets, coin: &Coin) { assets.subtract(coin); }
 
-pub async fn fetch_available_assets(root_url: &str, q: &Quotes, p: &Pool)
-      -> ErrStr<Composition> {
-   available_assets_fetcher(subtractor, root_url, q, p).await
+pub async fn fetch_available_assets(root_url: &str, q: &Quotes, p: &Pool,
+                                    debug: bool) -> ErrStr<Composition> {
+   available_assets_fetcher(subtractor, root_url, q, p, debug).await
 }
 
 // ----- TESTS -------------------------------------------------------
@@ -127,7 +135,7 @@ pub mod functional_tests {
    run!("fetch_pool_assets", {
       let (root_url, a) = marshall()?;
       let btc_eth = pool_from_str("btc-eth")?;
-      let pa = now(fetch_assets(&root_url, &btc_eth, &a))?;
+      let pa = now(fetch_assets(&root_url, &btc_eth, &a, true))?;
       println!("BTC+ETH pivot pool assets are:\n{}", pa.as_csv());
    });
 
@@ -136,7 +144,7 @@ pub mod functional_tests {
       let (url, _) = marshall()?;
       let quotes = now(fetch_quotes(&yday))?;
       let pool = pool_from_str("btc-eth")?;
-      let comp = now(fetch_available_assets(&url, &quotes, &pool))?;
+      let comp = now(fetch_available_assets(&url, &quotes, &pool, true))?;
       println!("\nAvailable BTC+ETH assets\n{}", comp.as_csv());
    });
 }
@@ -162,7 +170,7 @@ mod tests {
    async fn test_fetch_assets_ok() -> ErrStr<()> {
       let (root_url, a) = marshall()?;
       let btc_eth = pool_from_str("btc-eth")?;
-      let mb_assets = fetch_assets(&root_url, &btc_eth, &a).await;
+      let mb_assets = fetch_assets(&root_url, &btc_eth, &a, true).await;
       assert!(mb_assets.is_ok());
       Ok(())
    }
@@ -171,7 +179,7 @@ mod tests {
    async fn test_fetch_assets() -> ErrStr<()> {
       let (root_url, a) = marshall()?;
       let btc_eth = pool_from_str("btc-eth")?;
-      let assets = fetch_assets(&root_url, &btc_eth, &a).await?;
+      let assets = fetch_assets(&root_url, &btc_eth, &a, true).await?;
       assert!(assets.tvl().amount() > 0.0);
       assert_eq!("BTC+ETH", assets.pool_name());
       Ok(())
@@ -184,7 +192,7 @@ mod tests {
       let (url, _) = marshall()?;
       let quotes = fetch_quotes(&yday).await?;
       let pool = pool_from_str("btc-eth")?;
-      fetch_available_assets(&url, &quotes, &pool).await
+      fetch_available_assets(&url, &quotes, &pool, true).await
    }
 
    #[tokio::test]
@@ -202,7 +210,7 @@ mod tests {
       let (url, _) = marshall()?;
       let pool = pool_from_str("btc-eth")?;
       let quotes = fetch_quotes(&yday).await?;
-      fetch_assets_and_open_pivots(&url, &quotes, &pool).await
+      fetch_assets_and_open_pivots(&url, &quotes, &pool, true).await
    }
 
    #[tokio::test]

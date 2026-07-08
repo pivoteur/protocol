@@ -1,30 +1,14 @@
 use std::pin::Pin;
+use clap::Parser;
 use reqwest::Client;
 use book::{
+    parse_args_add_banner,
+    cli_utils::add_banner,
+    err_utils::{ ErrStr, err_or },
     parse_utils::parse_id,
     string_utils::plural,
-    err_utils::ErrStr,
-    utils::{ 
-        get_args, 
-        get_env 
-    },
+    utils::get_env 
 };
-
-
-//============================================================================
-//----- Version/ App_Name/ Usage ---------------------------------------------
-//============================================================================
-fn version()  -> &'static str { "2.00" }
-fn app_name() -> &'static str { "reinvested" }
-
-fn usage() -> ErrStr<()> {
-    eprintln!("Usage: {} <csv_path> <send>", app_name());
-    eprintln!();
-    eprintln!("  csv_path : path to the shared investors TSV file");
-    eprintln!("  send     : let Robbie send messages? (true/false)");
-    eprintln!();
-    Err("Need <csv_path> <send> arguments".to_string())
-}
 
 //============================================================================
 //----- Telegram Configuration -----------------------------------------------
@@ -168,14 +152,8 @@ pub async fn mock_send_telegram(_bot_token: &str, chat_id: i64, text: &str) -> E
 //============================================================================
 type SendFuture<'a> = Pin<Box<dyn std::future::Future<Output = ErrStr<()>> + Send + 'a>>;
 
-pub async fn process_csv<F>(
-    csv_path:    &str,
-    global_send: bool,
-    send_fn:     F,
-) -> ErrStr<()>
-where
-    F: for<'a> Fn(&'a str, i64, &'a str) -> SendFuture<'a>,
-{
+pub async fn process_csv<F>(csv_path: &str, global_send: bool, send_fn: F)
+   -> ErrStr<()> where F: for<'a> Fn(&'a str, i64, &'a str) -> SendFuture<'a> {
     let content = std::fs::read_to_string(csv_path)
         .map_err(|e| format!("cannot read '{csv_path}': {e}"))?;
 
@@ -194,22 +172,27 @@ where
     Ok(())
 }
 
-//============================================================================
-//----- fn runoff_with_args --------------------------------------------------
-//============================================================================
+/// Sends reinvestment message to investors
+///
+/// The investors and their reinvestments are listed in CSV file
+#[derive(Debug, Parser)]
+#[command(name = "reinvested")]
+#[command(version = "1.01")]
+struct Args {
+   /// The path to the list of the investors and their distributions
+   csv_path: String,
+
+   /// Send a telegram? (yes/no)
+   send: String
+}
+
 pub async fn runoff_with_args() -> ErrStr<()> {
-    eprintln!("{}, version: {}\n", app_name(), version());
-    let args = get_args();
-    match args.as_slice() {
-        [csv_path, send] => {
-            let global_send = send.parse::<bool>()
-                .map_err(|_| format!("send must be true or false, got: {send}"))?;
-            process_csv(csv_path, global_send, |tok, id, txt| {
+   let args = parse_args_add_banner!(Args);
+   let sned: bool = err_or(args.send.parse(),
+       &format!("Cannot parse {} into boolean-value", args.send))?;
+   process_csv(&args.csv_path, sned, |tok, id, txt| {
                 Box::pin(send_telegram(tok, id, txt))
-            }).await
-        }
-        _ => usage(),
-    }
+   }).await
 }
 
 //============================================================================
@@ -420,8 +403,7 @@ pub mod functional_tests {
     use paste::paste;
     use book::{ create_testing, utils::now };
 
-
-    create_testing!("quiz11::a_reinvested", "", true);
+    create_testing!("quiz11::a_reinvested");
 
     run!("mock_process_csv", {
         // cols: 0=name 1=reinvested% 2=precentage 3=amount_reinvested 4=amount_distributed

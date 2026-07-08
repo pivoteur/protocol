@@ -1,14 +1,15 @@
 use std::process::{Command,Stdio};
 
+use clap::{ Parser, CommandFactory };
+
 use book::{
+   parse_args_add_banner,
+   cli_utils::add_banner,
    err_utils::ErrStr,
    file_utils::subdirs,
-   string_utils::{plural,s},
+   string_utils::plural,
    tuple_utils::Partition,
-   utils::get_args
 };
-
-fn app_name() -> String { s("itr") }
 
 fn build_dapps(dir: &str) -> Partition<String> {
    let dirs = subdirs(dir);
@@ -37,7 +38,7 @@ fn build_dapps(dir: &str) -> Partition<String> {
    (successes,failures)
 }
 
-fn report_build_results(p: Partition<String>) -> ErrStr<usize> {
+fn report_build_results(p: Partition<String>) -> ErrStr<()> {
    println!("Integration test results\n");
    let (s, f) = &p;
    let flen = f.len();
@@ -45,7 +46,7 @@ fn report_build_results(p: Partition<String>) -> ErrStr<usize> {
    report_dirs("Successful dapp builds", "ok", s, tot);
    report_dirs("Build failures", "FAILED", f, tot);
    match flen {
-      0 => Ok(1),
+      0 => Ok(()),
       _ => Err(format!("{}!", plural(flen, "build failure")))
    }
 }
@@ -60,56 +61,56 @@ fn report_dirs(hdr: &str, kind: &str, dirs: &[String], total: usize) {
    }
 }
 
-fn usage() -> String {
-   println!("Usage:
-
-	$ {} <dir>
-
-where <dir> 
-is the directory where cargo build will be executed in each dapp-directory.
-", app_name());
-   "dapps <dir> argument required".to_string()
+/// Runs integration tests by building all dapps of the protocol
+#[derive(Debug, Parser)]
+#[command(name = "itr")]
+#[command(version = "1.02")]
+struct Args {
+   /// directory in which the protocol dapps reside
+   dir: String
 }
 
 pub fn runoff_get_args() -> ErrStr<()> {
-   let args = get_args();
-   let _ = build_dapps_and_report(args.first().as_deref().map(|s| s.as_str()))?;
-   Ok(())
+   let args = parse_args_add_banner!(Args);
+   println!("{}", Args::command().render_version());
+   build_dapps_and_report(&args.dir)
 }
 
-fn build_dapps_and_report(mb_dir: Option<&str>) -> ErrStr<usize> {
-   print_heading();
-   let dir = mb_dir.ok_or_else(|| usage())?;
+fn build_dapps_and_report(dir: &str) -> ErrStr<()> {
    let res = build_dapps(dir);
    report_build_results(res)
 }
-
-fn version() -> String { s("1.01") }
-fn print_heading() { println!("{}, version: {}\n", app_name(), version()); }
 
 // ----- TESTS -------------------------------------------------------
 
 #[cfg(test)]
 #[cfg(not(tarpaulin_include))]
-pub mod functional_tests {
-   use super::*;
-   use paste::paste;
-   use book::create_testing;
-
-   create_testing!("quiz09::a_itr", "", true);
-
-   run!("build_dapps_success", " (successes)",
-        build_dapps_and_report(Some("data/sample_dapps")));
-   run!("build_dapps_failure", " (build FAILURE!)",
-        build_dapps_and_report(Some("data/sample_broken_dapp")));
+mod test_data {
+   pub fn good_dir() -> &'static str { "data/sample_dapps" }
+   pub fn bad_dir() -> &'static str { "data/sample_broken_dapp" }
 }
 
 #[cfg(test)]
+#[cfg(not(tarpaulin_include))]
+mod functional_tests {
+   use super::*;
+   use super::test_data::*;
+   use paste::paste;
+   use book::create_testing;
+
+   create_testing!("quiz09::a_itr");
+
+   run!("build_dapps_success", " (successes)",
+        build_dapps_and_report(good_dir()));
+   run!("build_dapps_failure", " (build FAILURE!)",
+        build_dapps_and_report(bad_dir()));
+}
+
+#[cfg(test)]
+#[cfg(not(tarpaulin_include))]
 mod tests {
    use super::*;
-
-   fn good_dir() -> String { s("data/sample_dapps") }
-   fn bad_dir() -> String { s("data/sample_broken_dapp") }
+   use super::test_data::*;
 
    #[test] fn test_build_dapps() {
       let (a, b) = build_dapps(&good_dir());

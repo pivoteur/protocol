@@ -1,15 +1,16 @@
 use std::collections::HashSet;
 
+use clap::Parser;
+
 use book::{
+   parse_args_add_banner,
+   cli_utils::add_banner,
    csv_utils::as_csv,
    currency::usd::{USD,mk_usd,no_monay},
    err_utils::ErrStr,
-   list_utils::tail,
    num::percentage::mk_percentage,
-   num_utils::parse_num,
-   parse_utils::parse_id,
-   string_utils::s,
-   utils::{get_args,get_env}
+   string_utils::UppercaseString,
+   utils::get_env
 };
 
 use libs::{
@@ -23,62 +24,45 @@ use libs::{
    }
 };
 
-fn version() -> String { s("1.02") }
-fn app_name() -> String { s("offrian") }
-fn usage() -> ErrStr<()> {
-   let app = app_name();
-   println!("
-{}, version {}
+/// Makes a counter-offer to a proposed close pivot
+#[derive(Debug, Parser)]
+#[command(name = "offrian")]
+#[command(version = "1.03")]
+struct Args {
+   /// protocol to make the counter-offer, e.g.: PIVOT
+   protocol: UppercaseString,
 
-Usage:
+   /// call id being countered, e.g. 1
+   ix: usize,
 
-$ {} [--debug] <protocol> <ix> <part>
+   /// target volume (the volume we want the open pivots to have been)
+   volume: f32,
 
-where:
-
-* [-d|--debug] show debug information
-* <protocol> is the protocol to make the counter-offer, e.g.: PIVOT
-* <ix> is the call being countered, e.g. 1
-* <vol> is the target volume (the volume we want the open pivots to have been)
-  e.g.: if the open pivots were for $15074.88, say, then 3000 reduces the open 
-        pivots to $3000.00
-", app, version(), app);
-   Err(s("offrian requires <protocol> <ix> <part> arguments"))
+   /// show debug information
+   #[arg(short, long)]
+   debug: bool
 }
 
 pub async fn runoff_with_args() -> ErrStr<()> {
-   let args = get_args();
-   if let Some(debug) = args.first() {
-      let (rest, debug) = if debug == "--debug" || debug == "-d" {
-         (tail(&args), true)
-      } else {
-         (args.clone(), false)
-      };
-      runoff_continuation(&rest, debug).await
-   } else {
-      usage()
-   }
+   let args = parse_args_add_banner!(Args);
+   runoff_continuation(&args.protocol, args.ix, args.volume, args.debug).await
 }
 
-async fn runoff_continuation(args: &[String], debug: bool) -> ErrStr<()> {
-   if let [auth, call, vol] = args {
-      let root_url = get_env(&format!("{}_URL", auth.to_uppercase()))?;
-      let volume = mk_usd(parse_num(&vol)?);
-      let ix = parse_id(&call)?;
-      let (call, pivs) = pivot_data(&root_url, ix, debug).await?;
-      let leeway =
-         compute_virtual_pivot_amount(&call.pool, &pivs, &call.ids, debug)?;
-      let leeway_vol = mk_usd(leeway * call.proposed_close_price.amount());
-      if debug {
-         println!("The virtual pivots provide {leeway} {} leeway ({})",
-                  call.from_token, leeway_vol);
-      }
-      let new_start = compute_new_start(&call, &volume, debug);
-      let new_pivot_amt = compute_new_pivot(&call, new_start, debug);
-      go_no_go(&call, volume, leeway_vol, new_pivot_amt, debug)
-   } else {
-      usage()
+async fn runoff_continuation(auth: &str, ix: usize, vol: f32, debug: bool)
+      -> ErrStr<()> {
+   let root_url = get_env(&format!("{auth}_URL"))?;
+   let volume = mk_usd(vol);
+   let (call, pivs) = pivot_data(&root_url, ix, debug).await?;
+   let leeway =
+      compute_virtual_pivot_amount(&call.pool, &pivs, &call.ids, debug)?;
+   let leeway_vol = mk_usd(leeway * call.proposed_close_price.amount());
+   if debug {
+      println!("The virtual pivots provide {leeway} {} leeway ({})",
+               call.from_token, leeway_vol);
    }
+   let new_start = compute_new_start(&call, &volume, debug);
+   let new_pivot_amt = compute_new_pivot(&call, new_start, debug);
+   go_no_go(&call, volume, leeway_vol, new_pivot_amt, debug)
 }
 
 fn go_no_go(call: &Call, target: USD, leeway_vol: USD, 
@@ -122,7 +106,7 @@ async fn pivot_data(root_url: &str, ix: usize, debug: bool)
    if debug { println!("Examining call\n{}", as_csv(&[call.clone()])?); }
    let pool = &call.pool;
    let a = aliases();
-   let (all_pivs, dt) = fetch_open_pivots(root_url, pool, &a).await?;
+   let (all_pivs, dt) = fetch_open_pivots(root_url, pool, &a, debug).await?;
    if debug {
       println!("Fetched {} open pivots for {pool} pool; max_date: {dt}",
                all_pivs.len());
@@ -220,15 +204,20 @@ mod functional_tests {
    use super::*;
 
    use paste::paste;
-   use book::{ create_testing, csv_utils::{as_csv,enumerate_csv}, utils::now };
+   use book::{
+      create_testing,
+      csv_utils::{as_csv,enumerate_csv},
+      string_utils::s,
+      utils::now
+   };
    use libs::fetchers::test_helpers::test_functions::marshall;
 
-   create_testing!("quizzes::quiz08::e_offrian", "", true);
+   create_testing!("quizzes::quiz08::e_offrian");
 
    run!("debug_offrian",
-        now(runoff_continuation(&[s("pivot"),s("1"),s("9")],true)));
+        now(runoff_continuation("PIVOT", 1, 9.0, true)));
 
-   run!("offrian", now(runoff_continuation(&[s("pivot"),s("1"),s("9")],false)));
+   run!("offrian", now(runoff_continuation("PIVOT", 1, 9.0, false)));
 
    run!("pivot_data", {
       let (root_url, _) = marshall()?;

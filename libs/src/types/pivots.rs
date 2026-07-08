@@ -143,24 +143,21 @@ pub fn partition_on(tok: &str, opens: Vec<Pivot>) -> Partition<Pivot> {
 
 #[cfg(test)]
 #[cfg(not(tarpaulin_include))]
-pub mod functional_tests {
-   use paste::paste;
+pub mod test_data {
    use super::*;
+   use crate::{
+      tables::{ IxTable, index_table },
+      types::{
+         aliases::aliases,
+         assets::{ amounts::{ Amount, mk_amt }, assets::mk_asset },
+         headers::mk_hdr
+      }
+   };
    use book::{
-      create_testing,
       currency::usd::mk_usd,
       list_utils::filter_map_or,
       string_utils::s,
       table_utils::cols
-   };
-   use crate::{
-      tables::{IxTable,index_table},
-      types::{
-         aliases::aliases,
-         assets::{assets::mk_asset, amounts::{Amount,mk_amt} },
-         quotes::sample_data::sample_quotes_maker,
-         headers::mk_hdr
-      }
    };
 
    pub fn mk_btc_usdc_piv(q: f32, a: Amount, c: usize, tx: &str)
@@ -197,6 +194,21 @@ s("opened	open	close	tx_id	updated	from	from_blockchain	amount1	virtual	quote1	v
       let (tabl, ix) = btc_eth()?;
       filter_map_or(|row| parse_pivot(&ix, &row), tabl.data)
    }
+}
+
+#[cfg(test)]
+#[cfg(not(tarpaulin_include))]
+mod functional_tests {
+   use paste::paste;
+   use super::*;
+   use super::test_data::{ btc_eth_pivots, mk_btc_usdc_piv };
+   use book::create_testing;
+   use crate::{
+      types::{
+         assets::amounts::mk_amt,
+         quotes::sample_data::sample_quotes_maker
+      }
+   };
 
    create_testing!("types::pivots");
 
@@ -217,7 +229,7 @@ s("opened	open	close	tx_id	updated	from	from_blockchain	amount1	virtual	quote1	v
 #[cfg(not(tarpaulin_include))]
 mod tests {
    use super::*;
-   use super::functional_tests::{btc_eth,btc_eth_pivots,mk_btc_usdc_piv};
+   use super::test_data::{btc_eth,btc_eth_pivots,mk_btc_usdc_piv};
    use crate::types::{
       assets::{ assets::functional_tests::assert_price_k, amounts::mk_amt },
       quotes::sample_data::sample_quotes_maker

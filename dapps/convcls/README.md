@@ -14,5 +14,6 @@ the new pivot table.
 
 ## Revision History
 
+* 1.01, 2026-07-05: use CLAP to process arguments and for usage-documentation
 * 1.00, 2026-06-06: release
 

@@ -1,15 +1,17 @@
 use std::{ collections::HashMap, fs::File, io };
+use clap::Parser;
 use csv::Reader;
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, DisplayFromStr};
 
 use book::{
+   parse_args_add_banner,
+   cli_utils::add_banner,
    currency::usd::USD,
    csv_utils::as_tsv,
    err_utils::{ErrStr,err_or},
    num::percentage::Percentage,
    string_utils::s,
-   utils::get_args
 };
 
 // Maps only what we need from the open pivots table
@@ -83,22 +85,6 @@ struct NewClosePivotRow {
     roi: Percentage,
     #[serde_as(as = "DisplayFromStr")]
     apr: Percentage,
-}
-
-fn version() -> String { s("1.00") }
-fn app_name() -> String { s("convcls") }
-
-fn usage() -> ErrStr<()> {
-   let app = app_name();
-   println!("{}, version: {}
-
-Usage:
-
-$ {} <open-pivots-filename> <close-pivots-filename>
-
-Converts the old close-pivot format to the current close pivot format,
-computing the 10% gains from the open pivot table.", app, version(), app);
-   Err(s("convcls needs <opens> and <closes> pivot table file names."))
 }
 
 type Opens = HashMap<(String, String), f32>;
@@ -175,20 +161,35 @@ fn new_close_pivots<R: io::Read>(opens: &Opens, closes: &mut Closes<R>)
    Ok(new_closes)
 }
 
+/// Converts the old close-pivot format to the current close pivot format,
+/// 
+/// convcls computes the 10% gains from the open pivot table.
+#[derive(Debug, Parser)]
+#[command(name = "convcls")]
+#[command(version = "1.01")]
+struct Args {
+   /// Path to the open pivots table
+   opens: String,
+
+   /// Path to the close pivots table
+   closes: String
+}
+
 pub fn runoff_with_args() -> ErrStr<()> {
-   if let [opens, closes] = get_args().as_slice() {
-      let open_file = 
-         err_or(File::open(opens),
-                &format!("Cannot open open pivot table: {opens}"))?;
-      let open_map = process_open_pivots(&open_file)?;
-      let close_file = err_or(File::open(closes),
-                 &format!("Cannot open old close pivot table: {closes}"))?;
-      let mut close_rdr = process_old_close_pivots(&close_file)?;
-      let closes = new_close_pivots(&open_map, &mut close_rdr)?;
-      let table = as_tsv(&closes)?;
-      println!("{table}");
-      Ok(())
-   } else { usage() }
+   let args = parse_args_add_banner!(Args);
+   let opens = &args.opens;
+   let open_file = 
+      err_or(File::open(opens),
+             &format!("Cannot open open pivot table: {opens}"))?;
+   let open_map = process_open_pivots(&open_file)?;
+   let closes = &args.closes;
+   let close_file = err_or(File::open(closes),
+              &format!("Cannot open old close pivot table: {closes}"))?;
+   let mut close_rdr = process_old_close_pivots(&close_file)?;
+   let closes = new_close_pivots(&open_map, &mut close_rdr)?;
+   let table = as_tsv(&closes)?;
+   println!("{table}");
+   Ok(())
 }
 
 // ----- TESTS -------------------------------------------------------

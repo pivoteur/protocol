@@ -1,12 +1,22 @@
-use libs::{ fetchers::calls::fetch_calls_table, tables::IxTable };
+use clap::Parser;
+
+use libs::{
+   fetchers::calls::fetch_calls_table,
+   tables::IxTable,
+   types::util::Id
+};
 use book::{
-    table_utils::val,
-    err_utils::ErrStr,
-    date_utils::parse_date,
-    num_utils::parse_num,
+    parse_args_add_banner,
+    cli_utils::add_banner,
     currency::usd::{ USD, mk_usd },
-    utils::{ get_env, get_args },
-    parse_utils::{ parse_id, parse_usd }
+    date_utils::parse_date,
+    err_utils::ErrStr,
+    num::floats::comma_floats::CommaFloat,
+    num_utils::parse_num,
+    parse_utils::parse_usd,
+    string_utils::UppercaseString,
+    table_utils::val,
+    utils::get_env
 };
 
 // ====================================================
@@ -22,7 +32,8 @@ pub fn header() -> String {
 // ====================================================
 //----- pub fn parse_row ------------------------------
 // ====================================================
-pub fn parse_row(table: &IxTable, ix: usize, tx_id: &str, new_to_actual: &str) -> ErrStr<String> {
+pub fn parse_row(table: &IxTable, ix: usize, tx_id: &str, new_to_actual: f32)
+       -> ErrStr<String> {
     let col = |name: &str| -> ErrStr<String> {
         let v = val(&table, &ix, &name.to_string()).unwrap_or_default();
         if v.is_empty() {
@@ -49,7 +60,7 @@ pub fn parse_row(table: &IxTable, ix: usize, tx_id: &str, new_to_actual: &str) -
     let trade        = col_num("pivot_amount")?;
     let amount1      = col_num("amount1")?;
     let virtual_     = col_num("virtual")?;
-    let actual       = parse_num(new_to_actual)?;
+    let actual       = new_to_actual;
     let from_quote   = col_opt("pivot_close_price")?;
     let to_quote     = col_opt("proposed_close_price")?;
     //----- formulas for the correct headers -----------
@@ -95,195 +106,176 @@ pub fn pool_path(close_dir: &str, table: &IxTable, ix: usize) -> ErrStr<String> 
 #[cfg(not(tarpaulin_include))]
 mod test_functions {
     use super::*;
-    use book::{ parse_utils::parse_str, string_utils::s, table_utils::ingest };
+    use book::{
+       parse_utils::{ parse_id, parse_str },
+       string_utils::s,
+       table_utils::ingest
+    };
 
     pub fn make_table(raw: &str) -> ErrStr<IxTable> {
         let lines: Vec<String> = raw.lines().map(s).collect();
         ingest(parse_id, parse_str, parse_str, &lines, ",")
+    }
+
+    pub fn hdr() -> String {
+       let a = "ix,close_date,opened,ids,close_id,pivot_token,from";
+       let b = "pivot_amount,amount1,virtual,pivot_close_price";
+       format!("{a},{b},proposed_close_price")
     }
 }
 
 #[cfg(not(tarpaulin_include))]
 #[cfg(test)]
 mod tests {
+    use chrono::NaiveDate;
+
     use super::*;
-    use super::test_functions::make_table;
+    use super::test_functions::{ make_table as tbl, hdr };
     use book::{
-        date_utils::today,
-        string_utils::s,
-        parse_utils::{  parse_id, parse_str },
-        table_utils::{ ingest, row }
+       date_utils::{ today, yesterday },
+       err_utils::err_or,
+       table_utils::row
     };
 
-    fn mock_dusk_output() -> String {
-        s("ix,pool,ids\n1,BTC+UNDEAD,20\n2,ETH+UNDEAD,15\n3,SOL+UNDEAD,10")
+    fn mock_dusk_output() -> ErrStr<IxTable> {
+        let dt = today();
+        let y = yesterday();
+        tbl(&format!("ix,opened,close_date,close_id,pool,ids,from,amount1,virtual,pivot_token,pivot_amount,pivot_close_price,proposed_close_price
+1,{y},{dt},1,BTC+UNDEAD,20,UNDEAD,999999,0,BTC,0.01,$63997,$0.0002398
+2,{y},{dt},2,ETH+UNDEAD,15,UNDEAD,999999,0,ETH,0.2,$1727.43,$0.0002398
+3,{y},{dt},3,SOL+UNDEAD,10,UNDEAD,999999,0,SOL,9.5,$59.29,$0.0002398"))
     }
 
-    fn mock_trade_row() -> String {
+    fn mock_trade_row() -> ErrStr<IxTable> {
         let dt = format!("{}", today());
-        format!(
-            "ix,close_date,opened,ids,close_id,pivot_token,from,\
-            pivot_amount,amount1,virtual,pivot_close_price,proposed_close_price
-1,{dt},{dt},20,99,BTC,UNDEAD,500,100,50,2.00,2.00"
-        )
+        let row = format!("1,{dt},{dt},20,99,BTC,UNDEAD,500,100,50,2.00,2.00");
+        tbl(&format!("{}\n{row}", hdr()))
     }
 
-    fn mock_losing_row() -> String {
+    fn mock_losing_row() -> ErrStr<IxTable> {
         let dt = format!("{}", today());
-        format!(
-            "ix,close_date,opened,ids,close_id,pivot_token,from,\
-            pivot_amount,amount1,virtual,pivot_close_price,proposed_close_price
-1,{dt},{dt},20,99,BTC,UNDEAD,0,100,50,0.00,0.00"
-        )
+        let row = format!("1,{dt},{dt},20,99,BTC,UNDEAD,0,100,50,0.00,0.00");
+        tbl(&format!("{}\n{row}", hdr()))
     }
 
-    fn mock_missing_dates() -> String { s("ix,amount1,virtual\n1,100,50") }
+    fn mock_missing_dates() -> ErrStr<IxTable> {
+       tbl("ix,amount1,virtual\n1,100,50")
+    }
 
-    #[test]
-    fn test_ix_in_bounds() -> ErrStr<()> {
-        let raw_data = mock_dusk_output();
-        let table = ingest(parse_id, parse_str, parse_str, &raw_data.lines()
-            .map(s).collect(),",")?;
+    fn test_parse_row(table: ErrStr<IxTable>, tx_id: &str, amt: f32)
+          -> ErrStr<String> {
+       parse_row(&table?, 1, tx_id, amt)
+    }
+
+    #[test] fn test_ix_in_bounds() -> ErrStr<()> {
+        let table = mock_dusk_output()?;
         assert!(row(&table, &1).is_some());
         assert!(row(&table, &3).is_some());
         Ok(())
     }
 
-    #[test]
-    fn test_ix_out_of_bounds() -> ErrStr<()> {
-        let raw_data = mock_dusk_output();
-        let table = ingest(parse_id, parse_str, parse_str, &raw_data.lines()
-            .map(s).collect(),",")?;
+    #[test] fn test_ix_out_of_bounds() -> ErrStr<()> {
+        let table = mock_dusk_output()?;
         assert!(row(&table, &99).is_none());
         Ok(())
     }
 
-    #[test]
-    fn test_parse_row_returns_ok() -> ErrStr<()> {
-        let raw_data = mock_trade_row();
-        let table = ingest(parse_id, parse_str, parse_str, &raw_data.lines()
-            .map(s).collect(), ",")?;
-        assert!(parse_row(&table, 1, "tx1", "160.0").is_ok());
+    #[test] fn test_parse_row_ok() -> ErrStr<()> {
+       let _ = test_parse_row(mock_dusk_output(), "tx1", 160.0)?;
+       Ok(())
+    }
+
+    #[test] fn test_parse_row_err_on_missing_dates() -> ErrStr<()> {
+        let row = test_parse_row(mock_missing_dates(), "tx1", 160.0);
+        assert!(row.is_err());
         Ok(())
     }
 
-    #[test]
-    fn test_parse_row_err_on_missing_dates() -> ErrStr<()> {
-        let raw_data = mock_missing_dates();
-        let table = ingest(parse_id, parse_str, parse_str, &raw_data.lines()
-            .map(s).collect(), ",")?;
-        assert!(parse_row(&table, 1, "tx1", "160.0").is_err());
-        Ok(())
-    }
-
-    #[test]
-    fn test_parse_row_field_count_matches_header() -> ErrStr<()> {
-        let raw_data = mock_trade_row();
-        let table = ingest(parse_id, parse_str, parse_str, &raw_data.lines()
-            .map(s).collect(), ",")?;
-        let row_str = parse_row(&table, 1, "tx1", "160.0").unwrap();
+    #[test] fn test_parse_row_field_count_matches_header() -> ErrStr<()> {
+        let row_str = test_parse_row(mock_trade_row(), "tx1", 160.0)?;
         assert_eq!(header().split(',').count(), row_str.split(',').count());
         Ok(())
     }
 
-    #[test]
-    fn test_parse_row_passthrough_tx_id() -> ErrStr<()> {
-        let raw_data = mock_trade_row();
-        let table = ingest(parse_id, parse_str, parse_str, &raw_data.lines()
-            .map(s).collect(), ",")?;
-        let row_str = parse_row(&table, 1, "my-tx-abc", "160.0").unwrap();
-        assert!(row_str.contains("my-tx-abc"));
+    #[test] fn test_parse_row_passthrough_tx_id() -> ErrStr<()> {
+        let row = test_parse_row(mock_trade_row(), "my-tx-abc", 160.0)?;
+        assert!(row.contains("my-tx-abc"));
         Ok(())
     }
 
-    #[test]
-    fn test_parse_row_vol_calculation() -> ErrStr<()> {
-        let raw_data = mock_trade_row();
-        let table = ingest(parse_id, parse_str, parse_str, &raw_data.lines()
-            .map(s).collect(), ",")?;
-        let row_str = parse_row(&table, 1, "tx1", "160.0").unwrap();
-        assert!(row_str.contains("$1000.00"), "expected $1000.00 in: {row_str}");
+    #[test] fn test_parse_row_vol_calculation() -> ErrStr<()> {
+        let row = test_parse_row(mock_trade_row(), "tx1", 160.0)?;
+        assert!(row.contains("$1000.00"), "expected $1000.00 in: {row}");
         Ok(())
     }
 
-    #[test]
-    fn test_parse_row_gain_10_percent() -> ErrStr<()> {
-        let raw_data = mock_trade_row();
-        let table = ingest(parse_id, parse_str, parse_str, &raw_data.lines()
-            .map(s).collect(), ",")?;
-        let row_str = parse_row(&table, 1, "tx1", "160.0").unwrap();
-        assert!(row_str.contains("165.0000"), "expected 165.0000 in: {row_str}");
+    #[test] fn test_parse_row_gain_10_percent() -> ErrStr<()> {
+        let row = test_parse_row(mock_trade_row(), "tx1", 160.0)?;
+        assert!(row.contains("165.0000"), "expected 165.0000 in: {row}");
         Ok(())
     }
 
-    #[test]
-    fn test_parse_row_negative_gain() -> ErrStr<()> {
-        let raw_data = mock_losing_row();
-        let table = ingest(parse_id, parse_str, parse_str, &raw_data.lines()
-            .map(s).collect(), ",")?;
-        let row_str = parse_row(&table, 1, "tx1", "100.0").unwrap();
-        let gain: f32 = row_str.split(',').nth(12).unwrap_or("0").parse().unwrap_or(0.0);
+    #[test] fn test_parse_row_negative_gain() -> ErrStr<()> {
+        let row = test_parse_row(mock_losing_row(), "tx1", 100.0)?;
+        let datum = row.split(',').nth(12).unwrap_or("0");
+        let gain: f32 =
+           err_or(datum.parse(), &format!("Cannot parse {datum} to a float"))?;
+                 
         assert!(gain < 0.0, "expected negative gain, got {gain}");
         Ok(())
     }
 
-    #[test]
-    fn test_parse_row_no_nan_or_inf() -> ErrStr<()> {
-        let raw_data = mock_trade_row();
-        let table = ingest(parse_id, parse_str, parse_str, &raw_data.lines()
-            .map(s).collect(), ",")?;
-        let row_str = parse_row(&table, 1, "tx1", "160.0").unwrap();
-        assert!(!row_str.contains("NaN") && !row_str.contains("inf"),
-            "NaN or inf in output: {row_str}");
+    #[test] fn test_parse_row_no_nan_or_inf() -> ErrStr<()> {
+        let row = test_parse_row(mock_trade_row(), "tx1", 160.0)?;
+        assert!(!row.contains("NaN") && !row.contains("inf"),
+            "NaN or inf in output: {row}");
         Ok(())
     }
 
-    #[test]
-    fn test_parse_row_comma_formatted_new_to_actual() -> ErrStr<()> {
-        let raw_data = mock_trade_row();
-        let table = ingest(parse_id, parse_str, parse_str, &raw_data.lines().map(s).collect(), ",")?;
-        let row_str = parse_row(&table, 1, "tx1", "883,619.4538")?;
-        assert_eq!(header().split(',').count(), row_str.split(',').count(),
-            "comma in new_to_actual broke field count: {row_str}");
-        assert!(!row_str.contains("883,619"),
-            "raw comma-formatted value leaked into CSV output: {row_str}");
+    #[test] fn test_parse_row_comma_formatted_new_to_actual() -> ErrStr<()> {
+        let amt = "883,619.4538";
+        let val: CommaFloat =
+           err_or(amt.parse(), &format!("Cannot parse comma-float {amt}"))?;
+        let row = test_parse_row(mock_trade_row(), "tx1", val.into())?;
+        assert_eq!(header().split(',').count(), row.split(',').count(),
+            "comma in new_to_actual broke field count: {row}");
+        assert!(!row.contains("883,619"),
+            "raw comma-formatted value leaked into CSV output: {row}");
+        assert!(row.contains("883619"),
+            "float value not in CSV output: {row}");
         Ok(())
+    }
+
+    fn btc_undead_dates(opened: NaiveDate, closed: NaiveDate, amt: f32)
+          -> ErrStr<IxTable> {
+        let daters = format!("20,99,BTC,UNDEAD,500,100,50,2.00,{amt}");
+        let row = format!("1,{opened},{closed},{daters},{amt}");
+        tbl(&format!("{}\n{row}", hdr()))
+    }
+    fn btc_undead(amt: f32) -> ErrStr<IxTable> {
+        btc_undead_dates(today(), today(), amt)
     }
 
     #[test]
     fn test_parse_row_currency_fields_have_dollar_prefix() -> ErrStr<()> {
-        let dt = format!("{}", today());
-        let raw = format!(
-            "ix,close_date,opened,ids,close_id,pivot_token,from,\
-            pivot_amount,amount1,virtual,pivot_close_price,proposed_close_price\n\
-            1,{dt},{dt},20,99,BTC,UNDEAD,500,100,50,2.00,3.00"
-        );
-        let table = ingest(
-            parse_id, parse_str, parse_str, &raw.lines().map(s).collect(), ",",)?;
-        let row_str = parse_row(&table, 1, "tx1", "160.0").unwrap();
-        let fields: Vec<&str> = row_str.split(',').collect();
-        assert!(fields[5].starts_with('$'),  "from_quote missing $: '{}'", fields[5]);
-        assert!(fields[9].starts_with('$'),  "vol missing $: '{}'", fields[9]);
-        assert!(fields[13].starts_with('$'), "gain_total_usd missing $: '{}'", fields[13]);
+        let row = test_parse_row(btc_undead(3.0), "tx1", 160.0)?;
+        let fields: Vec<&str> = row.split(',').collect();
+        fn test_dollar_sign(hdr: &str, field: &str) {
+           assert!(field.starts_with('$'), "{hdr} missing $: '{field}'");
+        }
+        test_dollar_sign("from_quote", &fields[5]);
+        test_dollar_sign("vol", &fields[9]);
+        test_dollar_sign("gain_total_usd", &fields[13]);
         Ok(())
     }
 
-    #[test]
-    fn test_truth_values_populated() -> ErrStr<()> {
-        let dt = format!("{}", today());
-        let raw = format!(
-            "ix,close_date,opened,ids,close_id,pivot_token,from,pivot_amount,amount1,virtual,pivot_close_price,proposed_close_price\n\
-            1,{dt},{dt},20,99,BTC,UNDEAD,500,100,50,2.00,2.00"
-        );
-        let table = ingest(parse_id, parse_str, parse_str, &raw.lines()
-            .map(s).collect(), ",")?;
-        let result = parse_row(&table, 1, "tx1", "160.0");
-        assert!(result.is_ok(), "parse_row failed: {:?}", result);
-        let row_str = result.unwrap();
-        let fields: Vec<&str> = row_str.split(',').collect();
+    #[test] fn test_truth_values_populated() -> ErrStr<()> {
+        let row = test_parse_row(btc_undead(2.0), "tx1", 160.0)?;
+        let fields: Vec<&str> = row.split(',').collect();
         assert_eq!(fields.len(), 16);
         for (i, f) in fields.iter().enumerate() {
-            assert!(!f.is_empty(), "field at index {i} is empty: full row: {row_str}");
+            assert!(!f.is_empty(),
+                    "field at index {i} is empty: full row: {row}");
         }
         Ok(())
     }
@@ -292,14 +284,8 @@ mod tests {
     fn test_parse_row_inverted_dates_returns_error() -> ErrStr<()> {
         let close  = today();
         let opened = close + chrono::Duration::days(365);
-        let raw = format!(
-            "ix,close_date,opened,ids,close_id,pivot_token,from,\
-            pivot_amount,amount1,virtual,pivot_close_price,proposed_close_price\n\
-            1,{close},{opened},20,99,BTC,UNDEAD,500,100,50,2.00,2.00"
-        );
-        let table = ingest(parse_id, parse_str, parse_str,
-            &raw.lines().map(s).collect(), ",")?;
-        let result = parse_row(&table, 1, "tx1", "160.0");
+        let table = btc_undead_dates(close, opened, 2.0);
+        let result = test_parse_row(table, "tx1", 160.0);
         assert!(result.is_err(), "expected Err for inverted dates, got Ok");
         let msg = result.unwrap_err();
         assert!(msg.contains("cannot compute APR"),
@@ -307,114 +293,93 @@ mod tests {
         Ok(())
     }
 
-    #[test]
-    fn test_parse_row_err_on_empty_to_quote() -> ErrStr<()> {
+    #[test] fn test_parse_row_err_on_empty_to_quote() -> ErrStr<()> {
         let dt = format!("{}", today());
-        let raw = format!(
-            "ix,close_date,opened,pivot_amount,amount1,virtual,pivot_close_price,proposed_close_price\n\
-            1,{dt},{dt},500,100,50,2.00,"
-        );
-        let table = ingest(parse_id, parse_str, parse_str,
-            &raw.lines().map(s).collect(), ",")?;
-        let result = parse_row(&table, 1, "tx1", "160.0");
+        let table = tbl(&format!("{}\n1,{dt},{dt},500,100,50,2.00,", hdr()));
+        let result = test_parse_row(table, "tx1", 160.0);
         assert!(result.is_err(),
                 "expected Err when proposed_close_price is empty, got Ok");
         Ok(())
     }
 
-    #[test]
-    fn test_pool_path_format() -> ErrStr<()> {
-        let raw_data = mock_trade_row();
-        let table = ingest(parse_id, parse_str, parse_str,
-            &raw_data.lines().map(s).collect(), ",")?;
+    #[test] fn test_pool_path_format() -> ErrStr<()> {
+        let table = mock_trade_row()?;
         let path = pool_path("close_pivots", &table, 1).unwrap();
         assert_eq!(path, "close_pivots/btc-undead.tsv");
         Ok(())
     }
 
-    #[test]
-    fn test_pool_path_eth_undead() -> ErrStr<()> {
-        let raw = format!(
-            "ix,close_date,opened,ids,close_id,pivot_token,from,\
-            pivot_amount,amount1,virtual,pivot_close_price,proposed_close_price\n\
-            1,{dt},{dt},20,99,ETH,UNDEAD,0,0,0,0.00,0.00",
-            dt = today()
-        );
-        let table = ingest(parse_id, parse_str, parse_str,
-            &raw.lines().map(s).collect(), ",")?;
+    fn pivot_pool(prim: &str, piv: &str) -> ErrStr<IxTable> {
+       let dt = today();
+       let hdr_row =
+          format!("{}\n1,{dt},{dt},20,99,{prim},{piv},0,0,0,0.00,0.00", hdr());
+       tbl(&hdr_row)
+    }
+
+    #[test] fn test_pool_path_eth_undead() -> ErrStr<()> {
+        let table = pivot_pool("ETH", "UNDEAD")?;
         assert_eq!(pool_path("cpp", &table, 1).unwrap(), "cpp/eth-undead.tsv");
         Ok(())
     }
 
-    #[test]
-    fn test_pool_path_btc_eth_alphabetical_order() -> ErrStr<()> {
-        let raw = format!(
-            "ix,close_date,opened,ids,close_id,pivot_token,from,\
-            pivot_amount,amount1,virtual,pivot_close_price,proposed_close_price\n\
-            1,{dt},{dt},20,99,ETH,BTC,0,0,0,0.00,0.00",
-            dt = today()
-        );
-        let table = ingest(parse_id, parse_str, parse_str,
-            &raw.lines().map(s).collect(), ",")?;
+    #[test] fn test_pool_path_btc_eth_alphabetical_order() -> ErrStr<()> {
+        let table = pivot_pool("ETH", "BTC")?;
         assert_eq!(pool_path("geophf_is_grate", &table, 1).unwrap(),
             "geophf_is_grate/btc-eth.tsv");
         Ok(())
     }
 
-    #[test]
-    fn test_pool_path_undead_usdc_alphabetical_order() -> ErrStr<()> {
-        let raw = format!(
-            "ix,close_date,opened,ids,close_id,pivot_token,from,\
-            pivot_amount,amount1,virtual,pivot_close_price,proposed_close_price\n\
-            1,{dt},{dt},20,99,USDC,UNDEAD,0,0,0,0.00,0.00",
-            dt = today()
-        );
-        let table = ingest(parse_id, parse_str, parse_str,
-            &raw.lines().map(s).collect(), ",")?;
+    #[test] fn test_pool_path_undead_usdc_alphabetical_order() -> ErrStr<()> {
+        let table = pivot_pool("USDC", "UNDEAD")?;
         assert_eq!(pool_path("dpcr", &table, 1).unwrap(),
             "dpcr/undead-usdc.tsv");
         Ok(())
     }
 
-    #[test]
-    fn missing_table_close_date_header() -> ErrStr<()> {
-        let table = make_table("ix,pool,ids\n1,BTC,20")?;
-        let row = parse_row(&table, 1, "tx_id", "1.0");
+    #[test] fn missing_table_close_date_header() -> ErrStr<()> {
+        let table = tbl("ix,pool,ids\n1,BTC,20")?;
+        let row = parse_row(&table, 1, "tx_id", 1.0);
         assert!(row.is_err());
         Ok(())  
     }
-
 }
 
 //----- fn runoff_with_args -----------------------------------
 
-fn usage() -> ErrStr<()> {
-   eprintln!("Error: not enough arguments.");
-   eprintln!("Usage: `wyrd` <auth> <path> <ix> <tx_id> <new_to_actual>");
-   eprintln!("Example: wyrd PIVOT data/pivots/close/raw 5 asdf 1250.75");
-   let arguments = "<close_pivot_dir> <close_ix> <tx_id> <actual amount>";
-   Err(format!("wyrd missing arguments <auth> {arguments}"))
+/// Generates close pivot row from transaction id and calls-table
+#[derive(Debug, Parser)]
+#[command(name = "wyrd")]
+#[command(version = "1.03")]
+struct Args {
+   /// Protocol to construct the close pivot, e.g.: PIVOT
+   protocol: UppercaseString,
+
+   /// path to close-pivot tables, e.g. data/pivots/close/raw
+   path: String,
+
+   /// close-pivot ix from the calls.tsv table, e.g.: 5
+   ix: Id,
+
+   /// transaction id of the close-pivot swap
+   tx_id: String,
+
+   /// The actual amount received in the close-pivot swap, e.g.: 1250.75
+   amount: CommaFloat
 }
 
 pub async fn runoff_with_args() -> ErrStr<()> {
-    let args = get_args();
-    if args.len() < 5 {
-       usage()
-    } else {
-       runoff_continuation(&args).await
-    }
+    let args = parse_args_add_banner!(Args);
+    runoff_continuation(&args.protocol, &args.path, args.ix,
+                        &args.tx_id, args.amount.into()).await
 }
 
-async fn runoff_continuation(args: &[String]) -> ErrStr<()> {
-    let protocol = &args[0];
-    let protocol_up = protocol.to_uppercase();
-    let close_dir = &args[1];
-    let ix       = parse_id(&args[2])?;
-    let root_url = get_env(&format!("{protocol_up}_URL"))?;
+async fn runoff_continuation(protocol: &str, path: &str, ix: Id, tx_id: &str,
+                             amount: f32) -> ErrStr<()> {
+    let root_url = get_env(&format!("{protocol}_URL"))?;
     let calls = fetch_calls_table(&root_url).await?;
     println!("{}", header());
-    println!("{}", parse_row(&calls, ix, &args[3], &args[4])?);
-    println!("{}", pool_path(&close_dir, &calls, ix)?);
+    println!("{}", parse_row(&calls, ix, tx_id, amount)?);
+    println!("{}", pool_path(path, &calls, ix)?);
     Ok(())
 }
 
@@ -426,89 +391,55 @@ async fn runoff_continuation(args: &[String]) -> ErrStr<()> {
 #[cfg(not(tarpaulin_include))]
 pub mod functional_tests {
     use super::*;
-    use super::test_functions::make_table;
+    use super::test_functions::{ make_table, hdr };
     use paste::paste;
-    use book::{ date_utils::today, utils::resolve, create_testing, compose };
+    use book::{
+       create_testing,
+       date_utils::today,
+       utils::{ composer, resolve }
+    };
 
     fn now() -> String { format!("{}", today()) }
 
-    create_testing!("quiz08::b_wyrd", "", true);
+    create_testing!("quiz08::b_wyrd");
 
     run!("parse_row", {
         let raw_data = 
         "ix,pool,open_pivots,last_pivot_on_dt,opened,ids,close_id,close_date,from,from_blockchain,amount1,virtual,quote1,val1,gain_10_percent,pivot_token,pivot_blockchain,pivot_close_price,pivot_amount,proposed_token,proposed_blockchain,proposed_close_price,proposed_amount,roi,apr
 1,BTC+ETH,27,2026-05-07,2025-11-05,46,14,2026-05-19,ETH,Avalanche,0,0.1498,$3340.95,$500.47,0.16478,BTC,Avalanche,$76815.00,0.00467,ETH,Avalanche,$2116.94,0.169455,13.12%,24.56%";
         let table = make_table(raw_data)?;
-        let row = parse_row(&table, 1, "asdf", "0.17")?;
+        let row = parse_row(&table, 1, "asdf", 0.17)?;
         println!("result: {row} ");
     });
 
-    fn apr_safety(dt: String) -> ErrStr<String> {
-        let row = make_table(&format!(
-            "ix,close_date,opened,ids,close_id,pivot_token,from,\
-            pivot_amount,amount1,virtual,pivot_close_price,proposed_close_price\n\
-            1,{dt},{dt},20,99,BTC,UNDEAD,0,0,1,0.00,0.00"
-        )).and_then(|t| parse_row(&t, 1, "tx_id", "1.0"))?;
-        if row.contains("NaN") || row.contains("inf") { Err(format!("apr_safety: NaN or inf in: {row}")) } else{
-        Ok(row)}
+    fn test_row_dater(dater: &str, actual: f32) -> ErrStr<String> {
+        let row = make_table(&format!("{}\n{dater}", hdr()))
+                     .and_then(|t| parse_row(&t, 1, "tx_id", actual))?;
+        if row.contains("NaN") || row.contains("inf") {
+           Err(format!("apr_safety: NaN or inf in: {row}"))
+        } else {
+           Ok(row)
+        }
     }
-    run_with!("apr_safety", now(), compose!(resolve)(apr_safety));
-
-    fn whale(dt: String) -> ErrStr<String> {
-        let row = make_table(&format!(
-            "ix,close_date,opened,ids,close_id,pivot_token,from,\
-            pivot_amount,amount1,virtual,pivot_close_price,proposed_close_price\n\
-            1,{dt},{dt},20,99,BTC,UNDEAD,150000000,0,0,1.50,1.50"
-        )).and_then(|t| parse_row(&t, 1, "tx_id", "1.0"));
-        row
+    fn test_row(amt: f32, actual: f32) -> impl Fn(String) -> ErrStr<String> {
+       move |dt: String| {
+          let dater =
+             format!("1,{dt},{dt},20,99,BTC,UNDEAD,{amt},0,1,$1.50,$1.50");
+          test_row_dater(&dater, actual)
+       }
     }
-    run_with!("whale", now(), compose!(resolve)(whale));
-
-    fn roi_zero_div(dt: String) -> ErrStr<String> {
-        let row = make_table(&format!(
-            "ix,close_date,opened,ids,close_id,pivot_token,from,\
-            pivot_amount,amount1,virtual,pivot_close_price,proposed_close_price\n\
-            1,{dt},{dt},20,99,BTC,UNDEAD,0,0,0,0.00,0.00"
-        )).and_then(|t| parse_row(&t, 1, "tx_id", "0.0"))?;
-        if row.contains("NaN") || row.contains("inf") { Err(format!("roi_zero_div: NaN or inf in: {row}")) } else{
-        Ok(row)}
-    }
-    run_with!("roi_zero_div", now(), compose!(resolve)(roi_zero_div));
-
-    fn column_count(dt: String) -> ErrStr<String> {
-        let row = make_table(&format!(
-            "ix,close_date,opened,ids,close_id,pivot_token,from,\
-            pivot_amount,amount1,virtual,pivot_close_price,proposed_close_price\n\
-            1,{dt},{dt},20,99,BTC,UNDEAD,0,100,50,0.00,0.00"
-        )).and_then(|t| parse_row(&t, 1, "tx_id", "120.0"))?;
-        let (h, r) = (header().split(',').count(), row.split(',').count());
-        if h != r { Err(format!("column_count: header={h} row={r}")) } else{
-        Ok(row)}
-    }
-    run_with!("column_count", now(), compose!(resolve)(column_count));
-
-    fn currency_format(dt: String) -> ErrStr<String> {
-        let row = make_table(&format!(
-            "ix,close_date,opened,ids,close_id,pivot_token,from,\
-            pivot_amount,amount1,virtual,pivot_close_price,proposed_close_price\n\
-            1,{dt},{dt},20,99,BTC,UNDEAD,100000,0,0,$1.50,$1.50"
-        )).and_then(|t| parse_row(&t, 1, "tx_id", "1.0"))?;
-        if !row.contains("150000.00") { return Err(format!("currency_format: expected 150000.00 in: {row}")); }
-        Ok(row)
-    }
-    run_with!("currency_format", now(), compose!(resolve)(currency_format));
-
-    fn undead_zero_precision(dt: String) -> ErrStr<String> {
-        let row = make_table(&format!(
-            "ix,close_date,opened,ids,close_id,pivot_token,from,\
-            pivot_amount,amount1,virtual,pivot_close_price,proposed_close_price\n\
-            1,{dt},{dt},20,99,BTC,UNDEAD,1000,500,100,0.0025,0.0025"
-        )).and_then(|t| parse_row(&t, 1, "tx_id", "650.0"))?;
-        let gain_usd: f32 = row.split(',').nth(13).unwrap_or("$0").replace('$', "").parse().unwrap_or(0.0);
-        if gain_usd == 0.0 { return Err("undead_zero_precision: gain_total_usd is 0, to_quote not rescued".to_string()); }
-        Ok(row)
-    }
-
-    run_with!("undead_zero_precision", now(), compose!(resolve)(undead_zero_precision));
+    run_with!("apr_safety", now(), composer(resolve, test_row(0.0, 1.0)));
+    run_with!("whale", now(), composer(resolve, test_row(150000000.0, 1.0)));
+    run_with!("roi_zero_div", now(), composer(resolve, test_row(0.0, 0.0)));
+    run_with!("column_count", now(), composer(resolve, test_row(0.0,120.0)));
+    run_with!("currency_format", now(),
+              composer(resolve, test_row(100000.0, 1.0)));
+    run!("undead_zero_precision", {
+       let dt = now();
+       let dater = 
+          format!("1,{dt},{dt},20,99,BTC,UNDEAD,1000,500,100,0.0025,0.0025");
+       let ans = test_row_dater(&dater, 650.0)?;
+       println!("Close pivot with UNDEAD prices:\n{ans}");
+    });
 }
 

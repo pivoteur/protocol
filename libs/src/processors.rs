@@ -47,8 +47,9 @@ async fn process_pools0(root_url: &str, pools: &Vec<Pool>,
       if debug { println!("Processing pool {pool}"); }
       let (primary, _) = pool.as_tuple();
       let ((opens, closes), max_date) =
-         fetch_pivots(root_url, pool, a).await?;
-      let ans = propose(&proposer, pool, &primary, opens, closes, &max_date)?;
+         fetch_pivots(root_url, pool, a, debug).await?;
+      let ans =
+         propose(&proposer, pool, &primary, opens, closes, &max_date, debug)?;
       if ans.is_empty() {
          no_closes.push(pool.clone());
       } else {
@@ -62,19 +63,23 @@ async fn process_pools0(root_url: &str, pools: &Vec<Pool>,
 type Ixs<A> = (Vec<A>, usize);
 type Ix<A> = (A, usize);
 
-fn propose(proposer: impl Fn(Ixs<Pivot>) -> ErrStr<Option<Ix<Propose>>>,
+fn propose(proposer: impl Fn(Ixs<Pivot>, bool) -> ErrStr<Option<Ix<Propose>>>,
            pool: &Pool, prim: &Token, opens: Vec<Pivot>, closes: Vec<Pivot>,
-           max_date: &NaiveDate) -> ErrStr<Vec<Proposal>> {
+           max_date: &NaiveDate, debug: bool) -> ErrStr<Vec<Proposal>> {
    let next_close = next_close_id(&closes);
    let len = &opens.len();
    let (lefts, rights) = partition_on(prim, opens);
+   if debug {
+      println!("processors::propose for {pool} pivot pool, there are:
+	{} {prim} pivots ({} alts)", lefts.len(), rights.len());
+   }
    let (follow, mut props) =
-      if let Some((prop, nxt)) = proposer((lefts, next_close))? {
+      if let Some((prop, nxt)) = proposer((lefts, next_close), debug)? {
          (nxt, vec![mk_proposal(&pool, &max_date, *len, prop)])
       } else {
          (next_close, Vec::new())
    };
-   let _ = proposer((rights, follow))?
+   let _ = proposer((rights, follow), debug)?
       .and_then(|(prop, _)| {
          props.push(mk_proposal(&pool, &max_date, *len, prop));
          Some(1)

@@ -17,6 +17,7 @@ where:
 
 ## Revision history
 
+* 1.03, 2026-07-05: using clap to process arguments and for usage-documentation
 * 1.02, 2026-06-27: Clarified which pool is over-committed on error.
 * 1.01, 2026-05-26: Added debugging-flow to pool-processing.
 * 1.00, 2026-05-17: release

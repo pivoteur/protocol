@@ -18,20 +18,23 @@ use crate::{
 // ----- PIVOTS -------------------------------------------------------
 
 /// Fetch the pivots for pivot pool A+B; open pivots are reposed in git
-pub async fn fetch_pivots(root_url: &str, pool: &Pool, a: &Aliases)
+pub async fn fetch_pivots(root_url: &str, pool: &Pool, a: &Aliases, debug: bool)
       -> ErrStr<(Partition<Pivot>, NaiveDate)> {
    let url = open_pivot_path(root_url, pool);
    let lines = fetch_lines(&url).await?;
-   parse_pivots(pool, lines, a)
+   parse_pivots(pool, lines, a, debug)
 }
 
-pub fn parse_pivots(pool: &Pool, lines: Vec<String>, a: &Aliases)
+pub fn parse_pivots(pool: &Pool, lines: Vec<String>, a: &Aliases, debug: bool)
       -> ErrStr<(Partition<Pivot>, NaiveDate)> {
    let table = index_table(lines)?;
-
+   if debug {
+      println!("For the {pool} pivot table:
+	total pivots fetched: {}", table.data.len());
+   }
    let hdrs = a.enum_headers(cols(&table));
 
-   let max_date = max_diem(&table, hdrs["opened"], &pool)?;
+   let max_date = max_diem(&table, hdrs["opened"], &pool, debug)?;
    let mut acts: Vec<Pivot> = Vec::new();
    let mut pass: Vec<Pivot> = Vec::new();
 
@@ -43,22 +46,28 @@ pub fn parse_pivots(pool: &Pool, lines: Vec<String>, a: &Aliases)
          pass.push(piv);
       }
    }
+   if debug {
+      println!("\t{} open pivots; {} closed pivots", acts.len(), pass.len());
+   }
    Ok(((acts, pass), max_date.clone()))
 }
 
-fn max_diem<T>(table: &Table<T, String, String>, ix: usize, pool: &Pool)
-      -> ErrStr<NaiveDate> {
-   table.data
-        .iter()
-        .map(|row| datef(&row[ix]))
-        .max()
-        .ok_or(format!("No max date for {pool} pivot pool"))
+fn max_diem<T>(table: &Table<T, String, String>, ix: usize, pool: &Pool,
+               debug: bool) -> ErrStr<NaiveDate> {
+   let max_date = table.data
+                       .iter()
+                       .map(|row| datef(&row[ix]))
+                       .max()
+                       .ok_or(format!("No max date for {pool} pivot pool"))?;
+   if debug { println!("\tmax_date: {max_date}"); }
+   Ok(max_date)
 }
 
 /// Filter to only the open pivots for pivot pool A+B
-pub async fn fetch_open_pivots(root_url: &str, pool: &Pool, a: &Aliases)
+pub async fn fetch_open_pivots(root_url: &str, pool: &Pool, a: &Aliases,
+                               debug: bool)
       -> ErrStr<(Vec<Pivot>, NaiveDate)> {
-   let (part, max_date) = fetch_pivots(root_url, pool, a).await?;
+   let (part, max_date) = fetch_pivots(root_url, pool, a, debug).await?;
    Ok((fst(part), max_date))
 }
 
@@ -137,7 +146,7 @@ mod tests {
       let tsv = btc_eth_pool_as_tsv().await?;
       let a = aliases();
       let pool = pool_from_str("BTC+ETH")?;
-      let ans = parse_pivots(&pool, tsv, &a);
+      let ans = parse_pivots(&pool, tsv, &a, true);
       assert!(ans.is_ok());
       Ok(())
    }
@@ -147,7 +156,7 @@ mod tests {
       let tsv = btc_eth_pool_as_tsv().await?;
       let a = aliases();
       let pool = pool_from_str("btc-eth")?;
-      let ((o,c),m) = parse_pivots(&pool, tsv, &a)?;
+      let ((o,c),m) = parse_pivots(&pool, tsv, &a, true)?;
       let ((opns, cls), mx) = btc_eth_pivots().await?;
       assert_eq!(opns.len(), o.len());
       assert_eq!(cls.len(), c.len());

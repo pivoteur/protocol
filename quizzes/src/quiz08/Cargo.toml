@@ -4,8 +4,9 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-
 chrono = "0.4.38"
+clap = { version = "4.5", features = ["derive"] }
+
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 
 book = { path = "../../../../crypto-n-rust/src/libs/book" }

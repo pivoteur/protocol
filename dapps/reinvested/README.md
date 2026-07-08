@@ -18,5 +18,6 @@ Sends a telegram regarding the amount reinvested into pivot pools.
 
 ## Revisions
 
+* 1.01, 2026-07-08: use clap to process arguments and for usage-documentation
 * 1.00, 2026-05-18: release, and adding into the quizzes testing framework
 

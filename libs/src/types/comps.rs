@@ -27,7 +27,7 @@ mod test_data {
    use super::{ Composition, mk_composition, from_assets };
    use crate::{
       collections::assets::mk_assets,
-      types::tokens::coins::functional_tests::coin
+      types::tokens::coins::test_data::coin
    };
    
    pub fn mk_btc_eth() -> ErrStr<Composition> {
@@ -39,7 +39,7 @@ mod test_data {
       let mut assets = mk_assets();
       assets.add(coin("UNDEAD", 1000000.0)?);
       assets.add(coin("USDC", 1400.0)?);
-      from_assets(&assets.assets())
+      from_assets(&assets.assets(), true)
    }
 }
 
@@ -49,7 +49,10 @@ mod asset_ordering {
       tokens::coins::{Coin,mk_pivot_coin},
       measurable::Measurable
    };
-   use book::{ num::floats::mk_safe_float, tuple_utils::{ Partition, snd } };
+   use book::{
+      num::floats::safe_floats::mk_safe_float,
+      tuple_utils::{ Partition, snd }
+   };
 
    fn sort_asset_pair<'a>(a: &'a Coin, b: &'a Coin) -> (&'a Coin, &'a Coin) {
       let mut coins = vec![a, b];
@@ -128,7 +131,10 @@ pub fn mk_composition(primary: &Coin, pivot: &Coin) -> Composition {
    arrange_assets(primary, pivot)
 }
 
-pub fn from_assets(assets: &[Coin]) -> ErrStr<Composition> {
+pub fn from_assets(assets: &[Coin], debug: bool) -> ErrStr<Composition> {
+   if debug {
+      println!("types::comps::from_assets received {} assets", assets.len());
+   }
    match assets {
       [a, b] => Ok(arrange_assets(&a, &b)),
       _ => Err(format!("Cannot make a composition from {}",
@@ -213,7 +219,7 @@ pub mod functional_tests {
    use super::test_data::*;
    use paste::paste;
    use book::create_testing;
-   use crate::types::tokens::coins::functional_tests::coin;
+   use crate::types::tokens::coins::test_data::coin;
 
    create_testing!("types::comps");
 
@@ -226,7 +232,7 @@ pub mod functional_tests {
       let mut assets = mk_assets();
       assets.add(coin("BTC", 0.1)?);
       assets.add(coin("USDC", 8500.0)?);
-      let comp = from_assets(&assets.assets())?;
+      let comp = from_assets(&assets.assets(), true)?;
       println!("\tBTC+USDC assets:\n{}", comp.as_csv());
    });
 
@@ -235,7 +241,7 @@ pub mod functional_tests {
       use book::tuple_utils::snd;
 
       #[test] fn fail_from_0_assets() {
-         let ans = from_assets(&mk_assets().assets());
+         let ans = from_assets(&mk_assets().assets(), true);
          assert!(ans.is_err());
       }
       #[test] fn fail_from_too_many_assets() -> ErrStr<()> {
@@ -243,7 +249,7 @@ pub mod functional_tests {
          assets.add(coin("AVAX", 12.0)?);
          assets.add(coin("BTC", 0.1)?);
          assets.add(coin("USDC", 100.0)?);
-         let ans = from_assets(&assets.assets());
+         let ans = from_assets(&assets.assets(), true);
          assert!(ans.is_err());
          Ok(())
       }
