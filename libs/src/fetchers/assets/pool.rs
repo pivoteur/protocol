@@ -19,7 +19,7 @@ use crate::{
    types::{
       aliases::Aliases,
       tokens::coins::{Coin,mk_coin},
-      comps::{Composition,mk_composition,from_assets},
+      comps::{Composition,mk_composition},
       pivots::{Pivot,pivot_assets},
       pools::Pool,
       quotes::Quotes,
@@ -101,8 +101,7 @@ pub async fn available_assets_fetcher
    for a in all_opens.assets() {
       subtractor(&mut available, &a);
    }
-   available.update_prices(&quotes)?;
-   from_assets(&available.assets(), debug)
+   available.as_composition(pool, quotes)
 }
 
 pub fn subtractor(assets: &mut Assets, coin: &Coin) { assets.subtract(coin); }
