@@ -1,3 +1,5 @@
+use chrono::NaiveDate;
+
 use std::collections::HashMap;
 
 use book::{
@@ -9,7 +11,8 @@ use book::{
 use crate::collections::assets::{Assets,mk_assets};
 use super::{
    assets::{
-      assets::{Asset,parse_asset,recompute_assets,gain_10_percent,trade},
+      assets::{Asset,parse_asset,gain_10_percent,trade},
+      assets::recompute_assets as new_assets,
       asset_types::AssetType::{FROM,TO}
    },
    headers::{Header, next_close_id as closer, parse_header},
@@ -28,6 +31,10 @@ pub struct Pivot {
    header: Header,
    from: Asset,
    to: Asset
+}
+
+pub fn mk_pivot(header: Header, from: Asset, to: Asset) -> Pivot {
+   Pivot { header, from, to }
 }
 
 impl Measurable for Pivot {
@@ -49,6 +56,13 @@ impl Pivot {
    pub fn index(&self) -> usize { self.header.ix() }
    pub fn trade(&self, qts: &Quotes) -> ErrStr<Option<(PropAsset, PropAsset)>> {
       trade(qts, &self.from, &self.to)
+   }
+   pub fn recompute_assets(&self, quotes: &Quotes)
+         -> ErrStr<Option<(Asset, Asset)>> {
+      new_assets(quotes, &self.from, &self.to)
+   }
+   pub fn update_header(&self, dt: &NaiveDate) -> Header {
+      self.header.update_to(dt)
    }
 }
 
@@ -100,36 +114,6 @@ pub fn headers(pivs: &Vec<Pivot>) -> Vec<Header> {
 
 pub fn froms(pivs: &Vec<Pivot>) -> Vec<Asset> {
    pivs.into_iter().map(|p| p.from.clone()).collect()
-}
-
-// ----- RECOMPUTING VIRTUAL PIVOTS --------------------------------------
-
-pub fn recompute_pivot(quotes: &Quotes, debug: bool)
-      -> impl Fn(Pivot) -> ErrStr<Pivot> {
-   move |p| {
-      if !p.is_virtual() { Err("Can only recompute virtual pivots".to_string())
-      } else if p.closed() { Err("Pivot closed; cannot recompute".to_string())
-      } else { recompute1(quotes, p, debug)
-      }
-   }
-}
-
-fn recompute1(quotes: &Quotes, p: Pivot, debug: bool) -> ErrStr<Pivot> {
-   if debug { println!("For pivot:\n{}\n{}", p.header(), p.as_csv()); }
-   let mb_new_assets = recompute_assets(quotes, &p.from, &p.to)?;
-   Ok(match mb_new_assets {
-      Some((from, to)) => {
-         let today = quotes.date.clone();
-         let header = p.header.update_to(today);
-         let new_piv1 = Pivot { header, from, to };
-         if debug { println!("\tRecomputed to:\n{}", new_piv1.as_csv()); }
-         new_piv1
-      },
-      None => {
-         if debug { println!("\tNo change"); }
-         p
-      }
-   })
 }
 
 // ----- GROUPING  -------------------------------------------------------
@@ -201,22 +185,10 @@ s("opened	open	close	tx_id	updated	from	from_blockchain	amount1	virtual	quote1	v
 mod functional_tests {
    use paste::paste;
    use super::*;
-   use super::test_data::{ btc_eth_pivots, mk_btc_usdc_piv };
+   use super::test_data::btc_eth_pivots;
    use book::create_testing;
-   use crate::{
-      types::{
-         assets::amounts::mk_amt,
-         quotes::sample_data::sample_quotes_maker
-      }
-   };
 
    create_testing!("types::pivots");
-
-   run!("recompute_pivot", {
-      let piv = mk_btc_usdc_piv(78408.88,mk_amt(0.0,0.1),0,"virtual pivot")?;
-      let quotes = sample_quotes_maker(&[("BTC", 80000.0)]);
-      let _new_piv = recompute_pivot(&quotes, true)(piv)?;
-   });
 
    run!("pivot_assets", {
       let pivs = btc_eth_pivots()?;
@@ -229,11 +201,8 @@ mod functional_tests {
 #[cfg(not(tarpaulin_include))]
 mod tests {
    use super::*;
-   use super::test_data::{btc_eth,btc_eth_pivots,mk_btc_usdc_piv};
-   use crate::types::{
-      assets::{ assets::functional_tests::assert_price_k, amounts::mk_amt },
-      quotes::sample_data::sample_quotes_maker
-   };
+   use super::test_data::{ btc_eth, btc_eth_pivots };
+   use crate::types::assets::{ assets::functional_tests::assert_price_k };
 
    #[test] fn test_partition_on_btc() -> ErrStr<()> {
       let pivs = btc_eth_pivots()?;
@@ -296,66 +265,6 @@ mod tests {
       }
       assert_eq!(1, virts);
       assert_eq!(5, table.data.len());
-      Ok(())
-   }
-
-   #[test] fn fail_recompute_non_virtual_amt_pivot() -> ErrStr<()> {
-      let piv = mk_btc_usdc_piv(78408.88, mk_amt(500.0, 0.0), 0, "https://yo")?;
-      let reckt =
-         recompute_pivot(&sample_quotes_maker(&[("BTC", 80000.0)]), false)(piv);
-      assert!(reckt.is_err());
-      if let Err(x) = reckt {
-         assert!(x.contains("virtual"));
-         Ok(())
-      } else { 
-         Err(format!("reckt ({reckt:?}) succeeds (???) unfortunately."))
-      }
-   }
-
-   #[test] fn fail_recompute_non_virtual_tx_pivot() -> ErrStr<()> {
-      let piv = mk_btc_usdc_piv(78408.88, mk_amt(0.0, 500.0), 0, "https://yo")?;
-      let reckt =
-         recompute_pivot(&sample_quotes_maker(&[("BTC", 80000.0)]), false)(piv);
-      assert!(reckt.is_err());
-      if let Err(x) = reckt {
-         assert!(x.contains("virtual"));
-         Ok(())
-      } else { 
-         Err(format!("reckt ({reckt:?}) succeeds (???) unfortunately."))
-      }
-   }
-
-   #[test] fn fail_recompute_closed_pivot() -> ErrStr<()> {
-      let piv = mk_btc_usdc_piv(78408.88,mk_amt(0.0,500.0),1,"virtual pivot")?;
-      let reckt =
-         recompute_pivot(&sample_quotes_maker(&[("BTC",80000.0)]), false)(piv);
-      assert!(reckt.is_err());
-      if let Err(x) = reckt {
-         assert!(x.contains("close"));
-         Ok(())
-      } else { 
-         let cls = "closed pivot recompute";
-         Err(format!("{cls} {reckt:?} succeeds (???) unfortunately."))
-      }
-   }
-
-   #[test] fn test_no_recompute_virtual_pivot_ok() -> ErrStr<()> {
-      let piv = mk_btc_usdc_piv(78408.88,mk_amt(0.0, 0.1),0,"virtual_pivot")?;
-      assert!(!piv.is_updated());
-      let neiner =
-         recompute_pivot(&sample_quotes_maker(&[("BTC",65000.0)]), false)(piv);
-      assert!(neiner.is_ok());
-      assert!(!neiner.unwrap().is_updated());
-      Ok(())
-   }
-
-   #[test] fn test_recompute_virtual_pivot_ok() -> ErrStr<()> {
-      let piv = mk_btc_usdc_piv(78408.88,mk_amt(0.0, 500.0),0,"virtual_pivot")?;
-      assert!(!piv.is_updated());
-      let neiner =
-         recompute_pivot(&sample_quotes_maker(&[("BTC",85000.0)]), false)(piv);
-      assert!(neiner.is_ok());
-      assert!(neiner.unwrap().is_updated());
       Ok(())
    }
 

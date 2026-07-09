@@ -1,33 +1,25 @@
-use std::collections::HashSet;
-
 use clap::Parser;
 
 use book::{
    parse_args_add_banner,
    cli_utils::add_banner,
    csv_utils::as_csv,
-   currency::usd::{USD,mk_usd,no_monay},
+   currency::usd::mk_usd,
    err_utils::ErrStr,
-   num::percentage::mk_percentage,
    string_utils::UppercaseString,
    utils::get_env
 };
 
 use libs::{
-   fetchers::{calls::fetch_calls,pivots::fetch_open_pivots},
-   types::{
-      aliases::aliases,
-      calls::Call,
-      measurable::Measurable,
-      pivots::Pivot,
-      pools::Pool
-   }
+   fetchers::calls::fetch_call_data,
+   processors::virtuals::compute_counter_offer,
+   types::calls::Call
 };
 
 /// Makes a counter-offer to a proposed close pivot
 #[derive(Debug, Parser)]
 #[command(name = "offrian")]
-#[command(version = "1.03")]
+#[command(version = "1.04")]
 struct Args {
    /// protocol to make the counter-offer, e.g.: PIVOT
    protocol: UppercaseString,
@@ -52,94 +44,10 @@ async fn runoff_continuation(auth: &str, ix: usize, vol: f32, debug: bool)
       -> ErrStr<()> {
    let root_url = get_env(&format!("{auth}_URL"))?;
    let volume = mk_usd(vol);
-   let (call, pivs) = pivot_data(&root_url, ix, debug).await?;
-   let leeway =
-      compute_virtual_pivot_amount(&call.pool, &pivs, &call.ids, debug)?;
-   let leeway_vol = mk_usd(leeway * call.proposed_close_price.amount());
-   if debug {
-      println!("The virtual pivots provide {leeway} {} leeway ({})",
-               call.from_token, leeway_vol);
-   }
-   let new_start = compute_new_start(&call, &volume, debug);
-   let new_pivot_amt = compute_new_pivot(&call, new_start, debug);
-   go_no_go(&call, volume, leeway_vol, new_pivot_amt, debug)
-}
-
-fn go_no_go(call: &Call, target: USD, leeway_vol: USD, 
-            new_pivot_amt: f32, debug: bool) -> ErrStr<()> {
-   let give_up = call.pivot_amount - new_pivot_amt;
-   let give_up_vol = mk_usd(give_up * call.pivot_close_price.amount());
-   let gap_vol = leeway_vol - give_up_vol;
-   if gap_vol < no_monay() {
-      Err(format!("Unable to change call {} to {target}; {} derth",
-                  call.ix, gap_vol))
-   } else {
-      let new_call = compute_offrian(&call, new_pivot_amt);
-      report_counter_offer(&new_call, debug)
-   }
-}
-
-fn compute_new_pivot(call: &Call, new_principal: f32, debug: bool) -> f32 {
-   let vol = new_principal * call.quote1.amount();
-   if debug { println!("New volume: {}", mk_usd(vol)); }
-   let new_pivot = vol / call.pivot_close_price.amount();
-   if debug { println!("New pivot amount: {new_pivot} {}", call.pivot_token); }
-   new_pivot
-}
-
-fn compute_new_start(call: &Call, target: &USD, debug: bool) -> f32 {
-   // from the call we get the committed amount and open pivots
-   // from the open pivots we get the virtual amount committed;
-   // that's our play or leeway.
-   let principal_amt = call.gain_10_percent / 1.1; // total pivoted
-   if debug { println!("principal_amt: {principal_amt} {}", call.from_token); }
-   let new_start = target.amount() / call.quote1.amount();
-   if debug {
-      println!("new_start: {new_start} {} ({target})", call.from_token);
-   }
-   new_start
-}
-
-async fn pivot_data(root_url: &str, ix: usize, debug: bool)
-      -> ErrStr<(Call, Vec<Pivot>)> {
-   let call = grab_call(&root_url, ix, debug).await?;
-   if debug { println!("Examining call\n{}", as_csv(&[call.clone()])?); }
-   let pool = &call.pool;
-   let a = aliases();
-   let (all_pivs, dt) = fetch_open_pivots(root_url, pool, &a, debug).await?;
-   if debug {
-      println!("Fetched {} open pivots for {pool} pool; max_date: {dt}",
-               all_pivs.len());
-   }
-   Ok((call, all_pivs))
-}
-
-fn compute_offrian(call: &Call, target_amt: f32) -> Call {
-   let piv_qt = &call.pivot_close_price;
-   let new_vol = target_amt * piv_qt.amount();
-   let new_origin = new_vol / call.quote1.amount();
-   let new_vol_usd = mk_usd(new_vol);
-   let prop_qt = &call.proposed_close_price;
-   let landing_at = new_vol / prop_qt.amount();
-   let at_least = new_origin * 1.1;
-   let gain = landing_at - new_origin;
-   let roi0 = gain / new_origin;
-   let roi = mk_percentage(roi0);
-   let duration = call.close_date
-                      .signed_duration_since(call.opened)
-                      .num_days() as f32;
-   let apr = mk_percentage(roi0 * 365.0 / duration);
-   let c = call.clone();
-   let new_call = Call {
-      virtual_amount: new_origin - call.amount1,
-      val1: new_vol_usd,
-      gain_10_percent: at_least,
-      pivot_amount: target_amt,
-      proposed_amount: landing_at,
-      roi, 
-      apr,
-      ..c };
-   new_call
+   let call_data = fetch_call_data(&root_url, ix, debug).await?;
+   let offrian =
+      compute_counter_offer(&call_data, &volume, debug)?;
+   report_counter_offer(&offrian, debug)
 }
 
 fn report_counter_offer(nc: &Call, debug: bool) -> ErrStr<()> {
@@ -158,45 +66,7 @@ fn report_counter_offer(nc: &Call, debug: bool) -> ErrStr<()> {
    Ok(())
 }
 
-async fn grab_call(root_url: &str, ix: usize, debug: bool) -> ErrStr<Call> {
-   let calls = fetch_calls(root_url).await?;
-   if debug { println!("Fetched {} calls", calls.len()); }
-   let call = calls.get(ix - 1).ok_or("No call found at index {ix}")?;
-   Ok(call.clone())
-}
-
-fn compute_virtual_pivot_amount(pool: &Pool, all_pivs0: &[Pivot],
-                                opens: &[usize], debug: bool) -> ErrStr<f32> {
-   let pivs_set: HashSet<usize> = opens.iter().copied().collect();
-   let mut all_pivs = all_pivs0.to_vec();
-   // filter down to virtual pivots in the call
-   all_pivs.retain(|p| p.is_virtual() && pivs_set.contains(&p.index()));
-   if debug {
-      println!("There are {} virtual pivots for {pool} call", all_pivs.len());
-   }
-   let mut ans = 0.0;
-   // for p in all_pivs { ans += p.committed()?.sz(); }
-   for p in all_pivs { ans += p.sz(); }
-   Ok(ans)
-}
-
 // ----- TESTS -------------------------------------------------------
-
-#[cfg(test)]
-#[cfg(not(tarpaulin_include))]
-mod test_data {
-   use super::*;
-   use libs::types::calls::parse_calls;
-
-   pub fn sample_call() -> ErrStr<Call> {
-      let raw_csv_data = "\
-ix,pool,open_pivots,last_pivot_on_dt,opened,ids,close_id,close_date,from,from_blockchain,amount1,virtual,quote1,val1,gain_10_percent,pivot_token,pivot_blockchain,pivot_close_price,pivot_amount,proposed_token,proposed_blockchain,proposed_close_price,proposed_amount,roi,apr
-1,BTC+USDC,10,2026-04-16,2026-04-15,27;29,8,2026-06-10,BTC,Avalanche,0,0.452206,$81812.00,$36995.88,0.4974266,USDC,Avalanche,$1.00,37005.758,BTC,Avalanche,$61419.00,0.6023795,33.21%,216.45%
-2,BTC+UNDEAD,20,2026-04-09,2026-02-07,3;5;8;10;28;32;34;36;40,15,2026-06-10,UNDEAD,Avalanche,2189400,540280.56,$0.001782,$4863.69,3002648.5,BTC,Avalanche,$61419.00,0.0646658,UNDEAD,Avalanche,$0.000960,4135559.8,51.50%,152.84%";
-      let calls = parse_calls(raw_csv_data)?;
-      Ok(calls.first().unwrap().clone())
-   }
-}
 
 #[cfg(test)]
 #[cfg(not(tarpaulin_include))]
@@ -204,13 +74,7 @@ mod functional_tests {
    use super::*;
 
    use paste::paste;
-   use book::{
-      create_testing,
-      csv_utils::{as_csv,enumerate_csv},
-      string_utils::s,
-      utils::now
-   };
-   use libs::fetchers::test_helpers::test_functions::marshall;
+   use book::{ create_testing, utils::now };
 
    create_testing!("quizzes::quiz08::e_offrian");
 
@@ -218,85 +82,4 @@ mod functional_tests {
         now(runoff_continuation("PIVOT", 1, 9.0, true)));
 
    run!("offrian", now(runoff_continuation("PIVOT", 1, 9.0, false)));
-
-   run!("pivot_data", {
-      let (root_url, _) = marshall()?;
-      let (call, pivs) = now(pivot_data(&root_url, 1, true))?;
-      println!("The first call is:\n\n{}", as_csv(&[call])?);
-      println!("The pivots are:\n\n{}", enumerate_csv(&pivs));
-   });
-   run!("compute_virtual_pivot_amount", {
-      let (root_url, _) = marshall()?;
-      let (call, pivs) = now(pivot_data(&root_url, 1, true))?;
-      let pool = &call.pool;
-      let opens = &call.ids;
-      let tok = s(&call.from_token);
-      let virtual_amt = compute_virtual_pivot_amount(pool, &pivs, opens, true)?;
-      println!("For call:\n\n{}\nvirtual amount: {virtual_amt} {}",
-               as_csv(&[call])?, tok);
-   });
 }
-
-#[cfg(test)]
-#[cfg(not(tarpaulin_include))]
-mod tests {
-   use super::*;
-   use super::test_data::sample_call;
-   use book::{ num::estimate::mk_estimate, types::values::Value };
-   use libs::fetchers::test_helpers::test_functions::marshall;
-
-   fn target() -> USD { mk_usd(900.0) }
-
-   #[test] fn fail_go_no_go() -> ErrStr<()> {
-      let call = sample_call()?;
-      let truthiness = go_no_go(&call, target(),  mk_usd(100.0), 4026.0, true);
-      assert!(truthiness.is_err());
-      Ok(())
-   }
-
-   #[test] fn test_go_no_go_ok() -> ErrStr<()> {
-      let call = sample_call()?;
-      let truthiness = go_no_go(&call, target(), mk_usd(35000.0), 4026.0, true);
-      assert!(truthiness.is_ok(), "Err is {truthiness:?}");
-      Ok(())
-   }
-
-   #[test] fn test_compute_new_pivot() -> ErrStr<()> {
-      let call = sample_call()?;
-      let new_pivot = compute_new_pivot(&call, 0.01, true);
-      assert_eq!(call.quote1.amount() / 100.0, new_pivot);
-            // only works on USDC pools which this call happens to be on.
-      Ok(())
-   }
-
-   #[test] fn test_compute_new_start() -> ErrStr<()> {
-      let call = sample_call()?;
-      let btc = compute_new_start(&call, &target(), true);
-      let ans = mk_estimate(0.011);
-      assert!(ans.approximates(btc));
-      Ok(())
-   }
-
-   #[tokio::test] async fn test_pivot_data() -> ErrStr<()> {
-      let (root_url, _) = marshall()?;
-      let (_call, pivots) = pivot_data(&root_url, 1, true).await?;
-      assert!(!pivots.is_empty());
-      Ok(())
-   }
-
-   #[test] fn test_compute_offrian() -> ErrStr<()> {
-      let call = sample_call()?;
-      let new_call = compute_offrian(&call, 1000.0);
-      let roi_est = mk_estimate(0.33);
-      assert!(roi_est.approximates(new_call.roi.value()), "ROI");
-      let apr_est = mk_estimate(2.16);
-      assert!(apr_est.approximates(new_call.apr.value()), "APR");
-      let btc = new_call.amount1;
-      assert_eq!(0.0, btc, "BTC: principal asset (actual, not virtual)");
-      let btc = new_call.virtual_amount;
-      let btc_est = mk_estimate(0.45 / 37.0);
-      assert!(btc_est.approximates(btc), "BTC: principal asset (virtual)");
-      Ok(())
-   }
-}
-

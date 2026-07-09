@@ -8,15 +8,12 @@ use book::{
    num::percentage::Percentage
 };
 
-use super::{
-   blockchains::Blockchain,
-   pools::Pool
-};
+use super::{ blockchains::Blockchain, pools::Pool, util::Id };
 
 #[serde_as]
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Call {
-    pub ix: usize,
+    pub ix: Id,
     #[serde_as(as = "DisplayFromStr")]
     pub pool: Pool,
     pub open_pivots: usize,
@@ -101,16 +98,12 @@ pub fn parse_calls(csv_data: &str) -> ErrStr<Vec<Call>> {
 #[cfg(not(tarpaulin_include))]
 mod tests {
    use super::*;
-   use book::string_utils::s;
+   use crate::fetchers::test_helpers::test_functions::fetch_local_data;
 
-   fn sample_calls() -> String {
-      s("ix,pool,open_pivots,last_pivot_on_dt,opened,ids,close_id,close_date,from,from_blockchain,amount1,virtual,quote1,val1,gain_10_percent,pivot_token,pivot_blockchain,pivot_close_price,pivot_amount,proposed_token,proposed_blockchain,proposed_close_price,proposed_amount,roi,apr
-1,BTC+USDC,10,2026-04-16,2026-04-15,27;29,8,2026-06-10,BTC,Avalanche,0,0.452206,$81812.00,$36995.88,0.4974266,USDC,Avalanche,$1.00,37005.758,BTC,Avalanche,$61419.00,0.6023795,33.21%,216.45%
-2,BTC+UNDEAD,20,2026-04-09,2026-02-07,3;5;8;10;28;32;34;36;40,15,2026-06-10,UNDEAD,Avalanche,2189400,540280.56,$0.001782,$4863.69,3002648.5,BTC,Avalanche,$61419.00,0.0646658,UNDEAD,Avalanche,$0.000960,4135559.8,51.50%,152.84%")
-   }
-
-   #[test] fn test_parse_calls_ok() {
-      let calls = parse_calls(&sample_calls());
+   #[test] fn test_parse_calls_ok() -> ErrStr<()> {
+      let sample_calls = fetch_local_data("../quizzes", "sample_calls.csv")?;
+      let calls = parse_calls(&sample_calls);
       assert!(calls.is_ok());
+      Ok(())
    }
 }

@@ -16,11 +16,12 @@ use libs::{
    collections::assets::mk_assets,
    fetchers::{ quotes::fetch_quotes, pivots::fetch_pivots},
    paths::pivot_pool_from_file,
+   processors::virtuals::recompute_pivot,
    reports::{total_line,print_tsv_table_d},
    types::{
       comps::Composition,
       measurable::{Measurable,tvl},
-      pivots::{Pivot,recompute_pivot},
+      pivots::Pivot,
       pools::Pool,
       quotes::Quotes
    }

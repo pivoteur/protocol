@@ -42,6 +42,7 @@ depending on the call will get the following output:
 
 ## Revisions
 
+* 1.04, 2026-07-08: Move virtual pivot functions to libs::processors:virtuals
 * 1.03, 2026-07-06: use CLAP to parse arguments and for usage-documentation
 * 1.02, 2026-06-24: changed partition to target volume
 * 1.01, 2026-06-19 (again): added tests and corrected formulæ

@@ -9,7 +9,7 @@ use book::{
 };
 
 use libs::{
-   processors::process_pools,
+   processors::proposals::process_pools,
    collections::assets::{ assets_by_tvl, mk_assets },
    reports::{ Proposal, print_table, proposal, report_proposes }
 };
