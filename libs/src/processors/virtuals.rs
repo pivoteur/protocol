@@ -171,7 +171,7 @@ mod counter_offerer {
       }
 
    }
-// xxx
+// xxx TODO: moar testos herer
 }
 
 use counter_offerer::{ compute_virtual_pivot_amount, compute_offrian };
@@ -195,26 +195,25 @@ pub fn compute_counter_offer(call_data: &(Call, Vec<Pivot>),
 pub mod test_data {
    use super::*;
    use crate::{
-      fetchers::test_helpers::test_functions::parse_test_pivots_from_file,
+      fetchers::test_helpers::test_functions::{
+         parse_test_pivots_from_file,
+         fetch_local_data
+      },
       types::calls::parse_calls
    };
 
    pub fn target() -> USD { mk_usd(2500.0) }
+   pub fn tenk() -> USD { mk_usd(10000.0) }
 
    pub fn sample_call(ix: usize) -> ErrStr<Call> {
-      let raw_csv_data = "\
-ix,pool,open_pivots,last_pivot_on_dt,opened,ids,close_id,close_date,from,from_blockchain,amount1,virtual,quote1,val1,gain_10_percent,pivot_token,pivot_blockchain,pivot_close_price,pivot_amount,proposed_token,proposed_blockchain,proposed_close_price,proposed_amount,roi,apr
-1,BTC+USDC,10,2026-04-16,2026-04-15,27;29,8,2026-06-10,BTC,Avalanche,0,0.452206,$81812.00,$36995.88,0.4974266,USDC,Avalanche,$1.00,37005.758,BTC,Avalanche,$61419.00,0.6023795,33.21%,216.45%
-2,BTC+UNDEAD,20,2026-04-09,2026-02-07,3;5;8;10;28;32;34;36;40,15,2026-06-10,UNDEAD,Avalanche,2189400,540280.56,$0.001782,$4863.69,3002648.5,BTC,Avalanche,$61419.00,0.0646658,UNDEAD,Avalanche,$0.000960,4135559.8,51.50%,152.84%
-3,AVAX+UNDEAD,18,2026-06-12,2026-04-11,43;46;48;49,28,2026-06-25,UNDEAD,Avalanche,1271000,508575,$0.001544,$2748.33,1957532.5,AVAX,Avalanche,$6.57,296.805,UNDEAD,Avalanche,$0.000869,2243323.5,26.06%,126.82%
-4,BTC+ETH,27,2026-05-07,2025-11-05,46,14,2026-06-25,ETH,Avalanche,0,0.1498,$3340.95,$500.47,0.16478,BTC,Avalanche,$61610.00,0.00467,ETH,Avalanche,$1646.41,0.1747552,16.66%,26.21%";
-      let calls = parse_calls(raw_csv_data)?;
+      let raw_csv_data = fetch_local_data("../quizzes", "sample_calls.csv")?;
+      let calls = parse_calls(&raw_csv_data)?;
       Ok(calls[ix-1].clone()) // ix - 1 because 1 is 0 sometimes. *sigh*
    }
 
    pub fn sample_avax_undead_offrian(relative: &str)
          -> ErrStr<(Call, Vec<Pivot>)> {
-      let call = sample_call(3)?;
+      let call = sample_call(2)?;
       let pool = "avax-undead";
       let file = "data/sample_avax_undead_open_pivots.tsv";
       let filename = format!("{relative}/{file}");
@@ -237,7 +236,7 @@ pub mod functional_tests {
       },
       types::{
          assets::amounts::mk_amt,
-         pivots::sample_pivots::mk_btc_usdc_piv,
+         pivots::test_data::mk_btc_usdc_piv,
          quotes::sample_data::sample_quotes_maker
       }
    };
@@ -254,8 +253,6 @@ pub mod functional_tests {
       let (root_url, _) = marshall()?;
       let call_data = now(fetch_call_data(&root_url, 1, true))?;
       let (call, _) = &call_data;
-      let pool = &call.pool;
-      let opens = &call.ids;
       let tok = s(&call.from_token);
       let virtual_amt = compute_virtual_pivot_amount(&call_data, true);
       println!("For call:\n\n{}\nvirtual amount: {virtual_amt} {}",
@@ -267,11 +264,14 @@ pub mod functional_tests {
 #[cfg(not(tarpaulin_include))]
 mod tests {
    use super::*;
-   use super::test_data::{ sample_call, sample_avax_undead_offrian, target };
+   use super::test_data::{
+      sample_avax_undead_offrian,
+      tenk
+   };
    use crate::{
       types::{
          assets::amounts::mk_amt,
-         pivots::sample_pivots::mk_btc_usdc_piv,
+         pivots::test_data::mk_btc_usdc_piv,
          quotes::sample_data::sample_quotes_maker
       }
    };
@@ -341,25 +341,27 @@ mod tests {
 
    #[test] fn test_compute_counter_offer_ok() -> ErrStr<()> {
       let call_data = sample_avax_undead_offrian("../quizzes")?;
-      let (call, _) = &call_data;
       let truthiness =
-         compute_counter_offer(&call, &mk_usd(35000.0), true);
+         compute_counter_offer(&call_data, &mk_usd(1700.0), true);
       assert!(truthiness.is_ok(), "Err is {truthiness:?}");
       Ok(())
    }
 
    #[test] fn test_compute_offrian() -> ErrStr<()> {
-      let call = sample_call(1)?;
-      let new_call = compute_offrian(&call, &target(),  mk_usd(1000.0), true)?;
-      let roi_est = mk_estimate(0.33);
+      let call_data = sample_avax_undead_offrian("../quizzes")?;
+      let leeway = compute_virtual_pivot_amount(&call_data, true);
+      let (call, _opens) = call_data;
+      let leeway_vol = mk_usd(leeway * call.proposed_close_price.amount());
+      let new_call = compute_offrian(&call, &tenk(), leeway_vol, true)?;
+      let roi_est = mk_estimate(0.037);
       roi_est.is(new_call.roi.value())?;
-      let apr_est = mk_estimate(2.16);
+      let apr_est = mk_estimate(0.17);
       apr_est.is(new_call.apr.value())?;
-      let btc = new_call.amount1;
-      assert_eq!(0.0, btc, "BTC: principal asset (actual, not virtual)");
-      let btc = new_call.virtual_amount;
-      let btc_est = mk_estimate(0.45 / 37.0);
-      btc_est.is(btc)
+      let avax = new_call.amount1;
+      assert_eq!(0.0, avax, "AVAX: principal asset (actual, not virtual)");
+      let avax = new_call.virtual_amount;
+      let avax_est = mk_estimate(1458.0);
+      avax_est.is(avax)
    }
 
    #[test] fn test_compute_counter_offer_positive_virtual_amount()

@@ -34,7 +34,7 @@ pub async fn fetch_call_data(root_url: &str, ix: usize, debug: bool)
    if debug { println!("Examining call\n{}", as_csv(&[call.clone()])?); }
    let pool = &call.pool;
    let a = aliases();
-   let (all_pivs, dt) = fetch_open_pivots(root_url, pool, &a).await?;
+   let (all_pivs, dt) = fetch_open_pivots(root_url, pool, &a, debug).await?;
    if debug {
       println!("Fetched {} open pivots for {pool} pool; max_date: {dt}",
                all_pivs.len());

@@ -1,16 +1,16 @@
+use std::pin::Pin;
+use clap::Parser;
 use reqwest::Client;
 use book::{
-    err_utils::ErrStr,
-    utils::{ get_args, get_env },
+   parse_args_add_banner,
+   cli_utils::add_banner,
+   err_utils::{ ErrStr, err_or },
+   utils::get_env
 };
 
-
-const DEFAULT_TWEET_URL: &str = "x.com/pivocateur";
-const DEFAULT_TX_URL:    &str = "asdf";
-
-fn version()  -> &'static str { "1.02" }
-fn app_name() -> &'static str { "distributed" }
-
+//============================================================================
+//----- Telegram Configuration -----------------------------------------------
+//============================================================================
 fn chat_id_for(investor: &str) -> ErrStr<i64> {
     let raw = get_env("INVESTOR_CHAT_IDS")?;
     let map: serde_json::Value = serde_json::from_str(&raw)
@@ -20,31 +20,98 @@ fn chat_id_for(investor: &str) -> ErrStr<i64> {
         .ok_or_else(|| format!("unknown investor/ chat id doesn't exist: {investor}"))
 }
 
-fn usage() -> ErrStr<()> {
-    eprintln!(
-        "Usage: {} <investor> <token_a> <token_b> <amount> <tweet_url> <tx_url> <send>",
-        app_name()
-    );
-    eprintln!("  investor  : investor name / Telegram chat");
-    eprintln!("  token_a   : distributed token, left side of pool  (e.g. USDC)");
-    eprintln!("  token_b   : paired token,      right side of pool (e.g. UNDEAD)");
-    eprintln!("  amount    : amount distributed to investor         (e.g. 0.4349)");
-    eprintln!("  tweet_url : tweet URL          (default: {DEFAULT_TWEET_URL})");
-    eprintln!("  tx_url    : snowtrace tx URL   (default: {DEFAULT_TX_URL})");
-    eprintln!("  send      : let Robbie send message?               (e.g. true/false)");
-    Err("Need <investor> <token_a> <token_b> <amount> <tweet_url> <tx_url> <send> arguments".to_string())
+//============================================================================
+//----- CSV Row Parsing ------------------------------------------------------
+//============================================================================
+#[derive(Debug)]
+pub struct DistributionRow {
+    pub name:    String,
+    pub amount:  u64,
+    pub primary: String,
+    pub pivot:   String,
+    pub url:     String,  // tweet url
+    pub tx_url:  String,
+    pub send:    bool,
 }
 
-pub fn build_message(
-    token_a:   &str,
-    token_b:   &str,
-    tweet_url: &str,
-    amount:    &str,
-    tx_url:    &str,
-) -> String {
+fn parse_bool_cell(field: &str, raw: &str) -> ErrStr<bool> {
+    match raw.trim().to_lowercase().as_str() {
+        "yes" | "true"  => Ok(true),
+        "no"  | "false" => Ok(false),
+        other => Err(format!(
+            "column '{field}': expected yes/no/true/false, got '{other}'"
+        )),
+    }
+}
+
+/// Returns `Ok(None)` for rows that should be skipped:
+///   - blank lines
+///   - the column-name header row               (col 0 == "name")
+///   - data rows where amount distributed == 0  (handled by `reinvested`, not `distributed`)
+/// Returns `Err` only for rows that look like data but are malformed.
+pub fn parse_row(line: &str) -> ErrStr<Option<DistributionRow>> {
+    let line = line.trim();
+    if line.is_empty() {
+        return Ok(None);
+    }
+
+    let cols: Vec<&str> = line.split('\t').collect();
+
+    // not enough columns to be a data row
+    if cols.len() < 13 {
+        return Ok(None);
+    }
+
+    // cols: 0=name 1=reinvested% 2=precentage 3=amount_reinvested 4=amount_distributed
+    //        5=primary 6=pivot 7=usd 8=pivots 9=tweet_url 10=tx_url 11=send 12=flipped
+    let name    = cols[0].trim();
+    let amount  = cols[4].trim();
+    let primary = cols[5].trim();
+    let pivot   = cols[6].trim();
+    let url     = cols[9].trim();
+    let tx_url  = cols[10].trim();
+
+    // column-name header row
+    if name == "name" {
+        return Ok(None);
+    }
+
+    // skip investors with nothing distributed this run
+    let amount_val: u64 = match amount.parse() {
+        Ok(v) => v,
+        Err(e) => return Err(format!(
+            "row '{name}': invalid amount distributed '{amount}': {e}"
+        )),
+    };
+    if amount_val == 0 {
+        return Ok(None);
+    }
+
+    let send = parse_bool_cell("send?", cols[11])?;
+
+    Ok(Some(DistributionRow {
+        name:    name.to_string(),
+        amount:  amount_val,
+        primary: primary.to_string(),
+        pivot:   pivot.to_string(),
+        url:     url.to_string(),
+        tx_url:  tx_url.to_string(),
+        send,
+    }))
+}
+
+//============================================================================
+//----- Message Building and Sending -----------------------------------------
+//============================================================================
+pub fn build_message(row: &DistributionRow) -> String {
     format!(
-        "I close an {token_a}-on-{token_b} pivot (please see the twitter post: {tweet_url}). \
-         I sent {amount} {token_a} to you; tx_id: {tx_url}"
+        "I close an {primary}-on-{pivot} pivot (please see the twitter post: {tweet_url}). \
+         I sent {amount} {primary} to you; tx_id: {tx_url}",
+        primary   = row.primary,
+        pivot     = row.pivot,
+        tweet_url = row.url,
+        amount    = row.amount,
+        tx_url    = row.tx_url,
     )
 }
 
@@ -70,72 +137,220 @@ pub async fn mock_send_telegram(_bot_token: &str, chat_id: i64, text: &str) -> E
     Ok(())
 }
 
-pub async fn runoff_with_args() -> ErrStr<()> {
-    eprintln!("{}, version: {}\n", app_name(), version());
-    let args = get_args();
-    match args.as_slice() {
-        [investor, token_a, token_b, amount, tweet_url, tx_url, send] => {
-            let msg = build_message(token_a, token_b, tweet_url, amount, tx_url);
-            let do_send = send.parse::<bool>()
-                .map_err(|_| format!("send must be true or false, got: {send}"))?;
-            if do_send {
-                let bot_token = get_env("REINVESTED_BOT")?;
-                let chat_id   = chat_id_for(investor)?;
-                send_telegram(&bot_token, chat_id, &msg).await?;
-            }
-            println!("{msg}");
-            Ok(())
+//============================================================================
+//----- Core: process all rows in one pass -----------------------------------
+//============================================================================
+type SendFuture<'a> = Pin<Box<dyn std::future::Future<Output = ErrStr<()>> + Send + 'a>>;
+
+pub async fn process_csv<F>(
+    csv_path:    &str,
+    global_send: bool,
+    send_fn:     F,
+) -> ErrStr<()>
+where
+    F: for<'a> Fn(&'a str, i64, &'a str) -> SendFuture<'a>,
+{
+    let content = std::fs::read_to_string(csv_path)
+        .map_err(|e| format!("cannot read '{csv_path}': {e}"))?;
+
+    for line in content.lines() {
+        let Some(row) = parse_row(line)? else { continue };
+
+        let msg = build_message(&row);
+        println!("[{}] {msg}", row.name);
+
+        if global_send && row.send {
+            let bot_token = get_env("REINVESTED_BOT")?;
+            let chat_id   = chat_id_for(&row.name)?;
+            send_fn(&bot_token, chat_id, &msg).await?;
         }
-        _ => usage(),
     }
+    Ok(())
 }
-//----- UNIT TESTS ------------------------------------------------------------------------
+
+//============================================================================
+//----- fn runoff_with_args --------------------------------------------------
+//============================================================================
+
+/// Sends distribution message to investors
+///
+/// The investors and their distributions are listed in CSV file
+#[derive(Debug, Parser)]
+#[command(name = "distributed")]
+#[command(version = "1.01")]
+struct Args {
+   /// The path to the list of the investors and their distributions
+   csv_path: String,
+
+   /// Send a telegram? (yes/no)
+   send: String
+}
+
+pub async fn runoff_with_args() -> ErrStr<()> {
+   let args = parse_args_add_banner!(Args);
+   let sned: bool = 
+      err_or(args.send.parse(),
+             &format!("Cannot parse {} to a boolean-value", args.send))?;
+   process_csv(&args.csv_path, sned, |tok, id, txt| {
+                Box::pin(send_telegram(tok, id, txt))
+   }).await
+}
+
+//============================================================================
+//----- UNIT TESTS -----------------------------------------------------------
+//============================================================================
+
 #[cfg(test)]
 mod unit_tests {
     use super::*;
 
+    // ---- helpers -----------------------------------------------------------
+
+    fn make_row(name: &str, amount: &str, send: &str) -> String {
+        // cols: 0=name 1=reinvested% 2=precentage 3=amount_reinvested 4=amount_distributed
+        //       5=primary 6=pivot 7=usd 8=pivots 9=tweet_url 10=tx_url 11=send 12=flipped
+        format!(
+            "{name}\t0%\t10.25%\t0\t{amount}\tBTC\tUNDEAD\t$35.66\t15\t\
+             https://x.com/pivocateur/status/2069591552733712719\t\
+             https://snowtrace.io/tx/0x04454ba7f8484359d821f18a5c5e1e6334fa43c416ec345d1de6df10c3e13765\t\
+             {send}\tyes"
+        )
+    }
+
+    fn make_distribution(name: &str, amount: u64, send: bool) -> DistributionRow {
+        DistributionRow {
+            name:    name.to_string(),
+            amount,
+            primary: "BTC".to_string(),
+            pivot:   "UNDEAD".to_string(),
+            url:     "https://x.com/pivocateur".to_string(),
+            tx_url:  "https://snowtrace.io/tx/0xabc".to_string(),
+            send,
+        }
+    }
+
+    // ---- parse_row ---------------------------------------------------------
 
     #[test]
-    fn test_exact_sample_message() {
-        let msg = build_message(
-            "USDC",
-            "UNDEAD",
-            "x.com/pivocateur/status/2054570565474635869",
-            "0.4349",
-            "snowtrace.io/tx/0x04454ba7f8484359d821f18a5c5e1e6334fa43c416ec345d1de6df10c3e13765",
+    fn test_parse_row_normal() -> ErrStr<()> {
+        let row = parse_row(&make_row("γ", "42910", "yes"))?.unwrap();
+        assert_eq!(row.name,    "γ");
+        assert_eq!(row.amount,  42910);
+        assert_eq!(row.primary, "BTC");
+        assert_eq!(row.pivot,   "UNDEAD");
+        assert!(row.send);
+        Ok(())
+    }
+
+    #[test]
+    fn test_parse_row_send_no() -> ErrStr<()> {
+        let row = parse_row(&make_row("τ", "2004", "no"))?.unwrap();
+        assert!(!row.send, "send=no should parse as false");
+        Ok(())
+    }
+
+    #[test]
+    fn test_parse_row_amount_zero_skipped() -> ErrStr<()> {
+        assert!(
+            parse_row(&make_row("α", "0", "yes"))?.is_none(),
+            "amount distributed=0 row should be skipped"
         );
+        Ok(())
+    }
+
+    #[test]
+    fn test_parse_row_column_header_skipped() -> ErrStr<()> {
+        let header = "name\treinvested %\tprecentage\tamount reinvested\tamount distributed\t\
+                      primary\tpivot\tUSD-value\tnumber of pivots closed\ttweet url\ttx url\tsend?\tflipped";
+        assert!(parse_row(header)?.is_none(), "column header row should be skipped");
+        Ok(())
+    }
+
+    #[test]
+    fn test_parse_row_blank_skipped() -> ErrStr<()> {
+        assert!(parse_row("")?.is_none(),   "blank line should be skipped");
+        assert!(parse_row("  ")?.is_none(), "whitespace line should be skipped");
+        Ok(())
+    }
+
+    #[test]
+    fn test_parse_row_amount_invalid_errors() -> ErrStr<()> {
+        let err = parse_row(&make_row("ψ", "not-a-number", "yes"))
+            .unwrap_err();
+        assert!(err.contains("invalid amount distributed"), "should error loudly, not skip");
+        Ok(())
+    }
+
+    // ---- build_message -----------------------------------------------------
+
+    #[test]
+    fn test_build_message_exact() {
+        let mut row = make_distribution("γ", 4349, true);
+        row.primary = "USDC".to_string();
+        row.pivot   = "UNDEAD".to_string();
+        row.url     = "x.com/pivocateur/status/2054570565474635869".to_string();
+        row.tx_url  = "snowtrace.io/tx/0x04454ba7f8484359d821f18a5c5e1e6334fa43c416ec345d1de6df10c3e13765".to_string();
+        let msg = build_message(&row);
         assert_eq!(
             msg,
             "I close an USDC-on-UNDEAD pivot \
              (please see the twitter post: x.com/pivocateur/status/2054570565474635869). \
-             I sent 0.4349 USDC to you; \
+             I sent 4349 USDC to you; \
              tx_id: snowtrace.io/tx/0x04454ba7f8484359d821f18a5c5e1e6334fa43c416ec345d1de6df10c3e13765"
         );
     }
 
     #[test]
-    fn test_token_positions() {
-        let msg = build_message("USDC", "UNDEAD", "tweet", "1.00", "tx");
+    fn test_build_message_token_positions() {
+        let mut row = make_distribution("τ", 2004, true);
+        row.primary = "USDC".to_string();
+        row.pivot   = "UNDEAD".to_string();
+        row.tx_url  = "tx".to_string();
+        let msg = build_message(&row);
         assert!(msg.contains("USDC-on-UNDEAD"), "token_a-on-token_b must appear");
-        assert!(msg.contains("1.00 USDC"),      "amount token_a must appear");
-        assert!(msg.contains("tx_id: tx"),       "tx_url must appear after tx_id:");
+        assert!(msg.contains("2004 USDC"),      "amount + token_a must appear");
+        assert!(msg.contains("tx_id: tx"),      "tx_url must appear after tx_id:");
     }
 
     #[test]
-    fn test_different_token_pair() {
-        let msg = build_message("AVAX", "BTC", "tweet", "3.14", "tx");
+    fn test_build_message_different_token_pair() {
+        let mut row = make_distribution("δ", 1851, true);
+        row.primary = "AVAX".to_string();
+        row.pivot   = "BTC".to_string();
+        let msg = build_message(&row);
         assert!(msg.contains("AVAX-on-BTC"));
-        assert!(msg.contains("3.14 AVAX"));
+        assert!(msg.contains("1851 AVAX"));
     }
 
     #[test]
-    fn test_default_urls_appear_correctly() {
-        let msg = build_message("USDC", "UNDEAD", DEFAULT_TWEET_URL, "0.5", DEFAULT_TX_URL);
-        assert!(msg.contains(DEFAULT_TWEET_URL));
-        assert!(msg.contains(DEFAULT_TX_URL));
+    fn test_parse_row_unrecognized_send_errors() -> ErrStr<()> {
+        let err = parse_row(&make_row("γ", "42910", "maybe")).unwrap_err();
+        assert!(err.contains("send?"), "unrecognized send must error: {err}");
+        Ok(())
     }
+
+    #[test]
+    fn test_parse_row_short_row_skipped() -> ErrStr<()> {
+        // 12 columns — tx_url omitted (the malformed-export case)
+        let short = "γ\t0%\t10.25%\t0\t42910\tBTC\tUNDEAD\t$35.66\t15\t\
+                     https://x.com/pivocateur/status/2069591552733712719\tyes\tyes";
+        assert!(parse_row(short)?.is_none(), "a 12-column row must be skipped");
+        Ok(())
+    }
+
+    #[test]
+    fn test_parse_row_reads_url_and_tx_url() -> ErrStr<()> {
+        let row = parse_row(&make_row("γ", "42910", "yes"))?.unwrap();
+        assert_eq!(row.url,    "https://x.com/pivocateur/status/2069591552733712719");
+        assert_eq!(row.tx_url, "https://snowtrace.io/tx/0x04454ba7f8484359d821f18a5c5e1e6334fa43c416ec345d1de6df10c3e13765");
+        Ok(())
+    }
+
 }
-//----- FUNCTIONAL TESTS -------------------------------------------------------------------
+
+//============================================================================
+//----- FUNCTIONAL TESTS -----------------------------------------------------
+//============================================================================
 #[cfg(test)]
 #[cfg(not(tarpaulin_include))]
 pub mod functional_tests {
@@ -143,19 +358,26 @@ pub mod functional_tests {
     use paste::paste;
     use book::{ create_testing, utils::now };
 
+    create_testing!("quiz11::b_distributed");
 
-    create_testing!("quiz11::b_distributed", "", true);
+    run!("mock_process_csv", {
+        // col: 0=name 1=reinvested% 2=precentage 3=amount_reinvested 4=amount_distributed
+        //      5=primary 6=pivot 7=usd 8=pivots 9=tweet_url 10=tx_url 11=send 12=flipped
+        let tsv = "name\treinvested %\tprecentage\tamount reinvested\tamount distributed\t\
+                   primary\tpivot\tUSD-value\tnumber of pivots closed\ttweet url\ttx url\tsend?\tflipped\n\
+                   γ\t0%\t10.25%\t0\t42910\tBTC\tUNDEAD\t$35.66\t15\t\
+                   https://x.com/pivocateur/status/2069591552733712719\t\
+                   https://snowtrace.io/tx/0xabc\tyes\tyes\n\
+                   α\t100%\t3.46%\t14492\t0\tBTC\tUNDEAD\t$12.04\t15\t\
+                   https://x.com/pivocateur/status/2069591552733712719\t\
+                   https://snowtrace.io/tx/0xdef\tyes\tyes\n";
 
-    run!("mock_build_and_send_message", {
-        let chat_id = 0i64;
-        let msg     = build_message(
-            "USDC",
-            "UNDEAD",
-            "x.com/pivocateur/status/2054570565474635869",
-            "0.4349",
-            "asdf",
-        );
-        let _ = now(mock_send_telegram("mock_token", chat_id, &msg))?;
-        println!("{msg}");
+        let path_buf = std::env::temp_dir().join("distributed_test.tsv");
+        let path = path_buf.to_str().ok_or("temp path is not valid UTF-8")?;
+        std::fs::write(path, tsv).map_err(|e| e.to_string())?;
+
+        let _ = now(process_csv(path, false, |tok, id, txt| {
+            Box::pin(mock_send_telegram(tok, id, txt))
+        }))?;
     });
 }

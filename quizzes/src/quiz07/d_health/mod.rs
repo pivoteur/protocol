@@ -1,14 +1,13 @@
-use std::{ collections::HashSet, io::{ stdout, Write } };
-
 use chrono::NaiveDate;
+use clap::Parser;
 
 use book::{
-   date_utils::parse_date,
+   parse_args_add_banner,
+   cli_utils::add_banner,
    err_utils::ErrStr,
-   list_utils::tail,
-   num::floats::mk_safe_float,
-   string_utils::{s,words},
-   utils::{ get_args, get_env }
+   num::floats::safe_floats::mk_safe_float,
+   string_utils::UppercaseString,
+   utils::get_env
 };
 
 use libs::{
@@ -21,22 +20,6 @@ use libs::{
    types::{ tokens::coins::Coin, comps::Composition }
 };
 
-fn version() -> String { s("1.02") }
-fn app_name() -> String { s("hwaet") }
-fn usage() -> ErrStr<()> {
-   let app = app_name();
-   println!("\n{}, version {}\n\n\t$ {} [--debug] <protocol> <date>
-
-prints the current available assets for all pivot pools: a health-check.
-
-where
-* [-d] or [--debug] (optional) output debugging while computing health
-* <protocol> is the protocol, e.g. PIVOT
-* <date> to check availability, e.g.: $LE_DATE
-", app,  version(), app);
-   Err("Needs arguments <protocol> <date>".to_string())
-}
-
 async fn health_computer(f: impl Fn(&mut Assets, &Coin),
                          root_url: &str, date: &NaiveDate, debug: bool) 
       -> ErrStr<Vec<Composition>> {
@@ -45,12 +28,10 @@ async fn health_computer(f: impl Fn(&mut Assets, &Coin),
    let quotes = fetch_quotes(date).await?;
    let mut ans = Vec::new();
    for pool in pools {
-      if debug {
-         print!("Computing health for pool {pool}...");
-         stdout().flush().unwrap();
-      }
-      let comp = available_assets_fetcher(&f, &root_url, &quotes, &pool).await?;
-      if debug { println!("done."); }
+      if debug { println!("Computing health for pool {pool}..."); }
+      let comp =
+         available_assets_fetcher(&f, &root_url, &quotes, &pool, debug).await?;
+      if debug { println!("...done."); }
       ans.push(comp);
    }
    ans.sort_by_key(|c| mk_safe_float(&c.tvl().amount()));
@@ -67,7 +48,7 @@ fn composition_as_js_health_row(c: &Composition) -> String {
            c.pool_name(), c.tvl())
 }
 
-fn report_health(dt: NaiveDate, v: Vec<Composition>) {
+fn report_health(dt: NaiveDate, v: Vec<Composition>) -> ErrStr<()> {
    let pools: Vec<String> =
       v.iter().map(composition_as_js_health_row).collect();
    println!("const poolHealth = {{");
@@ -76,30 +57,30 @@ fn report_health(dt: NaiveDate, v: Vec<Composition>) {
       {}
    ]
 }};", pools.join("\n      "));
+   Ok(())
+}
+
+/// prints the current available assets for all pivot pools: a health-check.
+#[derive(Debug, Parser)]
+#[command(name = "hwaet")]
+#[command(version = "1.04")]
+struct Args {
+   /// protocol to run the health-check on, e.g.: PIVOT
+   protocol: UppercaseString,
+
+   /// date on which the health-check data is checked, e.g.: $LE_DATE
+   date: NaiveDate,
+
+   /// print debugging-information
+   #[arg(short, long)]
+   debug: bool
 }
 
 pub async fn runoff_with_args() -> ErrStr<()> {
-   let args = get_args();
-   if let Some(a) = args.first() {
-      let ds: HashSet<String> = words("-d --debug").into_iter().collect();
-      let debug = ds.contains(a);
-      let args1 = if debug { tail } else { <[_]>::to_vec }(&args);
-      runoff_continued(args1, debug).await
-   } else {
-      usage()
-   }
-}
-
-async fn runoff_continued(args: Vec<String>, debug: bool) -> ErrStr<()> {
-   if let [auth, dt] = args.as_slice() {
-      let root_url = get_env(&format!("{}_URL", auth.to_uppercase()))?;
-      let date = parse_date(&dt)?;
-      let comps = compute_health(&root_url, &date, debug).await?;
-      report_health(date, comps);
-      Ok(())
-   } else {
-      usage()
-   }
+   let args = parse_args_add_banner!(Args);
+   let root_url = get_env(&format!("{}_URL", args.protocol))?;
+   let comps = compute_health(&root_url, &args.date, args.debug).await?;
+   report_health(args.date, comps)
 }
 
 // ----- TESTS -------------------------------------------------------
@@ -120,13 +101,13 @@ mod functional_tests {
    use book::{ create_testing, date_utils::yesterday, utils::now };
    use libs::fetchers::test_helpers::test_functions::marshall;
 
-   create_testing!("quiz07::d_health", "", true);
+   create_testing!("quiz07::d_health");
 
    run!("compute_health", " (using mock subtractor)", {
       let yday = yesterday();
       let (root_url, _) = marshall()?;
       let comps = now(health_computer(s, &root_url, &yday, true))?;
-      report_health(yday, comps);
+      report_health(yday, comps)?;
    });
 }
 

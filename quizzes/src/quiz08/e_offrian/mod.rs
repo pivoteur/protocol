@@ -1,68 +1,53 @@
+use clap::Parser;
+
 use book::{
+   parse_args_add_banner,
+   cli_utils::add_banner,
    csv_utils::as_csv,
-   currency::usd::{ USD, mk_usd },
+   currency::usd::mk_usd,
    err_utils::ErrStr,
-   list_utils::tail,
-   num_utils::parse_num,
-   parse_utils::parse_id,
-   string_utils::s,
-   utils::{get_args,get_env}
+   string_utils::UppercaseString,
+   utils::get_env
 };
 
 use libs::{
    fetchers::calls::fetch_call_data,
    processors::virtuals::compute_counter_offer,
-   types::{ calls::Call, pivots::Pivot }
+   types::calls::Call
 };
 
-fn version() -> String { s("1.04") }
-fn app_name() -> String { s("offrian") }
-fn usage() -> ErrStr<()> {
-   let app = app_name();
-   println!("
-{}, version {}
+/// Makes a counter-offer to a proposed close pivot
+#[derive(Debug, Parser)]
+#[command(name = "offrian")]
+#[command(version = "1.04")]
+struct Args {
+   /// protocol to make the counter-offer, e.g.: PIVOT
+   protocol: UppercaseString,
 
-Usage:
+   /// call id being countered, e.g. 1
+   ix: usize,
 
-$ {} [--debug] <protocol> <ix> <part>
+   /// target volume (the volume we want the open pivots to have been)
+   volume: f32,
 
-where:
-
-* [-d|--debug] show debug information
-* <protocol> is the protocol to make the counter-offer, e.g.: PIVOT
-* <ix> is the call being countered, e.g. 1
-* <vol> is the target volume (the volume we want the open pivots to have been)
-  e.g.: if the open pivots were for $15074.88, say, then 3000 reduces the open 
-        pivots to $3000.00
-", app, version(), app);
-   Err(s("offrian requires <protocol> <ix> <part> arguments"))
+   /// show debug information
+   #[arg(short, long)]
+   debug: bool
 }
 
 pub async fn runoff_with_args() -> ErrStr<()> {
-   let args = get_args();
-   if let Some(debug) = args.first() {
-      let (rest, debug) = if debug == "--debug" || debug == "-d" {
-         (tail(&args), true)
-      } else {
-         (args.clone(), false)
-      };
-      runoff_continuation(&rest, debug).await
-   } else {
-      usage()
-   }
+   let args = parse_args_add_banner!(Args);
+   runoff_continuation(&args.protocol, args.ix, args.volume, args.debug).await
 }
 
-async fn runoff_continuation(args: &[String], debug: bool) -> ErrStr<()> {
-   if let [auth, call, vol] = args {
-      let root_url = get_env(&format!("{}_URL", auth.to_uppercase()))?;
-      let target = mk_usd(parse_num(&vol)?);
-      let ix = parse_id(&call)?;
-      let call_data = fetch_call_data(&root_url, ix, debug).await?;
-      let new_call = compute_counter_off((&call_data, &target, debug)?;
-      report_counter_offer(&new_call, debug)
-   } else {
-      usage()
-   }
+async fn runoff_continuation(auth: &str, ix: usize, vol: f32, debug: bool)
+      -> ErrStr<()> {
+   let root_url = get_env(&format!("{auth}_URL"))?;
+   let volume = mk_usd(vol);
+   let call_data = fetch_call_data(&root_url, ix, debug).await?;
+   let offrian =
+      compute_counter_offer(&call_data, &volume, debug)?;
+   report_counter_offer(&offrian, debug)
 }
 
 fn report_counter_offer(nc: &Call, debug: bool) -> ErrStr<()> {
@@ -89,22 +74,12 @@ mod functional_tests {
    use super::*;
 
    use paste::paste;
-   use book::{ create_testing, csv_utils::as_csv, utils::now };
-   use libs::processors::virtuals::test_data::sample_avax_undead_offrian;
+   use book::{ create_testing, utils::now };
 
-   create_testing!("quizzes::quiz08::e_offrian", "", true);
+   create_testing!("quizzes::quiz08::e_offrian");
 
    run!("debug_offrian",
-        now(runoff_continuation(&[s("pivot"),s("1"),s("9")],true)));
+        now(runoff_continuation("PIVOT", 1, 9.0, true)));
 
-   run!("offrian", now(runoff_continuation(&[s("pivot"),s("1"),s("9")],false)));
-
-   run!("with_data_compute_offrian", {
-      let (call, opens) = sample_avax_undead_offrian(".")?;
-      let target = mk_usd(1700.0);
-      let new_call =
-         with_data_compute_offrian(&call, &opens, &target, false)?;
-      println!("The new call of {target} for\n\n{}\nis\n\n{}",
-               as_csv(&[call])?, as_csv(&[new_call])?);
-   });
+   run!("offrian", now(runoff_continuation("PIVOT", 1, 9.0, false)));
 }

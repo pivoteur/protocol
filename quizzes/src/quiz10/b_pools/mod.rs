@@ -1,16 +1,15 @@
 use chrono::NaiveDate;
+use clap::{ Parser, CommandFactory };
 
 use libs::fetchers::pool_names::fetch_pool_names;
 
 use book::{
-   date_utils::parse_date,
+   parse_args_add_banner,
+   cli_utils::add_banner,
    err_utils::ErrStr,
-   string_utils::s,
-   utils::{ get_args, get_env }
+   string_utils::UppercaseString,
+   utils::get_env
 };
-
-fn app_name() -> String { s("pools") }
-fn version() -> String { s("1.00") }
 
 async fn print_pool_assets(auth: &str, dt: &NaiveDate) -> ErrStr<()> {
    let ogori_cap = auth.to_uppercase();
@@ -32,25 +31,22 @@ const poolAssets = {{
    Ok(())
 }
 
-fn usage() -> ErrStr<()> {
-   println!("
-Usage:
+/// pools prints a Javascript object of pool assets.
+#[derive(Debug, Parser)]
+struct Args {
+   /// protocol to determine active pivot pools, e.g.: PIVOT
+   protocol: UppercaseString,
 
-$ {} <auth> <date>
-
-Given <auth> access and <date>, {} prints a Javascript object of pool assets.
-", app_name(), app_name());
-   Err("Need <auth> and <date> arguments".to_string())
+   /// date to determine active pivot pools, e.g.: $LE_DATE
+   date: NaiveDate
 }
 
 #[cfg(not(tarpaulin_include))]
 pub async fn runoff_get_args() -> ErrStr<()> {
-   println!("\n// created by: {}, version: {}\n", app_name(), version());
-   let args = get_args();
-   if let [auth, dt] = args.as_slice() {
-      let date = parse_date(&dt)?;
-      print_pool_assets(&auth, &date).await
-   } else { usage() }
+   let args = parse_args_add_banner!(Args);
+   let vers = Args::command().render_version();
+   println!("\n// created by: {vers}\n");
+   print_pool_assets(&args.protocol, &args.date).await
 }
 
 // ----- TESTS -------------------------------------------------------
@@ -63,7 +59,7 @@ mod functional_tests {
 
    use book::{ create_testing, date_utils::yesterday, utils::now };
 
-   create_testing!("quiz10::b_pools", "", true);
+   create_testing!("quiz10::b_pools");
 
    run!("pivot_pool_assets", {
       let _ = now(print_pool_assets("pivot", &yesterday()))?;

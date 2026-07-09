@@ -127,13 +127,13 @@ pub fn partition_on(tok: &str, opens: Vec<Pivot>) -> Partition<Pivot> {
 
 #[cfg(test)]
 #[cfg(not(tarpaulin_include))]
-pub mod sample_pivots {
+pub mod test_data {
    use super::*;
    use crate::{
-      tables::{IxTable,index_table},
+      tables::{ IxTable, index_table },
       types::{
          aliases::aliases,
-         assets::{assets::mk_asset, amounts::{Amount,mk_amt} },
+         assets::{ amounts::{ Amount, mk_amt }, assets::mk_asset },
          headers::mk_hdr
       }
    };
@@ -182,10 +182,10 @@ s("opened	open	close	tx_id	updated	from	from_blockchain	amount1	virtual	quote1	v
 
 #[cfg(test)]
 #[cfg(not(tarpaulin_include))]
-pub mod functional_tests {
-   use super::*;
-   use super::sample_pivots::btc_eth_pivots;
+mod functional_tests {
    use paste::paste;
+   use super::*;
+   use super::test_data::btc_eth_pivots;
    use book::create_testing;
 
    create_testing!("types::pivots");
@@ -201,7 +201,7 @@ pub mod functional_tests {
 #[cfg(not(tarpaulin_include))]
 mod tests {
    use super::*;
-   use super::sample_pivots::{btc_eth,btc_eth_pivots};
+   use super::test_data::{ btc_eth, btc_eth_pivots };
    use crate::types::assets::{ assets::functional_tests::assert_price_k };
 
    #[test] fn test_partition_on_btc() -> ErrStr<()> {

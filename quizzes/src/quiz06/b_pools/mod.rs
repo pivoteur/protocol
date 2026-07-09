@@ -1,10 +1,14 @@
+use clap::Parser;
+
 use book::{
+   parse_args_add_banner,
+   cli_utils::add_banner,
    currency::usd::{USD,mk_usd,no_monay},
    csv_utils::CsvWriter,
    err_utils::ErrStr,
-   num_utils::parse_or,
-   string_utils::s,
-   utils::{get_env,get_args}
+   string_utils::{ UppercaseString, s },
+   tuple_utils::Partition,
+   utils::get_env
 };
 
 use libs::{
@@ -17,22 +21,18 @@ use libs::{
   }
 };
 
-fn version() -> String { s("1.06") }
-fn app_name() -> String { s("assets") }
-fn min_default() -> f32 { 10000.0 }
-fn min_value(mini: Option<&String>) -> USD {
-   mk_usd(parse_or(mini, min_default()))
-}
-
-fn report_on_assets(pools: Vec<Composition>, min_val: USD) {
-   let skip = if let Some(a_pool) = pools.first() { a_pool.ncols() } else {
-      panic!("Portfolio has no pivot pools!")
-   } - 3;
-   let (mut viab, mut poor): (Vec<_>, Vec<_>)
+fn report_on_assets(pools: Vec<Composition>, min_val: USD) -> ErrStr<()> {
+   let skip = if let Some(a_pool) = pools.first() {
+      Ok(a_pool.ncols())
+   } else {
+      Err(s("Portfolio has no pivot pools!"))
+   }? - 3;
+   let (mut viab, mut poor): Partition<_>
       = pools.into_iter().partition(|p| p.tvl() > min_val);
    let sz1 = print_update(skip, "main pools", &mut viab);
    let sz2 = print_update(skip, "pools to review", &mut poor);
    total_line(skip, " ,total", &(sz1 + sz2));
+   Ok(())
 }
 
 fn print_update(skip: usize, title: &str, pools: &mut Vec<Composition>) -> USD {
@@ -49,48 +49,43 @@ fn print_update(skip: usize, title: &str, pools: &mut Vec<Composition>) -> USD {
    }
 }
 
-fn usage() -> String {
-   let dapp = app_name();
-   let minime = min_default();
-   println!("Reports pivot pools' TVL (total value locked)
+/// Reports pivot pools' TVL (total value locked)
+#[derive(Debug, Parser)]
+struct Args {
+   /// protocol of pools processed
+   protocol: UppercaseString,
 
-Usage:
+   /// minimum pivot pool NAV filter
+   #[arg(short, long, default_value_t = 10000.0)]
+   min: f32,
 
-$ {dapp} <protocol> [min={minime}]
-
-where
-
-* <protocol> is the dapp processing the pools
-* [min] minimum pool TVL, default {minime}
-");
-   "<protocol>-argument missing.".to_string()
+   /// print debugging information
+   #[arg(short, long)]
+   debug: bool
 }
 
-async fn fetch_all_pools_assets(root_url: &str) -> ErrStr<Vec<Composition>> {
+pub async fn runoff_get_args() -> ErrStr<()> {
+   let args = parse_args_add_banner!(Args);
+   process_pool_assets(&args.protocol, args.min, args.debug).await
+}
+
+async fn process_pool_assets(protocol: &str, min: f32, debug: bool)
+      -> ErrStr<()> {
+   let root_url = get_env(&format!("{protocol}_URL"))?;
+   let pools = fetch_all_pools_assets(&root_url, debug).await?;
+   report_on_assets(pools, mk_usd(min))
+}
+
+async fn fetch_all_pools_assets(root_url: &str, debug: bool)
+      -> ErrStr<Vec<Composition>> {
    let aliases = aliases();
    let pool_names = fetch_pool_names(&root_url).await?;
    let mut pools = Vec::new();
    for pool in pool_names {
-      let p = fetch_assets(&root_url, &pool, &aliases).await?;
+      let p = fetch_assets(&root_url, &pool, &aliases, debug).await?;
       pools.push(p);
    }
    Ok(pools)
-}
-
-async fn do_it(mb_auth: Option<&String>, mb_mini: Option<&String>)
-      -> ErrStr<()> {
-   println!("{}, version: {}\n", app_name(), version());
-   let auth = mb_auth.ok_or_else(|| usage())?.to_uppercase();
-   let root_url = get_env(&format!("{auth}_URL"))?;
-   let mini = min_value(mb_mini);
-   let pools = fetch_all_pools_assets(&root_url).await?;
-   report_on_assets(pools, mini);
-   Ok(())
-}
-
-pub async fn runoff_get_args() -> ErrStr<()> {
-   let args = get_args();
-   do_it(args.first(), args.last()).await
 }
 
 // ----- TESTS -------------------------------------------------------
@@ -103,10 +98,10 @@ pub mod functional_tests {
    use paste::paste;
    use book::{ create_testing, utils::now };
 
-   create_testing!("quiz06::b_pools", "", true);
+   create_testing!("quiz06::b_pools");
 
    run!("fetch_all_pool_assets", {
-      let _ = now(do_it(Some(&s("PIVOT")), Some(&s("10000"))));
+      let _ = now(process_pool_assets("PIVOT", 10000.0, true));
    });
 }
 
@@ -119,7 +114,7 @@ mod tests {
 
    async fn fetch_pools() -> ErrStr<Vec<Composition>> {
       let root_url = get_env("PIVOT_URL")?;
-      fetch_all_pools_assets(&root_url).await
+      fetch_all_pools_assets(&root_url, true).await
    }
 
    #[tokio::test] async fn test_fetch_all_pools_assets_ok() -> ErrStr<()> {
@@ -133,18 +128,4 @@ mod tests {
       assert!(!pools.is_empty());
       Ok(())
    }
-
-   #[test] fn test_min_default_none() {
-      assert_eq!(mk_usd(min_default()), min_value(None));
-   }
-
-   #[test] fn test_min_default_parse_failed() {
-      assert_eq!(mk_usd(min_default()),
-                 min_value(Some(&"blad-di-blah".to_string())));
-   }
-
-   #[test] fn test_min_value() {
-      assert_eq!(mk_usd(1234.0), min_value(Some(&"1234".to_string())));
-   }
 }
-

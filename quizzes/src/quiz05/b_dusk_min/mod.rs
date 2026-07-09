@@ -1,10 +1,11 @@
 use chrono::NaiveDate;
+use clap::Parser;
 
 use book::{
-   date_utils::parse_date,
+   parse_args_add_banner,
+   cli_utils::add_banner,
    err_utils::ErrStr,
-   string_utils::s,
-   utils::get_args
+   string_utils::UppercaseString
 };
 
 use libs::{
@@ -13,26 +14,12 @@ use libs::{
    reports::{ Proposal, print_table, proposal, report_proposes }
 };
 
-fn version() -> String { s("2.04") }
-fn app_name() -> String { s("dusk") }
-fn usage() -> ErrStr<()> {
-    println!("Usage:
-
-$ {} [--min] <protocol> <date>
-
-where:
-* <protocol> is the protocol to be analyzed, e.g.: PIVOT
-* <date> is the date to propose pivots, e.g. 2025-12-18
-* --min (optional) outputs only the proposals table", app_name());
-Err("Need <protocol> and <date> arguments".to_string())
-}
-
-pub async fn propose(auth: &str, date: &NaiveDate, min: bool) -> ErrStr<()> {
-   if !min { println!("Processing pools for {auth} on date {date}"); }
-   let (proposals, no_closes) = process_pools(auth, date, !min).await?;
-   let x = if min { &vec![] } else { &no_closes };
-   report_proposes(proposals.clone(), x, min);
-   if !min && !proposals.is_empty() { tokens_to_pivot(proposals); }
+pub async fn propose(auth: &str, date: &NaiveDate, debug: bool) -> ErrStr<()> {
+   if debug { println!("Processing pools for {auth} on date {date}"); }
+   let (proposals, no_closes) = process_pools(auth, date, debug).await?;
+   let x = if !debug { &vec![] } else { &no_closes };
+   report_proposes(proposals.clone(), x, !debug);
+   if debug && !proposals.is_empty() { tokens_to_pivot(proposals); }
    Ok(())
 }
 
@@ -45,34 +32,34 @@ fn tokens_to_pivot(proposals: Vec<Proposal>) {
    print_table("Assets to pivot", &assets_by_tvl(&tokens));
 }
 
+/// Make the close pivot call
+#[derive(Debug, Parser)]
+#[command(name = "dusk")]
+#[command(version = "2.05")]
+struct Args {
+   /// Protocol to analyze pivots to close, e.g.: PIVOT
+   protocol: UppercaseString,
+
+   /// Date to make the calls, e.g.: $LE_DATE
+   date: NaiveDate,
+
+   /// Minimal output, suitable for updating calls.tsv
+   #[arg(short, long)]
+   min: bool
+}
+
 pub async fn runoff_with_args() -> ErrStr<()> {
-    let args = get_args();
-    let min = args.contains(&"--min".to_string());
-    let args: Vec<String> =
-       args.into_iter().filter(|a| a != "--min").collect();
-    if !min {
-        println!("\n{}, version: {}\n", app_name(), version());
-    }
-    if let [auth, dt] = args.as_slice() {
-        let date = parse_date(&dt)?;
-        propose(auth, &date, min).await
-    } else {
-        usage()
-    }
+  let args = parse_args_add_banner!(Args);
+  let debug = !args.min;
+  propose(&args.protocol, &args.date, debug).await
 }
 
 // ----- UNIT TESTS ------------------------------------------------
 
 #[cfg(test)]
+#[cfg(not(tarpaulin_include))]
 mod unit_tests {
    use super::*;
-
-   #[test] fn test_usage_returns_err() {
-      let result = usage();
-      assert!(result.is_err());
-      assert_eq!(result.unwrap_err(), "Need <protocol> and <date> arguments");
-   }
-
    #[test] fn test_tokens_to_pivot_empty() { tokens_to_pivot(vec![]); }
 }
 
@@ -81,12 +68,12 @@ mod unit_tests {
 #[cfg(test)]
 #[cfg(not(tarpaulin_include))]
 pub mod functional_tests {
-    use super::*;
-    use paste::paste;
-    use book::{ create_testing, date_utils::yesterday, utils::now };
+   use super::*;
+   use paste::paste;
+   use book::{ create_testing, date_utils::yesterday, utils::now };
 
-    create_testing!("quiz05::b_dusk_min", "", true);
+   create_testing!("quiz05::b_dusk_min");
 
-    run!("full_dusk", { let _ = now(propose("pivot", &yesterday(), false)); });
-    run!("dusky_min", { let _ = now(propose("pivot", &yesterday(), true)); });
+   run!("full_dusk", { let _ = now(propose("pivot", &yesterday(), false)); });
+   run!("dusky_min", { let _ = now(propose("pivot", &yesterday(), true)); });
 }

@@ -8,6 +8,8 @@ Show assets committed to virtual pivots.
 
 ## Revisions
 
+* 2.05, 2026-07-08: use clap to process arguments and for usage-documentation
+* 2.04, 2026-07-02: Added debugging and moved composite-computation to libs
 * 2.03, 2026-03-13: Automatically updating open virtual pivots
 * 2.02, 2026-03-12: Recomputes virtual pivots with today's quotes
 * 2.01, 2026-03-11: `--debug`-flag shows context

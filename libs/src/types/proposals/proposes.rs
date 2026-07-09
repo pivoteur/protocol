@@ -154,12 +154,13 @@ fn mk_prop(open_pivots: Vec<Pivot>, c: Id, d: &NaiveDate,
       propose }, c+1)
 }
 
-pub fn propose(q: &Quotes)
-      -> impl Fn((Vec<Pivot>, Id)) -> ErrStr<Option<(Propose, Id)>> {
-   move |(pivots, c): (Vec<Pivot>, Id)| {
+pub fn propose(q: &Quotes) -> impl Fn((Vec<Pivot>, Id), bool)
+      -> ErrStr<Option<(Propose, Id)>> {
+   move |(pivots, c): (Vec<Pivot>, Id), debug: bool| {
       let mut princes = Vec::new();
       let mut pivs = Vec::new();
       let mut res: Vec<PropAsset> = Vec::new();
+      if debug { println!("Making a proposal from {} pivots", pivots.len()); }
       for p in pivots {
          let props = p.trade(q)?;
          let _ = props.and_then(|(frm, to)| {
@@ -170,11 +171,14 @@ pub fn propose(q: &Quotes)
          });
       }
       if princes.is_empty() {
+         if debug { println!("No proposal found for pivots"); }
          Ok(None)
       } else {
          if let Some(result) = res.first() {
             let proposed = result.clone_with(result.aug(), size(&res), TO);
-            Ok(Some(mk_prop(princes, c, &q.date, pivs, proposed)))
+            let (prop, ix) = mk_prop(princes, c, &q.date, pivs, proposed);
+            if debug { println!("proposal #{ix}: {}", prop.as_csv()); }
+            Ok(Some((prop, ix)))
          } else {
             Err("No proposal to accumulate on flagged principal".to_string())
          }
@@ -192,7 +196,7 @@ pub mod functional_tests {
    use crate::types::{
       assets::amounts::mk_amt,
       quotes::sample_data::sample_quotes_maker,
-      pivots::sample_pivots::mk_btc_usdc_piv
+      pivots::test_data::mk_btc_usdc_piv
    };
    use book::create_testing;
 
@@ -202,7 +206,7 @@ pub mod functional_tests {
       let piv = mk_btc_usdc_piv(78408.88,mk_amt(0.0,0.1),0,"virtual pivot")?;
       let quotes = sample_quotes_maker(&[("BTC", 65000.0)]);
       let proposer = propose(&quotes);
-      if let Some((call, next_id)) = proposer((vec![piv], 1))? {
+      if let Some((call, next_id)) = proposer((vec![piv], 1), true)? {
          println!("call:\n{}\n{}\n\nnext_id: {next_id}",
                   call.header(), call.as_csv());
       } else {
@@ -217,7 +221,7 @@ mod tests {
    use crate::types::{
       assets::amounts::mk_amt,
       quotes::sample_data::sample_quotes_maker,
-      pivots::sample_pivots::mk_btc_usdc_piv
+      pivots::test_data::mk_btc_usdc_piv
    };
 
    #[test]
@@ -226,7 +230,7 @@ mod tests {
       let quotes = sample_quotes_maker(&[("BTC",85000.0)]);
       let proposer = propose(&quotes);
       let max_id = 1;
-      let ans = proposer((vec![piv], max_id));
+      let ans = proposer((vec![piv], max_id), true);
       assert!(ans.is_ok());
       let call = ans?;
       assert!(call.is_none());
@@ -239,7 +243,7 @@ mod tests {
       let quotes = sample_quotes_maker(&[("BTC",65000.0)]);
       let max_id = 1;
       let proposer = propose(&quotes);
-      let ans = proposer((vec![piv], max_id));
+      let ans = proposer((vec![piv], max_id), true);
       assert!(ans.is_ok());
       if let Some((_call, next_id)) = ans.clone()? {
          assert_eq!(2, next_id);

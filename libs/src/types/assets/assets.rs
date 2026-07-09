@@ -143,10 +143,10 @@ pub fn trade(q: &Quotes, from: &Asset, to: &Asset)
    let piv_qt = q.lookup(piv)?;
    let to_trade = to.sz();
    let target = gain_10_percent(from.sz());
-   let computed_amount = to_trade * piv_qt / prim_qt;
-   Ok(pred(computed_amount > target,
-       (mk_prop_asset(piv, piv_blk, &mk_usd(piv_qt), to_trade, FROM),
-        mk_prop_asset(prim, prim_blk, &mk_usd(prim_qt), computed_amount, TO))))
+   let computed = to_trade * piv_qt / prim_qt;
+   Ok(pred(computed > target,
+           (mk_prop_asset(piv, piv_blk, &mk_usd(piv_qt), to_trade, FROM),
+            mk_prop_asset(prim, prim_blk, &mk_usd(prim_qt), computed, TO))))
 }
 
 pub fn gain_10_percent(a: f32) -> f32 { a * 1.1 }

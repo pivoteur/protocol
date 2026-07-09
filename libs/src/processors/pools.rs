@@ -1,28 +1,10 @@
 use chrono::NaiveDate;
 
-use book::{
-   not_implemented,
-   err_utils::ErrStr, 
-   utils::get_env
-};
+use book::{ not_implemented, err_utils::ErrStr };
 
-use super::{
-   fetchers::{
-      pivots::fetch_pivots,
-      quotes::fetch_quotes,
-      pool_names::fetch_pool_names
-   },
-   reports::{Proposal,mk_proposal},
-   types::{
-      measurable::sort_descending,
-      pivots::{Pivot,next_close_id,partition_on},
-      pools::Pool,
-      proposals::proposes::{Propose,propose as propose_f},
-      tokens::allocations::{
-         pools::Pools
-      },
-      util::Token
-   }
+use crate::{
+   fetchers::{ quotes::fetch_quotes, pool_names::fetch_pool_names },
+   types::tokens::allocations::pools::Pools
 };
 
 pub async fn process_pool_assets(root_url: &str, dt: &NaiveDate)
