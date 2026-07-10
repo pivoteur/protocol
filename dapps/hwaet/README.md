@@ -17,6 +17,7 @@ where:
 
 ## Revision history
 
+* 1.05, 2026-07-10, bug-fix: added commas after each pool-object to fix syntax
 * 1.04, 2026-07-08, hot-fix: handle pivot pools with one-sided assets
 * 1.03, 2026-07-05: using clap to process arguments and for usage-documentation
 * 1.02, 2026-06-27: Clarified which pool is over-committed on error.
