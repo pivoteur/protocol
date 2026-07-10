@@ -14,7 +14,7 @@ use book::{
 async fn print_pool_assets(auth: &str, dt: &NaiveDate) -> ErrStr<()> {
    let ogori_cap = auth.to_uppercase();
    let root_url = get_env(&format!("{ogori_cap}_URL"))?;
-   let pools = fetch_pool_names(&root_url).await?;  // TODO: FIXME
+   let pools = fetch_pool_names(&root_url).await?;  // OBE! see c_local_pools
    let assets: Vec<String> =
       pools.into_iter().map(|pool| {
          let (a, b) = pool.as_tuple();

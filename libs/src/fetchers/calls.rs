@@ -11,7 +11,13 @@ use super::{ pivots::fetch_open_pivots, utils::fetch_lines };
 use crate::{
    paths::pivots_dir,
    tables::IxTable,
-   types::{ aliases::aliases, calls::{Call,parse_calls}, pivots::Pivot }
+   types::{
+      aliases::aliases,
+      calls::{
+         calls::{Call,parse_calls},
+         call_data::{ CallData, mk_call_data }
+      }
+   }
 };
 
 // ----- CALLS -------------------------------------------------------
@@ -29,7 +35,7 @@ pub async fn fetch_calls(root_url: &str) -> ErrStr<Vec<Call>> {
 }
 
 pub async fn fetch_call_data(root_url: &str, ix: usize, debug: bool)
-      -> ErrStr<(Call, Vec<Pivot>)> {
+      -> ErrStr<CallData> {
    let call = grab_call(&root_url, ix, debug).await?;
    if debug { println!("Examining call\n{}", as_csv(&[call.clone()])?); }
    let pool = &call.pool;
@@ -39,7 +45,7 @@ pub async fn fetch_call_data(root_url: &str, ix: usize, debug: bool)
       println!("Fetched {} open pivots for {pool} pool; max_date: {dt}",
                all_pivs.len());
    }
-   Ok((call, all_pivs))
+   Ok(mk_call_data(call, all_pivs))
 }
 
 async fn grab_call(root_url: &str, ix: usize, debug: bool) -> ErrStr<Call> {
@@ -79,9 +85,9 @@ pub mod functional_tests {
 
    run!("fetch_call_data", {
       let (root_url, _) = marshall()?;
-      let (call, pivs) = now(fetch_call_data(&root_url, 1, true))?;
-      println!("The first call is:\n\n{}", as_csv(&[call])?);
-      println!("The pivots are:\n\n{}", enumerate_csv(&pivs));
+      let call_data = now(fetch_call_data(&root_url, 1, true))?;
+      println!("The call data is:\n\n{}\n{}", call_data.header(),
+               call_data.as_csv());
    });
 
    run!("grab_call", {

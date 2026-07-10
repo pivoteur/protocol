@@ -71,7 +71,7 @@ impl CsvWriter for Pivot {
       self.header.ncols() + self.from.ncols() + self.to.ncols() + 1
    }
    fn as_csv(&self) -> String {
-      let gain = gain_10_percent(self.from.sz());
+      let gain = gain_10_percent(self.sz());
       format!("{},{},{},{}", 
               self.header.as_csv(),
               self.from.as_csv(), gain,
@@ -125,7 +125,6 @@ pub fn partition_on(tok: &str, opens: Vec<Pivot>) -> Partition<Pivot> {
 
 // ----- TESTS -----------------------------------------------------------
 
-#[cfg(test)]
 #[cfg(not(tarpaulin_include))]
 pub mod test_data {
    use super::*;
@@ -149,7 +148,7 @@ pub mod test_data {
       let ava = "Avalanche";
       let qt = mk_usd(q);
       let to = mk_asset("USDC", ava, mk_amt(7840.0, 0.0), mk_usd(1.0), &TO);
-      let header = mk_hdr("2026-03-10", 1, c, tx.to_string(), None)?;
+      let header = mk_hdr("2026-03-10", 1, c, s(tx), None)?;
       Ok(Pivot { header, from: mk_asset("BTC", ava, a, qt, &FROM), to })
    }
 

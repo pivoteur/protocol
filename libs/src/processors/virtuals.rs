@@ -1,5 +1,5 @@
 use crate::types::{
-   calls::Call,
+   calls::calls::Call,
    pivots::{ Pivot, mk_pivot },
    quotes::Quotes
 };
@@ -54,7 +54,7 @@ mod counter_offerer {
    };
 
    use crate::types::{
-      calls::Call,
+      calls::calls::Call,
       measurable::Measurable,
       pivots::Pivot,
       pools::Pool
@@ -84,15 +84,21 @@ mod counter_offerer {
    pub fn compute_offrian(call: &Call, target: &USD,
                           leeway_vol: USD, debug: bool) -> ErrStr<Call> {
       let new_pivot_amt = compute_new_pivot_amt(call, target, debug);
-      let give_up = call.pivot_amount - new_pivot_amt;
+      let give_up = diff("give up", call.pivot_amount, new_pivot_amt)?;
       let give_up_vol = mk_usd(give_up * call.pivot_close_price.amount());
       let gap_vol = leeway_vol - give_up_vol;
       if gap_vol < no_monay() {
          Err(format!("Unable to change call {} to {target}; {} derth",
-                     call.ix, gap_vol))
+                     call.ix, mk_usd(-gap_vol.amount())))
       } else {
          Ok(compute_new_call(&call, new_pivot_amt))
       }
+   }
+
+   fn diff(tag: &str, a: f32, b: f32) -> ErrStr<f32> {
+      let ans = a - b;
+      if ans < 0.0 { Err(format!("Negative amount for {tag}"))
+      } else { Ok(ans) }
    }
 
    fn compute_new_pivot_amt(call: &Call, target: &USD, debug: bool) -> f32 {
@@ -153,8 +159,23 @@ mod counter_offerer {
    #[cfg(test)]
    mod tests {
       use super::*;
-      use crate::processors::virtuals::test_data::{ sample_call, target };
-      use book::num::estimate::mk_estimate;
+      use crate::processors::virtuals::test_data::{
+         sample_call,
+         sample_avax_undead_offrian,
+         target
+      };
+      use book::{
+         csv_utils::as_csv,
+         num::estimate::mk_estimate,
+         types::values::Value
+      };
+
+      #[test] fn test_compute_virutal_pivot_amount() -> ErrStr<()> {
+         let call_data = sample_avax_undead_offrian("../quizzes")?;
+         let virt_amt = compute_virtual_pivot_amount(&call_data, true);
+         let avax = mk_estimate(2020.0);
+         avax.is(virt_amt)
+      }
 
       #[test] fn test_compute_new_pivot() -> ErrStr<()> {
          let call = sample_call(1)?;
@@ -170,8 +191,31 @@ mod counter_offerer {
          mk_estimate(0.03).is(btc)
       }
 
+      #[test] fn test_compute_offrian() -> ErrStr<()> {
+         let call_data = sample_avax_undead_offrian("../quizzes")?;
+         let leeway = compute_virtual_pivot_amount(&call_data, true);
+         let (call, _opens) = call_data;
+         let leeway_vol = mk_usd(leeway * call.proposed_close_price.amount());
+         let new_call = compute_offrian(&call, &target(), leeway_vol, true)?;
+         let roi_est = mk_estimate(0.037);
+         roi_est.is(new_call.roi.value())?;
+         let apr_est = mk_estimate(0.17);
+         apr_est.is(new_call.apr.value())?;
+         let avax = new_call.amount1;
+         assert_eq!(219.0, avax, "AVAX: principal asset (actual, not virtual)");
+         let avax = new_call.virtual_amount;
+         let avax_est = mk_estimate(1458.0);
+         avax_est.is(avax)
+      }
+
+      #[test] fn test_compute_new_call() -> ErrStr<()> {
+         let call = sample_call(2)?;
+         let ans = compute_new_call(&call, 12.0);
+         println!("{}", as_csv(&[ans])?);
+         assert!(false);
+         Ok(())
+      }
    }
-// xxx TODO: moar testos herer
 }
 
 use counter_offerer::{ compute_virtual_pivot_amount, compute_offrian };
@@ -199,7 +243,7 @@ pub mod test_data {
          parse_test_pivots_from_file,
          fetch_local_data
       },
-      types::calls::parse_calls
+      types::calls::calls::parse_calls
    };
 
    pub fn target() -> USD { mk_usd(2500.0) }
@@ -264,10 +308,7 @@ pub mod functional_tests {
 #[cfg(not(tarpaulin_include))]
 mod tests {
    use super::*;
-   use super::test_data::{
-      sample_avax_undead_offrian,
-      tenk
-   };
+   use super::test_data::sample_avax_undead_offrian;
    use crate::{
       types::{
          assets::amounts::mk_amt,
@@ -275,8 +316,6 @@ mod tests {
          quotes::sample_data::sample_quotes_maker
       }
    };
-
-   use book::{ num::estimate::mk_estimate, types::values::Value };
 
    // ----- virtsz tests ------------------------------------------------------
 
@@ -345,23 +384,6 @@ mod tests {
          compute_counter_offer(&call_data, &mk_usd(1700.0), true);
       assert!(truthiness.is_ok(), "Err is {truthiness:?}");
       Ok(())
-   }
-
-   #[test] fn test_compute_offrian() -> ErrStr<()> {
-      let call_data = sample_avax_undead_offrian("../quizzes")?;
-      let leeway = compute_virtual_pivot_amount(&call_data, true);
-      let (call, _opens) = call_data;
-      let leeway_vol = mk_usd(leeway * call.proposed_close_price.amount());
-      let new_call = compute_offrian(&call, &tenk(), leeway_vol, true)?;
-      let roi_est = mk_estimate(0.037);
-      roi_est.is(new_call.roi.value())?;
-      let apr_est = mk_estimate(0.17);
-      apr_est.is(new_call.apr.value())?;
-      let avax = new_call.amount1;
-      assert_eq!(0.0, avax, "AVAX: principal asset (actual, not virtual)");
-      let avax = new_call.virtual_amount;
-      let avax_est = mk_estimate(1458.0);
-      avax_est.is(avax)
    }
 
    #[test] fn test_compute_counter_offer_positive_virtual_amount()
