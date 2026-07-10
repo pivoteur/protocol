@@ -56,14 +56,14 @@ fn report_health(dt: NaiveDate, v: Vec<Composition>) -> ErrStr<()> {
    pools = [
       {}
    ]
-}};", pools.join("\n      "));
+}};", pools.join(",\n      "));
    Ok(())
 }
 
 /// prints the current available assets for all pivot pools: a health-check.
 #[derive(Debug, Parser)]
 #[command(name = "hwaet")]
-#[command(version = "1.04")]
+#[command(version = "1.05")]
 struct Args {
    /// protocol to run the health-check on, e.g.: PIVOT
    protocol: UppercaseString,
