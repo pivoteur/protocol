@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use chrono::NaiveDate;
 
 use book::{
@@ -23,13 +21,13 @@ pub async fn fetch_quotes(date: &NaiveDate) -> ErrStr<Quotes> {
    fn capitalize(s: &str) -> ErrStr<String> { Ok(s.to_uppercase()) }
    let table = ingest(parse_date, capitalize, parse_str, &body, ",")?;
    if let Some(quotes_row) = row(&table, date) {
-      let mut quotes = HashMap::new();
+      let mut quotes = Vec::new();
       let hdrs = cols(&table);
       for (n, h) in hdrs.iter().enumerate() {
          let qt: f32 = parse_num(&quotes_row[n])?;
-         quotes.insert(h.clone(), qt);
+         quotes.push((h.as_str(), qt));
       }
-      Ok(mk_quotes(date.clone(), quotes))
+      Ok(mk_quotes(date, &quotes))
    } else {
       Err(format!("Unable to find quotes for date {date}"))
    }

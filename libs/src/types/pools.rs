@@ -1,8 +1,17 @@
-use std::{fmt,hash::Hash,str::FromStr};
-use serde::{Deserialize,Serialize};
+use std::{ cmp::Reverse, fmt, hash::Hash, str::FromStr };
 
-use book::{ err_utils::ErrStr, string_utils::s };
-use super::util::Token;
+use serde::{ Deserialize, Serialize };
+
+use book::{
+   date_utils::today,
+   err_utils::ErrStr,
+   list_utils::fst_snd,
+   num::floats::safe_floats::mk_safe_float,
+   string_utils::words,
+   tuple_utils::fst
+};
+
+use super::{ quotes::mk_quotes, util::Token };
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Hash)]
 pub struct Pool { primary: Token, pivot: Token }
@@ -23,6 +32,22 @@ impl FromStr for Pool {
 pub fn mk_pool(a: &str, b: &str) -> Pool {
    Pool { primary: a.to_uppercase(), pivot: b.to_uppercase() }
 }
+
+pub fn construct_pool(quotes: [(Token, f32);2], debug: bool) -> ErrStr<Pool> {
+   let mut v: Vec<(&str, f32)> =
+      quotes.iter().map(|(k,v)| (k.as_str(), *v)).collect();
+   v.push(("USDC", -1.0));
+   let dict = mk_quotes(&today(), &v);
+   let mut assets: Vec<_> =
+      quotes.iter()
+            .filter_map(|(t,_)| dict.lookup(&t).ok().and_then(|q| Some((t, q))))
+            .collect();
+   assets.sort_by_key(|(_, q)| Reverse(mk_safe_float(q)));
+   if debug { println!("construct_pool(), sorted assets: {assets:?}"); }
+   let (a, b) = fst_snd(&assets.into_iter().map(fst).collect::<Vec<_>>())?;
+   Ok(mk_pool(&a, &b))
+}
+   
 impl Pool {
    pub fn pool_name(&self) -> String {
       let Pool {primary,pivot} = self;
@@ -39,7 +64,7 @@ impl Pool {
 
    pub fn as_vec(&self) -> Vec<String> {
       let Pool { primary, pivot } = self;
-      vec![ s(primary), s(pivot)]
+      words(&format!("{primary} {pivot}"))
    }
 }
 
@@ -76,6 +101,7 @@ mod functional_tests {
 #[cfg(not(tarpaulin_include))]
 mod tests {
    use super::*;
+   use book::string_utils::s;
 
    #[test] fn test_mk_pool() {
       assert_eq!("BTC+ETH", &mk_pool("btc","eth").to_string());
@@ -109,6 +135,22 @@ mod tests {
    #[test] fn test_as_tuple() -> ErrStr<()> {
       let ans = pool_from_str("undead+usdc")?;
       assert_eq!((s("UNDEAD"), s("USDC")), ans.as_tuple());
+      Ok(())
+   }
+
+   #[test] fn test_construct_pool_btc_eth() -> ErrStr<()> {
+      let p1 = construct_pool([(s("ETH"), 1748.2), (s("BTC"), 62143.1)], true)?;
+      let p2 = construct_pool([(s("btc"), 62443.1), (s("eth"), 1717.1)], true)?;
+      assert_eq!("BTC+ETH", &format!("{p1}"), "p1 is wrong");
+      assert_eq!("BTC+ETH", &format!("{p2}"), "p2 is wrong");
+      Ok(())
+   }
+
+   #[test] fn test_construct_usdc_pools() -> ErrStr<()> {
+      let p1 = construct_pool([(s("AVAX"), 6.28), (s("USDC"), 1.0)], true)?;
+      let p2 = construct_pool([(s("usdc"), 1.0), (s("undead"), 0.009)], true)?;
+      assert_eq!("AVAX+USDC", &format!("{p1}"), "p1 is wrong");
+      assert_eq!("UNDEAD+USDC", &format!("{p2}"), "p2 is wrong");
       Ok(())
    }
 }

@@ -1,13 +1,3 @@
-/*
-use chrono::NaiveDate;
-use serde::{Serialize, ser::SerializeStruct, Serializer};
-use serde_json;
-
-use crate::types::{ measurable::Measurable, pools::Pool, util::Token };
-
-use book::{ compose, err_utils::{ErrStr, err_or} };
-*/
-
 use serde::Serialize;
 
 use super::allocations::Allocation;

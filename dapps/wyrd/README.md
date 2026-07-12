@@ -16,6 +16,7 @@ where:
 
 ## Revisions
 
+* 1.04, 2026-07-10: add debugging information; correct pool-path algorithm
 * 1.03, 2026-07-05: use clap to process arguments and for usage-documentation
 * 1.02, 2026-05-18: made path an argument, not an environmental variable
 * 1.01, 2026-05-17: made protocol- and path-agnostic.

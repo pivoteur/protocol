@@ -3,14 +3,14 @@ use clap::Parser;
 use libs::{
    fetchers::calls::fetch_calls_table,
    tables::IxTable,
-   types::util::Id
+   types::{ pools::{ Pool, mk_pool }, util::Id }
 };
 use book::{
     parse_args_add_banner,
     cli_utils::add_banner,
     currency::usd::{ USD, mk_usd },
     date_utils::parse_date,
-    err_utils::ErrStr,
+    err_utils::{ ErrStr, err_or },
     num::floats::comma_floats::CommaFloat,
     num_utils::parse_num,
     parse_utils::parse_usd,
@@ -19,10 +19,55 @@ use book::{
     utils::get_env
 };
 
+//----- fn runoff_with_args -----------------------------------
+
+/// Generates close pivot row from transaction id and calls-table
+#[derive(Debug, Parser)]
+#[command(name = "wyrd")]
+#[command(version = "1.04")]
+struct Args {
+   /// Protocol to construct the close pivot, e.g.: PIVOT
+   protocol: UppercaseString,
+
+   /// path to close-pivot tables, e.g. data/pivots/close/raw
+   path: String,
+
+   /// close-pivot ix from the calls.tsv table, e.g.: 5
+   ix: Id,
+
+   /// transaction id of the close-pivot swap
+   tx_id: String,
+
+   /// The actual amount received in the close-pivot swap, e.g.: 1250.75
+   amount: CommaFloat
+
+   /// print debugging information
+   #[arg(short, long)]
+   debug: bool
+}
+
+pub async fn runoff_with_args() -> ErrStr<()> {
+    let args = parse_args_add_banner!(Args);
+    runoff_continuation(&args.protocol, &args.path, args.ix,
+                        &args.tx_id, args.amount.into(), args.debug).await
+}
+
+async fn runoff_continuation(protocol: &str, path: &str, ix: Id, tx_id: &str,
+                             amount: f32, debug: bool) -> ErrStr<()> {
+    let root_url = get_env(&format!("{protocol}_URL"))?;
+    let calls = fetch_calls_table(&root_url).await?;
+    if debug { println!("Received {} for {protocol}", calls.data.len()); }
+    println!("{}", header());
+    let close = parse_row(&calls, ix, tx_id, amount, debug)?;
+    println!("{close}");
+    println!("{}", pool_path(path, &calls, ix)?);
+    Ok(())
+}
+
 // ====================================================
 //----- pub fn header ---------------------------------
 // ====================================================
-pub fn header() -> String {
+fn header() -> String {
     let line1 = "date,pivot,close,tx_id,from,from_quote";
     let line2 = "to,to_quote,trade,vol,gain_10_percent";
     let line3 = "new_to_actual,gain,gain_total_usd,roi,apr";
@@ -32,8 +77,8 @@ pub fn header() -> String {
 // ====================================================
 //----- pub fn parse_row ------------------------------
 // ====================================================
-pub fn parse_row(table: &IxTable, ix: usize, tx_id: &str, new_to_actual: f32)
-       -> ErrStr<String> {
+fn parse_row(table: &IxTable, ix: usize, tx_id: &str,
+                 new_to_actual: f32, debug: bool) -> ErrStr<String> {
     let col = |name: &str| -> ErrStr<String> {
         let v = val(&table, &ix, &name.to_string()).unwrap_or_default();
         if v.is_empty() {
@@ -86,16 +131,15 @@ pub fn parse_row(table: &IxTable, ix: usize, tx_id: &str, new_to_actual: f32)
 
 //----- fn pool_path ----------------------------------
 
-pub fn pool_path(close_dir: &str, table: &IxTable, ix: usize) -> ErrStr<String> {
-    let pivot_token = val(table, &ix, &"pivot_token".to_string()).unwrap_or_default();
-    let from        = val(table, &ix, &"from".to_string()).unwrap_or_default();
-    if pivot_token.is_empty() || from.is_empty() {
-        return Err("missing pivot_token or from column/data".to_string());
-    }
-    let a = pivot_token.to_lowercase();
-    let b = from.to_lowercase();
+fn pool_path(table: &IxTable, ix: usize) -> ErrStr<Pool> {
+    let pivot_token =
+       err_or(val(table, &ix, &s("pivot_token")).ok(),
+              &format!("Cannot fetch pivot_token for row {ix}"))?;
+    let from =
+       err_or(val(table, &ix, &"from".to_string()).ok(),
+              &format!("Cannot fetch from (token) from row {ix}"))?;
     let (left, right) = if a <= b { (&a, &b) } else { (&b, &a) };
-    Ok(format!("{close_dir}/{left}-{right}.tsv"))
+    Ok(format!("{left}-{right}.tsv"))
 }
 
 // =====================================================
@@ -342,45 +386,6 @@ mod tests {
         assert!(row.is_err());
         Ok(())  
     }
-}
-
-//----- fn runoff_with_args -----------------------------------
-
-/// Generates close pivot row from transaction id and calls-table
-#[derive(Debug, Parser)]
-#[command(name = "wyrd")]
-#[command(version = "1.03")]
-struct Args {
-   /// Protocol to construct the close pivot, e.g.: PIVOT
-   protocol: UppercaseString,
-
-   /// path to close-pivot tables, e.g. data/pivots/close/raw
-   path: String,
-
-   /// close-pivot ix from the calls.tsv table, e.g.: 5
-   ix: Id,
-
-   /// transaction id of the close-pivot swap
-   tx_id: String,
-
-   /// The actual amount received in the close-pivot swap, e.g.: 1250.75
-   amount: CommaFloat
-}
-
-pub async fn runoff_with_args() -> ErrStr<()> {
-    let args = parse_args_add_banner!(Args);
-    runoff_continuation(&args.protocol, &args.path, args.ix,
-                        &args.tx_id, args.amount.into()).await
-}
-
-async fn runoff_continuation(protocol: &str, path: &str, ix: Id, tx_id: &str,
-                             amount: f32) -> ErrStr<()> {
-    let root_url = get_env(&format!("{protocol}_URL"))?;
-    let calls = fetch_calls_table(&root_url).await?;
-    println!("{}", header());
-    println!("{}", parse_row(&calls, ix, tx_id, amount)?);
-    println!("{}", pool_path(path, &calls, ix)?);
-    Ok(())
 }
 
 // =====================================================
