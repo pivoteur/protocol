@@ -36,7 +36,7 @@ jobs:
         uses: actions/cache@v3
         with:
           path: protocol/quizzes/src/quiz09/a_itr/target/release/itr
-          key: itr-binary-${{ hashFiles('protocol/quizzes/src/quiz09/a_itr/**/*.rs', 'protocol/quizzes/src/quiz09/a_itr/Cargo.toml', 'protocol/dapps/itr/Cargo.lock') }}
+          key: itr-binary-${{ hashFiles('protocol/quizzes/src/quiz09/a_itr/**/*.rs', 'protocol/dapps/itr/Cargo.toml', 'protocol/dapps/itr/Cargo.lock') }}
 
       - name: Cache cargo-make binary
         id: make-cache
