@@ -124,7 +124,7 @@ jobs:
     
       - name: Build itr
         if: steps.itr-cache.outputs.cache-hit != 'true'
-        working-directory: protocol/quizzes/src/quiz09/a_itr
+        working-directory: protocol/dapps/itr
         run: cargo build --release
 
       - name: Add itr to PATH
