@@ -128,7 +128,7 @@ jobs:
         run: cargo build --release
 
       - name: Add itr to PATH
-        run: echo "$GITHUB_WORKSPACE/protocol/quizzes/src/quiz09/a_itr/target/release" >> $GITHUB_PATH
+        run: echo "$GITHUB_WORKSPACE/protocol/dapps/itr/target/release" >> $GITHUB_PATH
 
       - name: "[itr] itr . — dapps"
         working-directory: protocol/dapps
