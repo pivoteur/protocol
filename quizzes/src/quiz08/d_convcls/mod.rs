@@ -15,13 +15,13 @@ use book::{
 };
 
 use libs::{
-   processors::pivot::{
+   processors::pivots::{
       Closes,
       process_open_pivots,
       process_old_close_pivots,
       new_close_pivots
    },
-   types::pivots::ClosePivot
+   types::pivots::closes::ClosePivot
 };
 
 /// Converts the old close-pivot format to the current close pivot format,

@@ -13,7 +13,7 @@ use libs::{
    fetchers::pivots::fetch_pivots,
    types::{
       aliases::aliases,
-      pivots::{Pivot,partition_on},
+      pivots::opens::{Pivot,partition_on},
       pools::{Pool,mk_pool}
    }
 };

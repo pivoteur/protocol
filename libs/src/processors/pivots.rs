@@ -1,38 +1,43 @@
-use std::{ collections::HashMap, fs::File, io };
+use std::{ collections::HashMap, io };
 use csv::Reader;
 
-use serde::{Deserialize, Serialize};
-use serde_with::{serde_as, DisplayFromStr};
-use book::{
-   currency::usd::USD,
-   err_utils::ErrStr
-};
+use book::err_utils::{ ErrStr, err_or };
 
-use crate::types::pivots::closes::{ ClosePivot, transform };
+use crate::types::pivots::closes::{ transform, OldClosePivotRow, ClosePivot };
 
 mod converter {
+   use serde::Deserialize;
    use crate::types::pivots::closes::OldClosePivotRow;
+   use super::Opens;
+
+   use book::err_utils::ErrStr;
+
    /// We convert old-style close pivots to the one with the 10% gain column
 
    // these fields are the only information we care about from the open 
    // pivot pool.  Maps only what we need from the open pivots table
    #[derive(Debug, Deserialize)]
-   struct OpenPivotRow {
+   pub struct OpenPivotRow {
        #[serde(alias = "open")]
-       pivot: String,
-       close: String,
+       pivot: usize,
        #[serde(alias = "10% gain")]
        gain_10_percent: f32
    }
 
-   /// With the above 2 structs, we can construct the new close pivot
+   impl OpenPivotRow {
+      pub fn key(&self) -> usize { self.pivot }
+      pub fn gain(&self) -> f32 { self.gain_10_percent }
+   }
 
-   fn gain_10_percent_for_close(open_map: &Opens, close: &OldClosePivotRow)
+   /// With the open pivot information and the (old-style) close pivot,
+   /// we can construct the new close pivot
+
+   pub fn gain_10_percent_for_close(open_map: &Opens, close: &OldClosePivotRow)
          -> ErrStr<f32> {
       // Extract the 10% gain matching against the compound key mapping
       let mut gain_10 = 0.0;
-      for target_pivot in close.pivot.split(|c| c == ',' || c == ';') {
-         let lookup_key = (s(target_pivot), close.close.clone());
+      for target_pivot in close.open_pivots_ix() {
+         let lookup_key = target_pivot;
 
          gain_10 += open_map
                .get(&lookup_key)
@@ -44,7 +49,7 @@ mod converter {
 
 use converter::{ OpenPivotRow, gain_10_percent_for_close };
 
-pub type Opens = HashMap<(String, String), f32>;
+pub type Opens = HashMap<usize, f32>;
 
 pub fn process_open_pivots<R: io::Read>(opens: R) -> ErrStr<Opens> {
    // 1. Parse Open Pivots into a lookup map using (pivot, close)
@@ -59,8 +64,7 @@ pub fn process_open_pivots<R: io::Read>(opens: R) -> ErrStr<Opens> {
        ix += 1;
        let row: OpenPivotRow = err_or(result,
             &format!("Cannot convert open pivot row, ix: {ix}"))?;
-       let key = (row.pivot.clone(), row.close.clone());
-       open_map.insert(key, row.gain_10_percent);
+       open_map.insert(row.key(), row.gain());
    }
    Ok(open_map)
 }
@@ -73,7 +77,7 @@ pub fn process_old_close_pivots<R: io::Read>(closes: R)
 }
 
 pub fn new_close_pivots<R: io::Read>(opens: &Opens, closes: &mut Closes<R>)
-      -> ErrStr<Vec<NewClosePivotRow>> {
+      -> ErrStr<Vec<ClosePivot>> {
    let mut new_closes = Vec::new();
 
    let mut ix = 0;
@@ -88,25 +92,3 @@ pub fn new_close_pivots<R: io::Read>(opens: &Opens, closes: &mut Closes<R>)
    }
    Ok(new_closes)
 }
-
-// ----- TESTS -------------------------------------------------------
-
-#[cfg(test)]
-#[cfg(not(tarpaulin_include))]
-mod sample_data {
-   use book::string_utils::s;
-   pub fn sample_open_pivots() -> String {
-      s("\
-open\tclose\ttx_id\t10% gain
-1\t0\txx1\t12.0\n2\t1\txx2\t22.6\n4\t2\tyyy\t1939.31\n13\t1\txx3\t26.9\n")
-   }
-
-   pub fn sample_old_close_pivots() -> String {
-       s("\
-date\tpivot\tclose\ttx_id\tfrom\tfrom quote\tto\tto quote\ttrade\tvol\tnew to-actual\tgain\tgain, total $\tROI\tAPR
-2025-08-03\t2,13\t1\thttp...\tUNDEAD\t$0.002538\tBTC\t$113,828\t483,094\t$1,226.09\t0.009426\t0.000986\t$112.27\t11.69%\t355.46%
-2025-08-04\t4\t2\thttp...\tUNDEAD\t$0.008462\tBTC\t$114,529\t229179\t$1,939.31\t0.015258\t0.011058\t$1,266.48\t263.29%\t5652.99%
-")
-   }
-}
-

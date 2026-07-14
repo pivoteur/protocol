@@ -14,7 +14,7 @@ use book::{
     num::floats::comma_floats::CommaFloat,
     num_utils::parse_num,
     parse_utils::parse_usd,
-    string_utils::UppercaseString,
+    string_utils::{ s, UppercaseString },
     table_utils::val,
     utils::get_env
 };
@@ -39,7 +39,7 @@ struct Args {
    tx_id: String,
 
    /// The actual amount received in the close-pivot swap, e.g.: 1250.75
-   amount: CommaFloat
+   amount: CommaFloat,
 
    /// print debugging information
    #[arg(short, long)]
@@ -136,10 +136,8 @@ fn pool_path(table: &IxTable, ix: usize) -> ErrStr<Pool> {
        err_or(val(table, &ix, &s("pivot_token")).ok(),
               &format!("Cannot fetch pivot_token for row {ix}"))?;
     let from =
-       err_or(val(table, &ix, &"from".to_string()).ok(),
+       err_or(val(table, &ix, &s("from")).ok(),
               &format!("Cannot fetch from (token) from row {ix}"))?;
-    let (left, right) = if a <= b { (&a, &b) } else { (&b, &a) };
-    Ok(format!("{left}-{right}.tsv"))
 }
 
 // =====================================================

@@ -1,6 +1,6 @@
 use crate::types::{
    calls::Call,
-   pivots::{ Pivot, mk_pivot },
+   pivots::opens::{ Pivot, mk_pivot },
    quotes::Quotes
 };
 
@@ -56,7 +56,7 @@ mod counter_offerer {
    use crate::types::{
       calls::Call,
       measurable::Measurable,
-      pivots::Pivot,
+      pivots::opens::Pivot,
       pools::Pool
    };
 
@@ -236,7 +236,7 @@ pub mod functional_tests {
       },
       types::{
          assets::amounts::mk_amt,
-         pivots::test_data::mk_btc_usdc_piv,
+         pivots::opens::test_data::mk_btc_usdc_piv,
          quotes::sample_data::sample_quotes_maker
       }
    };
@@ -271,7 +271,7 @@ mod tests {
    use crate::{
       types::{
          assets::amounts::mk_amt,
-         pivots::test_data::mk_btc_usdc_piv,
+         pivots::opens::test_data::mk_btc_usdc_piv,
          quotes::sample_data::sample_quotes_maker
       }
    };

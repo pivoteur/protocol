@@ -11,7 +11,7 @@ use super::{ pivots::fetch_open_pivots, utils::fetch_lines };
 use crate::{
    paths::pivots_dir,
    tables::IxTable,
-   types::{ aliases::aliases, calls::{Call,parse_calls}, pivots::Pivot }
+   types::{ aliases::aliases, calls::{Call,parse_calls}, pivots::opens::Pivot }
 };
 
 // ----- CALLS -------------------------------------------------------

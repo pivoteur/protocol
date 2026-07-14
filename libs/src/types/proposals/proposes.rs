@@ -19,7 +19,7 @@ use crate::types::{
    tokens::coins::Coin,
    gains::Gains,
    measurable::{Measurable,weight,size},
-   pivots::{Pivot,headers,froms},
+   pivots::opens::{Pivot,headers,froms},
    pools::{Pool,mk_pool},
    quotes::Quotes,
    util::{Blockchain,Id}
@@ -196,7 +196,7 @@ pub mod functional_tests {
    use crate::types::{
       assets::amounts::mk_amt,
       quotes::sample_data::sample_quotes_maker,
-      pivots::test_data::mk_btc_usdc_piv
+      pivots::opens::test_data::mk_btc_usdc_piv
    };
    use book::create_testing;
 
@@ -221,7 +221,7 @@ mod tests {
    use crate::types::{
       assets::amounts::mk_amt,
       quotes::sample_data::sample_quotes_maker,
-      pivots::test_data::mk_btc_usdc_piv
+      pivots::opens::test_data::mk_btc_usdc_piv
    };
 
    #[test]

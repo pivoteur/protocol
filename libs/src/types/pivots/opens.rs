@@ -8,19 +8,21 @@ use book::{
    tuple_utils::Partition
 };
 
-use crate::collections::assets::{Assets,mk_assets};
-use super::{
-   assets::{
-      assets::{Asset,parse_asset,gain_10_percent,trade},
-      assets::recompute_assets as new_assets,
-      asset_types::AssetType::{FROM,TO}
-   },
-   headers::{Header, next_close_id as closer, parse_header},
-   tokens::coins::Coin,
-   measurable::Measurable,
-   proposals::prop_assets::PropAsset,
-   quotes::Quotes,
-   util::{Blockchain,Id}
+use crate::{
+   collections::assets::{Assets,mk_assets},
+   types::{
+      assets::{
+         assets::{Asset,parse_asset,gain_10_percent,trade},
+         assets::recompute_assets as new_assets,
+         asset_types::AssetType::{FROM,TO}
+      },
+      headers::{Header, next_close_id as closer, parse_header},
+      tokens::coins::Coin,
+      measurable::Measurable,
+      proposals::prop_assets::PropAsset,
+      quotes::Quotes,
+      util::{Blockchain,Id}
+   }
 };
 
 // ----- PIVOT types -------------------------------------------------------
