@@ -7,13 +7,23 @@ use book::{
    num::percentage::Percentage
 };
 
+use crate::{
+   processors::utils::{
+      serialize_semicolon_list,
+      deserialize_semicolon_list
+   },
+   types::util::Id
+};
+
 #[serde_as]
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct ClosePivot {
     #[serde_as(as = "DisplayFromStr")]
     date: NaiveDate,
-    pivot: Vec<usize>,
-    close: usize,
+    #[serde(deserialize_with = "deserialize_semicolon_list")]
+    #[serde(serialize_with = "serialize_semicolon_list")]
+    pivot: Vec<Id>,
+    close: Id,
     tx_id: String,
     from: String,
     #[serde_as(as = "DisplayFromStr")]
@@ -64,9 +74,9 @@ pub struct OldClosePivotRow {
     #[serde_as(as = "DisplayFromStr")]
     date: NaiveDate,
     #[serde(alias = "open")]
-    #[serde(deserialize_with = "deserialize_csv_semicolon_list")]
-    pivot: Vec<usize>,
-    close: usize,
+    #[serde(deserialize_with = "deserialize_semicolon_list")]
+    pivot: Vec<Id>,
+    close: Id,
     tx_id: String,
     from: String,
     #[serde_as(as = "DisplayFromStr")]
@@ -91,17 +101,6 @@ pub struct OldClosePivotRow {
     #[serde_as(as = "DisplayFromStr")]
     #[serde(alias = "APR")]
     apr: Percentage,
-}
-
-fn deserialize_csv_semicolon_list<'de, D>(deserializer: D)
-      -> Result<Vec<usize>, D::Error> where D: serde::Deserializer<'de> {
-   // 1. Read the raw string field from the CSV record
-   let s = String::deserialize(deserializer)?;
-    
-   // 2. Parse the semicolon-separated values into a Vec
-   s.split(';')
-    .map(|val| val.trim().parse::<usize>().map_err(serde::de::Error::custom))
-    .collect()
 }
 
 impl OldClosePivotRow {

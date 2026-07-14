@@ -1,5 +1,5 @@
 use chrono::NaiveDate;
-use serde::{Serialize, Serializer, Deserialize, Deserializer};
+use serde::{Serialize, Deserialize};
 use serde_with::{serde_as, DisplayFromStr};
 
 use book::{
@@ -9,6 +9,10 @@ use book::{
 };
 
 use super::{ blockchains::Blockchain, pools::Pool, util::Id };
+use crate::processors::utils::{
+   deserialize_semicolon_list,
+   serialize_semicolon_list
+};
 
 #[serde_as]
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -55,28 +59,6 @@ pub struct Call {
     pub roi: Percentage,
     #[serde_as(as = "DisplayFromStr")]
     pub apr: Percentage
-}
-
-fn deserialize_semicolon_list<'de, D>(deserializer: D)
-      -> Result<Vec<usize>, D::Error> where D: Deserializer<'de> {
-    let s: String = Deserialize::deserialize(deserializer)?;
-    if s.trim().is_empty() { return Ok(Vec::new()); }
-    s.split(';')
-     .map(|val| val.trim().parse::<usize>().map_err(serde::de::Error::custom))
-     .collect()
-}
-
-fn serialize_semicolon_list<S>(data: &Vec<usize>, serializer: S)
-      -> Result<S::Ok, S::Error> where S: Serializer {
-
-   // 1. Convert each usize to a String
-   let parts: Vec<String> = data.iter().map(|x| x.to_string()).collect();
-
-   // 2. Join the elements using a semicolon
-   let joined = parts.join(";");
-        
-   // 3. Serialize as a single string primitive
-   serializer.serialize_str(&joined)
 }
 
 pub fn parse_calls(csv_data: &str) -> ErrStr<Vec<Call>> {
