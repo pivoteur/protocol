@@ -53,7 +53,7 @@ fn report_health(dt: NaiveDate, v: Vec<Composition>) -> ErrStr<()> {
       v.iter().map(composition_as_js_health_row).collect();
    println!("const poolHealth = {{");
    println!("   generated: '{dt}',
-   pools = [
+   pools: [
       {}
    ]
 }};", pools.join(",\n      "));
@@ -63,7 +63,7 @@ fn report_health(dt: NaiveDate, v: Vec<Composition>) -> ErrStr<()> {
 /// prints the current available assets for all pivot pools: a health-check.
 #[derive(Debug, Parser)]
 #[command(name = "hwaet")]
-#[command(version = "1.05")]
+#[command(version = "1.06")]
 struct Args {
    /// protocol to run the health-check on, e.g.: PIVOT
    protocol: UppercaseString,
