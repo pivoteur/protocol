@@ -164,10 +164,14 @@ ETH+UNDEAD	0.0	5	6250000";
 
    fn prices() -> Vec<f32> { vec![67123.74, 0.001542, 2030.83] }
    fn quotes() -> Quotes {
-      let qts: HashMap<Token, f32> =
-         hdrs().into_iter().zip(prices().into_iter()).collect();
+      let binding = hdrs();
+      let qts: Vec<(&str, f32)> =
+         binding.iter()
+                .map(String::as_str)
+                .zip(prices().into_iter())
+                .collect();
       let yday = yesterday();
-      mk_quotes(yday, qts)
+      mk_quotes(&yday, &qts)
    }
 
    fn amts() -> Vec<f32> { vec![1.1, 39.0, 12500000.0] }

@@ -1,27 +1,19 @@
-use std::{ collections::HashMap, fs::File, io };
+use std::fs::File;
 use clap::Parser;
-use csv::Reader;
-use serde::{Deserialize, Serialize};
-use serde_with::{serde_as, DisplayFromStr};
 
 use book::{
    parse_args_add_banner,
    cli_utils::add_banner,
-   currency::usd::USD,
    csv_utils::as_tsv,
-   err_utils::{ErrStr,err_or},
-   num::percentage::Percentage,
-   string_utils::s,
+   err_utils::{ErrStr,err_or}
 };
 
 use libs::{
    processors::pivots::{
-      Closes,
       process_open_pivots,
       process_old_close_pivots,
       new_close_pivots
-   },
-   types::pivots::closes::ClosePivot
+   }
 };
 
 /// Converts the old close-pivot format to the current close pivot format,
@@ -111,13 +103,15 @@ mod functional_tests {
 mod tests {
    use super::*;
    use super::sample_data::{ sample_open_pivots, sample_old_close_pivots };
+   use book::string_utils::s;
+   use libs::types::pivots::closes::OldClosePivotRow;
 
    fn to_str((a, b): (&str, &str)) -> (String, String) { (s(a), s(b)) }
 
    #[test] fn test_open_pivots() -> ErrStr<()> {
       let opens = process_open_pivots(sample_open_pivots().as_bytes())?;
       assert_eq!(4, opens.len(), "Need 2 parsed open pivots");
-      assert_eq!(Some(&1939.31), opens.get(&to_str(("4", "2"))));
+      assert_eq!(Some(&1939.31), opens.get(&4));
       Ok(())
    }
 
@@ -145,7 +139,7 @@ mod tests {
       let mut closes = process_old_close_pivots(input.as_bytes())?;
       let new_closes = new_close_pivots(&opens, &mut closes)?;
       assert_eq!(2, new_closes.len(), "There should be 2 new close pivots");
-      assert_eq!(49.5, new_closes[0].gain_10_percent, "composite gain 10%");
+      assert_eq!(49.5, new_closes[0].gain(), "composite gain 10%");
       Ok(())
    }
 }

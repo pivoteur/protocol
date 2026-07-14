@@ -45,6 +45,10 @@ pub struct ClosePivot {
     apr: Percentage,
 }
 
+impl ClosePivot {
+   pub fn gain(&self) -> f32 { self.gain_10_percent }
+}
+
 pub fn transform(old_row: &OldClosePivotRow, gain_10: f32) -> ClosePivot {
    ClosePivot {
       date: old_row.date.clone(),
