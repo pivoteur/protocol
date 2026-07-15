@@ -1,13 +1,15 @@
 use std::pin::Pin;
 use clap::Parser;
 use reqwest::Client;
+use csv::{ReaderBuilder, ErrorKind, DeserializeErrorKind};
+use serde::Deserialize;
 use book::{
     parse_args_add_banner,
     cli_utils::add_banner,
     err_utils::{ ErrStr, err_or },
     parse_utils::parse_id,
     string_utils::plural,
-    utils::get_env 
+    utils::get_env
 };
 
 //============================================================================
@@ -37,6 +39,32 @@ pub struct InvestorRow {
     pub flipped: bool,
 }
 
+#[derive(Debug, Deserialize)]
+struct PivotRecord {
+    name: String,
+    #[serde(rename = "reinvested %")]
+    _reinvested_pct: String,
+    #[serde(rename = "precentage")]
+    _percentage: String,
+    #[serde(rename = "amount reinvested")]
+    amount_reinvested: String,
+    #[serde(rename = "amount distributed")]
+    _amount_distributed: String,
+    primary: String,
+    pivot: String,
+    #[serde(rename = "USD-value")]
+    _usd_value: String,
+    #[serde(rename = "number of pivots closed")]
+    pivots: String,
+    #[serde(rename = "tweet url")]
+    tweet_url: String,
+    #[serde(rename = "tx url")]
+    _tx_url: String,
+    #[serde(rename = "send?")]
+    send: String,
+    flipped: String,
+}
+
 fn parse_bool_cell(field: &str, raw: &str) -> ErrStr<bool> {
     match raw.trim().to_lowercase().as_str() {
         "yes" | "true"  => Ok(true),
@@ -44,39 +72,18 @@ fn parse_bool_cell(field: &str, raw: &str) -> ErrStr<bool> {
         other => Err(format!("column '{field}': unrecognized value '{other}'. Expected yes/no/true/false.")),
     }
 }
-/// Returns `Ok(None)` for rows that should be skipped:
-///   - blank lines
-///   - the column-name header row              (col 0 == "name")
-///   - data rows where amount reinvested == 0  (handled by `distributed`, not `reinvested`)
-/// Returns `Err` only for rows that look like data but are malformed.
-pub fn parse_row(line: &str) -> ErrStr<Option<InvestorRow>> {
-    let line = line.trim();
-    if line.is_empty() {
-        return Ok(None);
-    }
+/// Returns `Ok(None)` only for rows where amount reinvested == 0 (handled
+/// by `distributed`, not `reinvested`). Returns `Err` for malformed data.
+/// Structural issues (blank lines, ragged/short rows, the header row) never
+/// reach this function — the CSV reader in `process_csv` filters them out.
+fn parse_row(record: &PivotRecord) -> ErrStr<Option<InvestorRow>> {
+    let name    = record.name.trim();
+    let amount  = record.amount_reinvested.trim();
+    let primary = record.primary.trim();
+    let pivot   = record.pivot.trim();
+    let pivots  = record.pivots.trim();
+    let url     = record.tweet_url.trim();
 
-    let cols: Vec<&str> = line.split('\t').collect();
-
-    // not enough columns to be a data row
-    if cols.len() < 13 {
-        return Ok(None);
-    }
-
-    // cols: 0=name 1=reinvested% 2=precentage 3=amount_reinvested 4=amount_distributed
-    //       5=primary 6=pivot 7=usd 8=pivots 9=tweet_url 10=tx_url 11=send 12=flipped
-    let name    = cols[0].trim();
-    let amount  = cols[3].trim();
-    let primary = cols[5].trim();
-    let pivot   = cols[6].trim();
-    let pivots  = cols[8].trim();
-    let url     = cols[9].trim();
-
-    // column-name header row
-    if name == "name" {
-        return Ok(None);
-    }
-
-    // skip investors with nothing reinvested this run
     let amount_val: u64 = match amount.parse() {
         Ok(v) => v,
         Err(e) => return Err(format!(
@@ -87,8 +94,8 @@ pub fn parse_row(line: &str) -> ErrStr<Option<InvestorRow>> {
         return Ok(None);
     }
 
-    let send    = parse_bool_cell("send", cols[11])?;
-    let flipped = parse_bool_cell("flipped", cols[12])?;
+    let send    = parse_bool_cell("send", &record.send)?;
+    let flipped = parse_bool_cell("flipped", &record.flipped)?;
 
     Ok(Some(InvestorRow {
         name:    name.to_string(),
@@ -100,6 +107,13 @@ pub fn parse_row(line: &str) -> ErrStr<Option<InvestorRow>> {
         send,
         flipped,
     }))
+}
+
+fn is_ragged_row(e: &csv::Error) -> bool {
+    matches!(
+        e.kind(),
+        ErrorKind::Deserialize { err, .. } if matches!(err.kind(), DeserializeErrorKind::UnexpectedEndOfRow)
+    )
 }
 
 //============================================================================
@@ -154,11 +168,20 @@ type SendFuture<'a> = Pin<Box<dyn std::future::Future<Output = ErrStr<()>> + Sen
 
 pub async fn process_csv<F>(csv_path: &str, global_send: bool, send_fn: F)
    -> ErrStr<()> where F: for<'a> Fn(&'a str, i64, &'a str) -> SendFuture<'a> {
-    let content = std::fs::read_to_string(csv_path)
+    let mut rdr = ReaderBuilder::new()
+        .delimiter(b'\t')
+        .flexible(true)
+        .from_path(csv_path)
         .map_err(|e| format!("cannot read '{csv_path}': {e}"))?;
 
-    for line in content.lines() {
-        let Some(row) = parse_row(line)? else { continue };
+    for result in rdr.deserialize::<PivotRecord>() {
+        let record = match result {
+            Ok(r) => r,
+            Err(e) if is_ragged_row(&e) => continue,
+            Err(e) => return Err(format!("malformed row in '{csv_path}': {e}")),
+        };
+
+        let Some(row) = parse_row(&record)? else { continue };
 
         let msg = build_message(&row)?;
         println!("[{}] {msg}", row.name);
@@ -177,7 +200,7 @@ pub async fn process_csv<F>(csv_path: &str, global_send: bool, send_fn: F)
 /// The investors and their reinvestments are listed in CSV file
 #[derive(Debug, Parser)]
 #[command(name = "reinvested")]
-#[command(version = "1.01")]
+#[command(version = "1.02")]
 struct Args {
    /// The path to the list of the investors and their distributions
    csv_path: String,
@@ -188,9 +211,9 @@ struct Args {
 
 pub async fn runoff_with_args() -> ErrStr<()> {
    let args = parse_args_add_banner!(Args);
-   let sned: bool = err_or(args.send.parse(),
+   let send: bool = err_or(args.send.parse(),
        &format!("Cannot parse {} into boolean-value", args.send))?;
-   process_csv(&args.csv_path, sned, |tok, id, txt| {
+   process_csv(&args.csv_path, send, |tok, id, txt| {
                 Box::pin(send_telegram(tok, id, txt))
    }).await
 }
@@ -204,7 +227,6 @@ mod unit_tests {
 
 
     // ---- helpers -----------------------------------------------------------
-
     fn make_row(
         name: &str, amount: &str, send: &str, flipped: &str,
     ) -> String {
@@ -230,11 +252,27 @@ mod unit_tests {
         }
     }
 
-    // ---- parse_row ---------------------------------------------------------
+    fn parse_test_row(line: &str) -> ErrStr<Option<InvestorRow>> {
+        let header = "name\treinvested %\tprecentage\tamount reinvested\tamount distributed\t\
+                      primary\tpivot\tUSD-value\tnumber of pivots closed\ttweet url\ttx url\tsend?\tflipped";
+        let tsv = format!("{header}\n{line}\n");
+        let mut rdr = ReaderBuilder::new()
+            .delimiter(b'\t')
+            .flexible(true)
+            .from_reader(tsv.as_bytes());
 
+        match rdr.deserialize::<PivotRecord>().next() {
+            None                              => Ok(None),
+            Some(Err(e)) if is_ragged_row(&e) => Ok(None),
+            Some(Err(e))                      => Err(format!("test fixture malformed: {e}")),
+            Some(Ok(record))                  => parse_row(&record),
+        }
+    }
+
+    // ---- parse_row ---------------------------------------------------------
     #[test]
     fn test_parse_row_normal() -> ErrStr<()> {
-        let row = parse_row(&make_row("α", "14492", "yes", "yes"))?.unwrap();
+        let row = parse_test_row(&make_row("α", "14492", "yes", "yes"))?.unwrap();
         assert_eq!(row.name,    "α");
         assert_eq!(row.amount,  14492);
         assert_eq!(row.primary, "BTC");
@@ -247,14 +285,14 @@ mod unit_tests {
 
     #[test]
     fn test_parse_row_send_no() -> ErrStr<()> {
-        let row = parse_row(&make_row("τ", "2004", "no", "yes"))?.unwrap();
+        let row = parse_test_row(&make_row("τ", "2004", "no", "yes"))?.unwrap();
         assert!(!row.send, "send=no should parse as false");
         Ok(())
     }
 
     #[test]
     fn test_parse_row_flipped_no() -> ErrStr<()> {
-        let row = parse_row(&make_row("γ", "42910", "yes", "no"))?.unwrap();
+        let row = parse_test_row(&make_row("γ", "42910", "yes", "no"))?.unwrap();
         assert!(!row.flipped, "flipped=no should parse as false");
         Ok(())
     }
@@ -262,29 +300,29 @@ mod unit_tests {
     #[test]
     fn test_parse_row_amount_zero_skipped() -> ErrStr<()> {
         assert!(
-            parse_row(&make_row("σ", "0", "yes", "yes"))?.is_none(),
+            parse_test_row(&make_row("σ", "0", "yes", "yes"))?.is_none(),
             "amount=0 row should be skipped"
         );
         Ok(())
     }
 
     #[test]
-    fn test_parse_row_column_header_skipped() -> ErrStr<()> {
+    fn test_parse_row_column_header_repeated_errors() -> ErrStr<()> {
         let header = "name\treinvested %\tprecentage\tamount reinvested\tamount distributed\t\
                       primary\tpivot\tUSD-value\tnumber of pivots closed\ttweet url\ttx url\tsend?\tflipped";
-        assert!(parse_row(header)?.is_none(), "column header row should be skipped");
+        let err = parse_test_row(header).unwrap_err();
+        assert!(err.contains("invalid amount reinvested"), "a duplicated header row should now error loudly, not skip silently: {err}");
         Ok(())
     }
 
     #[test]
     fn test_parse_row_blank_skipped() -> ErrStr<()> {
-        assert!(parse_row("")?.is_none(),   "blank line should be skipped");
-        assert!(parse_row("  ")?.is_none(), "whitespace line should be skipped");
+        assert!(parse_test_row("")?.is_none(),   "blank line should be skipped");
+        assert!(parse_test_row("  ")?.is_none(), "whitespace line should be skipped");
         Ok(())
     }
 
     // ---- build_message -----------------------------------------------------
-
     #[test]
     fn test_build_message_normal() -> ErrStr<()> {
         let row = make_investor("α", 14492, true, false);
@@ -353,7 +391,7 @@ mod unit_tests {
 
     #[test]
     fn test_parse_row_amount_invalid_errors() -> ErrStr<()> {
-        let err = parse_row(&make_row("ψ", "not-a-number", "yes", "yes"))
+        let err = parse_test_row(&make_row("ψ", "not-a-number", "yes", "yes"))
             .unwrap_err();
         assert!(err.contains("invalid amount"), "should error loudly, not skip");
         Ok(())
@@ -361,7 +399,7 @@ mod unit_tests {
 
     #[test]
     fn test_parse_row_unrecognized_send_errors() -> ErrStr<()> {
-        let err = parse_row(&make_row("α", "14492", "maybe", "yes")).unwrap_err();
+        let err = parse_test_row(&make_row("α", "14492", "maybe", "yes")).unwrap_err();
         assert!(err.contains("send"), "should mention the field name");
         assert!(err.contains("maybe"), "should show the bad value");
         assert!(err.contains("yes/no/true/false"), "should show allowed values");
@@ -370,7 +408,7 @@ mod unit_tests {
 
     #[test]
     fn test_parse_row_unrecognized_flipped_errors() -> ErrStr<()> {
-        let err = parse_row(&make_row("α", "14492", "yes", "perhaps")).unwrap_err();
+        let err = parse_test_row(&make_row("α", "14492", "yes", "perhaps")).unwrap_err();
         assert!(err.contains("flipped"), "unrecognized flipped must error: {err}");
         Ok(())
     }
@@ -380,17 +418,16 @@ mod unit_tests {
         // 12 columns — tx_url omitted (the malformed-export case)
         let short = "α\t100%\t3.46%\t14492\t0\tBTC\tUNDEAD\t$12.04\t15\t\
                      https://x.com/pivocateur/status/2069591552733712719\tyes\tyes";
-        assert!(parse_row(short)?.is_none(), "a 12-column row must be skipped");
+        assert!(parse_test_row(short)?.is_none(), "a 12-column row must be skipped");
         Ok(())
     }
 
     #[test]
     fn test_parse_row_reads_tweet_url() -> ErrStr<()> {
-        let row = parse_row(&make_row("α", "14492", "yes", "yes"))?.unwrap();
+        let row = parse_test_row(&make_row("α", "14492", "yes", "yes"))?.unwrap();
         assert_eq!(row.url, "https://x.com/pivocateur/status/2069591552733712719");
         Ok(())
     }
-
 }
 
 //============================================================================
@@ -403,6 +440,7 @@ pub mod functional_tests {
     use paste::paste;
     use book::{ create_testing, utils::now };
 
+    
     create_testing!("quiz11::a_reinvested");
 
     run!("mock_process_csv", {
