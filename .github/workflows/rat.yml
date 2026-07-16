@@ -35,8 +35,8 @@ jobs:
         id: itr-cache
         uses: actions/cache@v3
         with:
-          path: protocol/quizzes/src/quiz09/a_itr/target/release/itr
-          key: itr-binary-${{ hashFiles('protocol/quizzes/src/quiz09/a_itr/**/*.rs', 'protocol/quizzes/src/quiz09/a_itr/Cargo.toml', 'protocol/dapps/itr/Cargo.lock') }}
+          path: protocol/dapps/itr/target/release/itr
+          key: itr-binary-${{ hashFiles('protocol/quizzes/src/quiz09/a_itr/**/*.rs', 'protocol/dapps/itr/Cargo.toml', 'protocol/dapps/itr/Cargo.lock') }}
 
       - name: Cache cargo-make binary
         id: make-cache
@@ -124,11 +124,11 @@ jobs:
     
       - name: Build itr
         if: steps.itr-cache.outputs.cache-hit != 'true'
-        working-directory: protocol/quizzes/src/quiz09/a_itr
+        working-directory: protocol/dapps/itr
         run: cargo build --release
 
       - name: Add itr to PATH
-        run: echo "$GITHUB_WORKSPACE/protocol/quizzes/src/quiz09/a_itr/target/release" >> $GITHUB_PATH
+        run: echo "$GITHUB_WORKSPACE/protocol/dapps/itr/target/release" >> $GITHUB_PATH
 
       - name: "[itr] itr . — dapps"
         working-directory: protocol/dapps
