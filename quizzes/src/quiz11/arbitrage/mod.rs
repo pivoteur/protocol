@@ -15,9 +15,7 @@ use libs::{
 //============================================================================
 //----- Data Structure -------------------------------------------------------
 //============================================================================
-/// Exactly the columns requested — everything else on `Call` is ignored here.
-/// Order matches: ix, pool, close_date, pivot_token, pivot_amount, val1,
-/// proposed_token, proposed_amount, roi
+/// Exact columns requested and everything else on `Call` is ignored here.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ArbitrageCandidate {
     pub ix:              usize,
@@ -75,7 +73,7 @@ impl std::fmt::Display for ArbitrageCandidate {
 }
 
 //============================================================================
-//----- Core: fetch calls.csv and map to candidates ---------------------------
+//----- Core: fetch calls.csv and map to candidates --------------------------
 //============================================================================
 pub async fn fetch_candidates(root_url: &str) -> ErrStr<Vec<ArbitrageCandidate>> {
     let calls = fetch_calls(root_url).await?;
@@ -172,7 +170,7 @@ mod unit_tests {
     fn test_ignores_columns_not_requested() -> ErrStr<()> {
         // gain_10_percent, apr, quote1, amount1, virtual, open_pivots, etc.
         // are present in the source CSV but must not appear anywhere on the
-        // candidate — this is the "ignore what wasn't listed" contract.
+        // candidate. This is the "ignore what wasn't listed" contract.
         let shown = format!("{}", first_candidate()?);
         for excluded in ["gain_10_percent", "apr=", "quote1", "virtual"] {
             assert!(!shown.contains(excluded), "unexpected '{excluded}' leaked into: {shown}");
@@ -182,7 +180,7 @@ mod unit_tests {
 }
 
 //============================================================================
-//----- FUNCTIONAL TESTS -------------------------------------------------------
+//----- FUNCTIONAL TESTS -----------------------------------------------------
 //============================================================================
 #[cfg(test)]
 #[cfg(not(tarpaulin_include))]
