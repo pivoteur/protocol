@@ -5,12 +5,14 @@ use std::collections::HashMap;
 use std::io::{self, Write};
 use book::{
         cli_utils::add_banner,
+        currency::usd::mk_usd,
         err_utils::ErrStr,
         parse_args_add_banner,
         types::values::Value,
 };
 use libs::{
-        fetchers::calls::fetch_calls,
+        fetchers::calls::{fetch_calls, fetch_call_data},
+        processors::virtuals::compute_counter_offer,
         types::calls::Call,
 };
 
@@ -140,38 +142,46 @@ pub async fn wallet_balance(
     Ok(raw as f64 / 10f64.powi(entry.decimals as i32))
 }
 
-fn prompt_for_commit_amount(token: &str, available: f64) -> ErrStr<f32> {
-    println!("    Only {available:.6} {token} available. How much would you like to commit?");
+/// Prompts for how much of `token` to commit. Typing "na" is a deliberate
+/// skip (returns Ok(None)) — distinct from a parse error, which is still a
+/// hard Err. Nothing further is checked or displayed for a skipped row.
+fn prompt_for_commit_amount(token: &str, available: f64) -> ErrStr<Option<f32>> {
+    println!("    Only {available:.6} {token} available. How much would you like to commit? (or 'na' to skip)");
     print!("    amount: ");
     io::stdout().flush().map_err(|e| format!("stdout flush failed: {e}"))?;
     let mut input = String::new();
     io::stdin()
         .read_line(&mut input)
         .map_err(|e| format!("stdin read failed: {e}"))?;
-    let amount: f32 = input
-        .trim()
+    let trimmed = input.trim();
+
+    if trimmed.eq_ignore_ascii_case("na") {
+        return Ok(None);
+    }
+
+    let amount: f32 = trimmed
         .parse()
-        .map_err(|_| format!("'{}' is not a valid number", input.trim()))?;
+        .map_err(|_| format!("'{trimmed}' is not a valid number (or 'na' to skip)"))?;
     if amount <= 0.0 {
         return Err("Committed amount must be greater than zero".to_string());
     }
-    if amount as f64 > available {
+    if amount as f64 > available + 1e-6 {
         return Err(format!(
             "Cannot commit {amount:.6} {token} — only {available:.6} available"
         ));
     }
-    Ok(amount)
+    Ok(Some(amount))
 }
 
 /// Checks that `pivot_token` is held and `pivot_amount` is available for a
 /// candidate. If the pool wants more than is on hand, prompts for how much
-/// to commit instead and returns that as the amount to use going forward.
-/// Returns an error (not a silent skip) if nothing is held at all.
+/// to commit instead. Returns `Ok(None)` if the user typed "na" to skip,
+/// or a hard `Err` if nothing is held at all.
 pub async fn ensure_committed_amount(
     wallet_address: &str,
     registry: &TokenRegistry,
     candidate: &ArbitrageCandidate,
-) -> ErrStr<f32> {
+) -> ErrStr<Option<f32>> {
     let available = wallet_balance(wallet_address, &candidate.pivot_token, registry).await?;
     if available <= 0.0 {
         return Err(format!(
@@ -180,10 +190,157 @@ pub async fn ensure_committed_amount(
         ));
     }
     if available >= candidate.pivot_amount as f64 {
-        Ok(candidate.pivot_amount)
+        Ok(Some(candidate.pivot_amount))
     } else {
         prompt_for_commit_amount(&candidate.pivot_token, available)
     }
+}
+
+//============================================================================
+//----- Live KyberSwap Quote -------------------------------------------------
+//============================================================================
+// Read-only route lookup — no signing, no submission. Tells you what a swap
+// would actually return right now.
+
+const KYBERSWAP_CHAIN: &str = "avalanche";
+const NATIVE_TOKEN_PLACEHOLDER: &str = "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE";
+
+#[derive(Debug, Deserialize)]
+struct KyberRouteSummary {
+    #[serde(rename = "amountOut")]
+    amount_out: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct KyberRouteData {
+    #[serde(rename = "routeSummary")]
+    route_summary: KyberRouteSummary,
+}
+
+#[derive(Debug, Deserialize)]
+struct KyberRouteResponse {
+    data: Option<KyberRouteData>,
+    message: Option<String>,
+}
+
+fn kyber_token_address(entry: &TokenEntry) -> ErrStr<String> {
+    if entry.native {
+        Ok(NATIVE_TOKEN_PLACEHOLDER.to_string())
+    } else {
+        entry
+            .address
+            .clone()
+            .ok_or_else(|| "Token entry missing address".to_string())
+    }
+}
+
+/// What KyberSwap would actually return right now for swapping `amount_in`
+/// of `pivot_token` into `proposed_token`. Read-only — no signing.
+pub async fn live_quote(
+    registry: &TokenRegistry,
+    pivot_token: &str,
+    amount_in: f32,
+    proposed_token: &str,
+) -> ErrStr<f64> {
+    let from_entry = token_entry(registry, pivot_token)?;
+    let to_entry = token_entry(registry, proposed_token)?;
+    let token_in = kyber_token_address(from_entry)?;
+    let token_out = kyber_token_address(to_entry)?;
+    let amount_in_base = (amount_in as f64 * 10f64.powi(from_entry.decimals as i32)) as u128;
+
+    let url = format!(
+        "https://aggregator-api.kyberswap.com/{KYBERSWAP_CHAIN}/api/v1/routes?tokenIn={token_in}&tokenOut={token_out}&amountIn={amount_in_base}"
+    );
+
+    let resp = reqwest::Client::new()
+        .get(&url)
+        .header("X-Client-Id", "pivoteur-arbitrage")
+        .send()
+        .await
+        .map_err(|e| format!("KyberSwap route request failed: {e}"))?;
+
+    let body: KyberRouteResponse = resp
+        .json()
+        .await
+        .map_err(|e| format!("KyberSwap response did not parse: {e}"))?;
+
+    match body.data {
+        Some(d) => {
+            let raw: u128 = d.route_summary.amount_out.parse().map_err(|_| {
+                format!("Could not parse KyberSwap amountOut '{}'", d.route_summary.amount_out)
+            })?;
+            Ok(raw as f64 / 10f64.powi(to_entry.decimals as i32))
+        }
+        None => Err(format!(
+            "KyberSwap returned no route ({pivot_token} -> {proposed_token}): {}",
+            body.message.unwrap_or_else(|| "no message".to_string())
+        )),
+    }
+}
+
+//============================================================================
+//----- Offrian-Rescaled Target ----------------------------------------------
+//============================================================================
+/// When the committed amount is smaller than the pool's full pivot_amount,
+/// the CSV's proposed_amount was sized for the full trade and isn't a valid
+/// comparison target. Rather than scale it down linearly (which ignores
+/// price impact), this asks `offrian`'s own logic — fetch_call_data +
+/// compute_counter_offer — for what the pool would actually offer at the
+/// smaller volume. Read-only: another data fetch, no signing.
+pub async fn rescaled_target(
+    root_url: &str,
+    candidate: &ArbitrageCandidate,
+    committed_amount: f32,
+) -> ErrStr<f32> {
+    if (committed_amount - candidate.pivot_amount).abs() < f32::EPSILON {
+        return Ok(candidate.proposed_amount);
+    }
+    if candidate.pivot_amount <= 0.0 {
+        return Err("pivot_amount is zero — cannot derive a price ratio".to_string());
+    }
+    let price_per_unit = candidate.val1 / candidate.pivot_amount;
+    let committed_usd = committed_amount * price_per_unit;
+
+    let call_data = fetch_call_data(root_url, candidate.ix, false).await?;
+    let rescaled_call = compute_counter_offer(&call_data, &mk_usd(committed_usd), false)?;
+    Ok(rescaled_call.proposed_amount)
+}
+
+//============================================================================
+//----- Trade Check (read-only recommendation) -------------------------------
+//============================================================================
+/// Combines the wallet check, the offrian-rescaled target, and the live
+/// KyberSwap quote into one read-only trade preview per row. Shows exactly
+/// what the trade WOULD look like if it happened. Signs and sends nothing.
+pub async fn check_trade(
+    root_url: &str,
+    wallet_address: &str,
+    registry: &TokenRegistry,
+    candidate: &ArbitrageCandidate,
+) -> ErrStr<()> {
+    let committed = match ensure_committed_amount(wallet_address, registry, candidate).await? {
+        Some(amount) => amount,
+        None => {
+            println!("ix={}: skipped by user (na)", candidate.ix);
+            return Ok(());
+        }
+    };
+
+    let target = rescaled_target(root_url, candidate, committed).await?;
+    let quote = live_quote(registry, &candidate.pivot_token, committed, &candidate.proposed_token).await?;
+    let pct_of_target = if target > 0.0 { (quote / target as f64) * 100.0 } else { 0.0 };
+
+    println!("ix={}: TRADE PREVIEW (nothing signed or sent)", candidate.ix);
+    println!("    Send:     {committed:.6} {}", candidate.pivot_token);
+    println!("    Receive:  {quote:.6} {}  (live KyberSwap quote)", candidate.proposed_token);
+    println!("    Target:   {target:.6} {}  (offrian-rescaled for this size)", candidate.proposed_token);
+
+    if quote >= target as f64 {
+        println!("    Result:   WOULD CLEAR target ({pct_of_target:.1}% of target)");
+    } else {
+        println!("    Result:   would NOT clear target ({pct_of_target:.1}% of target)");
+    }
+    Ok(())
 }
 
 //============================================================================
@@ -280,22 +437,10 @@ pub async fn process(root_url: &str) -> ErrStr<()> {
     }
     println!("\n{} candidate(s) parsed from calls.csv\n", candidates.len());
 
-    println!("=== Wallet check ({wallet_address}) ===");
+    println!("=== Trade check ({wallet_address}) — read-only, nothing signed or sent ===");
     for c in &candidates {
-        match ensure_committed_amount(&wallet_address, &registry, c).await {
-            Ok(committed) if (committed - c.pivot_amount).abs() < f32::EPSILON => {
-                println!(
-                    "ix={}: {:.6} {} available, committing in full",
-                    c.ix, c.pivot_amount, c.pivot_token
-                );
-            }
-            Ok(committed) => {
-                println!(
-                    "ix={}: committing {committed:.6} {} (pool wanted {:.6})",
-                    c.ix, c.pivot_token, c.pivot_amount
-                );
-            }
-            Err(e) => println!("ix={}: SKIP — {e}", c.ix),
+        if let Err(e) = check_trade(root_url, &wallet_address, &registry, c).await {
+            println!("ix={}: SKIP — {e}", c.ix);
         }
     }
     Ok(())
@@ -459,6 +604,17 @@ mod unit_tests {
         assert!(padded.ends_with("69b21dc480ca62e478d997d7313061f765a5b122"));
         assert!(padded.starts_with("00000000000000000000"));
     }
+
+    #[tokio::test]
+    async fn test_rescaled_target_full_commit_skips_network() -> ErrStr<()> {
+        // When the committed amount equals the pool's own pivot_amount, no
+        // offrian call is needed — the CSV's proposed_amount already applies.
+        // Passing a garbage root_url proves no network call happens here.
+        let candidate = first_candidate()?;
+        let target = rescaled_target("not-a-real-url", &candidate, candidate.pivot_amount).await?;
+        assert_eq!(target, candidate.proposed_amount);
+        Ok(())
+    }
 }
 
 //============================================================================
@@ -484,13 +640,19 @@ pub mod functional_tests {
         }
     });
 
-    run!("wallet_balance", " (real AVAX read against nooice, read-only)", {
+    run!("wallet_balance", " (real AVAX read against dedicated test wallet, read-only)", {
         let registry = load_token_registry()?;
         let balance = now(wallet_balance(
             "0xd16E431b1363Ed90C4fD4906Cf7Fc33E51115429",
             "AVAX",
             &registry,
         ))?;
-        println!("\tnooice AVAX balance: {balance:.6}");
+        println!("\ttest wallet AVAX balance: {balance:.6}");
+    });
+
+    run!("live_quote", " (real KyberSwap route, read-only, small AVAX->USDC)", {
+        let registry = load_token_registry()?;
+        let quote = now(live_quote(&registry, "AVAX", 1.0, "USDC"))?;
+        println!("\t1 AVAX -> {quote:.6} USDC right now");
     });
 }
