@@ -29,6 +29,18 @@ pub struct ArbitrageCandidate {
     pub roi:              f32,
 }
 
+const CALLS_ROOT_URL: &str = "https://raw.githubusercontent.com/pivoteur/pivoteur.github.io";
+
+/// Accepts either "calls" or a full URL passed through as an argument.
+/// So user doesn't have to type the full URL every time, but can if they want to.
+fn resolve_root_url(input: &str) -> String {
+    if input.eq_ignore_ascii_case("calls") {
+        CALLS_ROOT_URL.to_string()
+    } else {
+        input.to_string()
+    }
+}
+
 impl From<&Call> for ArbitrageCandidate {
     fn from(call: &Call) -> Self {
         ArbitrageCandidate {
@@ -90,18 +102,18 @@ pub async fn process(root_url: &str) -> ErrStr<()> {
     Ok(())
 }
 
-/// Parses calls.csv into arbitrage candidates for the requested columns only.
 #[derive(Debug, Parser)]
 #[command(name = "arbitrage")]
-#[command(version = "0.1.0")]
+#[command(version = "0.1.1")]
 struct Args {
-    /// Root URL of the pivoteur.github.io data (same root used by other dapps)
+    #[arg(value_name = "dusk's output file name")]
     root_url: String,
 }
 
 pub async fn runoff_with_args() -> ErrStr<()> {
     let args = parse_args_add_banner!(Args);
-    process(&args.root_url).await
+    let root_url = resolve_root_url(&args.root_url);
+    process(&root_url).await
 }
 
 //============================================================================
@@ -176,6 +188,16 @@ mod unit_tests {
             assert!(!shown.contains(excluded), "unexpected '{excluded}' leaked into: {shown}");
         }
         Ok(())
+    }
+
+    #[test]
+    fn test_resolve_root_url_shorthand_and_passthrough() {
+        assert_eq!(resolve_root_url("calls"), CALLS_ROOT_URL);
+        assert_eq!(resolve_root_url("CALLS"), CALLS_ROOT_URL);
+        assert_eq!(
+            resolve_root_url("https://example.com/other-fork"),
+            "https://example.com/other-fork"
+        );
     }
 }
 
