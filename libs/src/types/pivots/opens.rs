@@ -56,6 +56,7 @@ impl Pivot {
    pub fn active(&self) -> bool { !self.closed() }
    pub fn is_updated(&self) -> bool { self.header.is_updated() }
    pub fn index(&self) -> usize { self.header.ix() }
+   pub fn opened(&self) -> NaiveDate { self.header.opened() }
    pub fn trade(&self, qts: &Quotes) -> ErrStr<Option<(PropAsset, PropAsset)>> {
       trade(qts, &self.from, &self.to)
    }
