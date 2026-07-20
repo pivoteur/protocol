@@ -103,10 +103,7 @@ mod functional_tests {
 mod tests {
    use super::*;
    use super::sample_data::{ sample_open_pivots, sample_old_close_pivots };
-   use book::string_utils::s;
    use libs::types::pivots::closes::OldClosePivotRow;
-
-   fn to_str((a, b): (&str, &str)) -> (String, String) { (s(a), s(b)) }
 
    #[test] fn test_open_pivots() -> ErrStr<()> {
       let opens = process_open_pivots(sample_open_pivots().as_bytes())?;

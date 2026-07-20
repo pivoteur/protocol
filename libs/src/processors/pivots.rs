@@ -1,23 +1,41 @@
 use std::{ collections::HashMap, io };
+
 use csv::Reader;
 
 use book::err_utils::{ ErrStr, err_or };
 
-use crate::types::pivots::closes::{ transform, OldClosePivotRow, ClosePivot };
+use crate::types::{
+   pivots::{
+      closes::{ transform, OldClosePivotRow, ClosePivot },
+      opens::Opens
+   }
+};
 
 mod converter {
+   use std::collections::HashSet;
+   use chrono::NaiveDate;
    use serde::Deserialize;
-   use crate::types::pivots::closes::OldClosePivotRow;
+   use serde_with::{serde_as, DisplayFromStr};
+   use crate::types::{
+      pivots::{
+         closes::OldClosePivotRow,
+         opens::{ WeightedDate, mk_weighted_date }
+      },
+      util::Id
+   };
    use super::Opens;
 
-   use book::err_utils::ErrStr;
+   use book::utils::pred;
 
    /// We convert old-style close pivots to the one with the 10% gain column
 
    // these fields are the only information we care about from the open 
    // pivot pool.  Maps only what we need from the open pivots table
+   #[serde_as]
    #[derive(Debug, Deserialize)]
    pub struct OpenPivotRow {
+       #[serde_as(as = "DisplayFromStr")]
+       opened: NaiveDate,
        #[serde(alias = "open")]
        pivot: usize,
        #[serde(alias = "10% gain")]
@@ -26,30 +44,23 @@ mod converter {
 
    impl OpenPivotRow {
       pub fn key(&self) -> usize { self.pivot }
+      pub fn weighted_date(&self) -> WeightedDate {
+         mk_weighted_date(&self.opened, self.gain_10_percent)
+      }
       pub fn gain(&self) -> f32 { self.gain_10_percent }
+      pub fn opened(&self) -> NaiveDate { self.opened.clone() }
    }
 
    /// With the open pivot information and the (old-style) close pivot,
    /// we can construct the new close pivot
 
-   pub fn gain_10_percent_for_close(open_map: &Opens, close: &OldClosePivotRow)
-         -> ErrStr<f32> {
-      // Extract the 10% gain matching against the compound key mapping
-      let mut gain_10 = 0.0;
-      for target_pivot in close.open_pivots_ix() {
-         let lookup_key = target_pivot;
-
-         gain_10 += open_map
-               .get(&lookup_key)
-               .ok_or(format!("No gain 10% for open pivot {lookup_key:?}"))?;
-      }
-      Ok(gain_10)
+   pub fn gain_10_percent_for_close(o: &Opens, c: &OldClosePivotRow) -> f32 {
+      let keys: HashSet<Id> = c.open_pivots_ix().iter().collect();
+      o.iter().filter_map(|(k, v)| pred(keys.contain(&k), v.sz())).sum()
    }
 }
 
 use converter::{ OpenPivotRow, gain_10_percent_for_close };
-
-pub type Opens = HashMap<usize, f32>;
 
 pub fn process_open_pivots<R: io::Read>(opens: R) -> ErrStr<Opens> {
    // 1. Parse Open Pivots into a lookup map using (pivot, close)
@@ -64,7 +75,7 @@ pub fn process_open_pivots<R: io::Read>(opens: R) -> ErrStr<Opens> {
        ix += 1;
        let row: OpenPivotRow = err_or(result,
             &format!("Cannot convert open pivot row, ix: {ix}"))?;
-       open_map.insert(row.key(), row.gain());
+       open_map.insert(row.key(), (row.opened(), row.gain()));
    }
    Ok(open_map)
 }
@@ -92,3 +103,4 @@ pub fn new_close_pivots<R: io::Read>(opens: &Opens, closes: &mut Closes<R>)
    }
    Ok(new_closes)
 }
+

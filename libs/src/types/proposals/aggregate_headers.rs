@@ -2,10 +2,7 @@ use std::fmt::Display;
 
 use chrono::NaiveDate;
 
-use book::{
-   csv_utils::{CsvHeader,CsvWriter},
-   err_utils::ErrStr
-};
+use book::csv_utils::{CsvHeader,CsvWriter};
 
 use crate::types::{
    headers::Header,
@@ -28,6 +25,10 @@ pub fn add_header_info(v: &Vec<Header>) -> AggregateHeader {
       ids.push(h.ix());
    }
    AggregateHeader { opened, ids }
+}
+
+impl AggregateHeader {
+   pub fn opens(&self) -> Vec<NaiveDate> { self.opened.clone() }
 }
 
 impl CsvHeader for AggregateHeader {

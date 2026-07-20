@@ -4,7 +4,7 @@ use serde_with::{serde_as, DisplayFromStr};
 
 use book::{
    currency::usd::USD,
-   num::percentage::Percentage
+   num::{ floats::comma_floats::CommaFloat, percentage::Percentage }
 };
 
 use crate::{
@@ -59,7 +59,7 @@ pub fn transform(old_row: &OldClosePivotRow, gain_10: f32) -> ClosePivot {
       from_quote: old_row.from_quote.clone(),
       to: old_row.to.clone(),
       to_quote: old_row.to_quote.clone(),
-      trade: old_row.trade,
+      trade: old_row.trade.into(),
       vol: old_row.vol.clone(),
       gain_10_percent: gain_10,
       new_to_actual: old_row.new_to_actual,
@@ -90,7 +90,8 @@ pub struct OldClosePivotRow {
     #[serde_as(as = "DisplayFromStr")]
     #[serde(alias = "to quote")]
     to_quote: USD,
-    trade: f32,
+    #[serde_as(as = "DisplayFromStr")]
+    trade: CommaFloat,
     #[serde_as(as = "DisplayFromStr")]
     vol: USD,
     #[serde(alias = "new to-actual")]
@@ -108,6 +109,6 @@ pub struct OldClosePivotRow {
 }
 
 impl OldClosePivotRow {
-   pub fn open_pivots_ix(&self) -> Vec<usize> { self.pivot.clone() } 
+   pub fn open_pivots_ix(&self) -> Vec<Id> { self.pivot.clone() } 
 }
 
