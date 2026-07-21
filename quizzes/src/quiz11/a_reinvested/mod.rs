@@ -200,7 +200,7 @@ pub async fn process_csv<F>(csv_path: &str, global_send: bool, send_fn: F)
 /// The investors and their reinvestments are listed in CSV file
 #[derive(Debug, Parser)]
 #[command(name = "reinvested")]
-#[command(version = "1.02")]
+#[command(version = "2.00")]
 struct Args {
    /// The path to the list of the investors and their distributions
    csv_path: String,
