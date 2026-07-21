@@ -37,9 +37,12 @@ pub fn load_token_registry() -> ErrStr<TokenRegistry> {
 }
 
 pub fn token_entry<'a>(registry: &'a TokenRegistry, symbol: &str) -> ErrStr<&'a TokenEntry> {
-    registry.get(symbol).ok_or_else(|| {
-        format!("No tokens.toml entry for '{symbol}' — add one before checking this pool")
-    })
+    match registry.get(symbol) {
+        Some(entry) => Ok(entry),
+        None => Err(format!(
+            "No tokens.toml entry for '{symbol}' — add one before checking this pool"
+        )),
+    }
 }
 
 //============================================================================
@@ -97,7 +100,7 @@ fn hex_to_u128(hex: &str) -> ErrStr<u128> {
 
 fn pad_address_for_call(address: &str) -> String {
     let hex = address.trim_start_matches("0x").to_lowercase();
-    format!("{hex:0>64}")
+    return format!("{hex:0>64}");
 }
 
 async fn erc20_balance(wallet_address: &str, token_contract: &str) -> ErrStr<u128> {
@@ -208,7 +211,7 @@ pub async fn live_quote(registry: &TokenRegistry, eth_amount: f32) -> ErrStr<Kyb
 // deliberately loud on failure rather than guessing its way through.
 
 fn pad_u256_for_call(amount: u128) -> String {
-    format!("{amount:064x}")
+    return format!("{amount:064x}");
 }
 
 /// Loads the encrypted keystore, prompts for its password at runtime (never
