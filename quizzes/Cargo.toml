@@ -23,6 +23,8 @@ tokio = { version = "1.53.0", features = ["macros", "rt-multi-thread"] }
 
 libs = { path = "../libs" }
 book = { path = "../../crypto-n-rust/src/libs/book" }
+ethers = { version = "2.0.14", default-features = false, features = ["rustls"] }
+rpassword = "7.5.4"
 
 [lints.rust.unexpected_cfgs]
 level = "warn"
