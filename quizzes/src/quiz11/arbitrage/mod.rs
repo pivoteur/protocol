@@ -1,12 +1,17 @@
 use clap::Parser;
 use serde::Deserialize;
 use std::collections::HashMap;
+use std::fs::OpenOptions;
+use std::io::Write;
 use std::str::FromStr;
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use ethers::{
     middleware::SignerMiddleware,
     providers::{Http, Middleware, Provider},
     signers::{LocalWallet, Signer},
-    types::{Address, Bytes, TransactionRequest},
+    types::{
+        transaction::eip2718::TypedTransaction, Address, Bytes, Eip1559TransactionRequest, U256,
+    },
 };
 use book::{
         cli_utils::add_banner,
@@ -46,6 +51,21 @@ pub fn token_entry<'a>(registry: &'a TokenRegistry, symbol: &str) -> ErrStr<&'a 
 }
 
 //============================================================================
+//----- Shared HTTP Client ----------------------------------------------------
+//============================================================================
+// Every outbound call (RPC and KyberSwap) goes through this so a hung
+// connection fails loudly in seconds instead of hanging the program.
+
+const HTTP_TIMEOUT_SECS: u64 = 15;
+
+fn http_client() -> ErrStr<reqwest::Client> {
+    reqwest::Client::builder()
+        .timeout(Duration::from_secs(HTTP_TIMEOUT_SECS))
+        .build()
+        .map_err(|e| format!("Could not build HTTP client: {e}"))
+}
+
+//============================================================================
 //----- Wallet Balance Check --------------------------------------------------
 //============================================================================
 // Read-only: eth_getBalance / eth_call queries against a public RPC.
@@ -73,7 +93,7 @@ async fn rpc_call(method: &str, params: serde_json::Value) -> ErrStr<String> {
         "params": params,
         "id": 1
     });
-    let resp = reqwest::Client::new()
+    let resp = http_client()?
         .post(AVALANCHE_RPC)
         .json(&body)
         .send()
@@ -150,18 +170,18 @@ pub struct KyberQuote {
 
 /// What KyberSwap would actually return right now for swapping `eth_amount`
 /// ETH into BTC. Read-only — no signing.
-pub async fn live_quote(registry: &TokenRegistry, eth_amount: f32) -> ErrStr<KyberQuote> {
+pub async fn live_quote(registry: &TokenRegistry, eth_amount: f64) -> ErrStr<KyberQuote> {
     let from_entry = token_entry(registry, "ETH")?;
     let to_entry = token_entry(registry, "BTC")?;
     let token_in = from_entry.address.as_deref().ok_or("ETH missing address")?;
     let token_out = to_entry.address.as_deref().ok_or("BTC missing address")?;
-    let amount_in_base = (eth_amount as f64 * 10f64.powi(from_entry.decimals as i32)).round() as u128;
+    let amount_in_base = (eth_amount * 10f64.powi(from_entry.decimals as i32)).round() as u128;
 
     let url = format!(
         "https://aggregator-api.kyberswap.com/{KYBERSWAP_CHAIN}/api/v1/routes?tokenIn={token_in}&tokenOut={token_out}&amountIn={amount_in_base}"
     );
 
-    let resp = reqwest::Client::new()
+    let resp = http_client()?
         .get(&url)
         .header("X-Client-Id", "pivoteur-arbitrage")
         .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36")
@@ -236,6 +256,42 @@ async fn load_signer(expected_address: &str) -> ErrStr<LocalWallet> {
     Ok(wallet)
 }
 
+/// Builds an EIP-1559 tx with a buffered max fee (so a base-fee bump between
+/// estimation and submission — e.g. during the password prompt — doesn't get
+/// the tx rejected pre-mempool) and a buffered gas limit. Fees are
+/// re-estimated fresh on every call rather than reused across steps.
+async fn build_tx_with_fee_buffer(
+    client: &SignerMiddleware<Provider<Http>, LocalWallet>,
+    to: Address,
+    data: Bytes,
+) -> ErrStr<Eip1559TransactionRequest> {
+    let (max_fee, max_priority_fee) = client
+        .estimate_eip1559_fees(None)
+        .await
+        .map_err(|e| format!("Could not estimate EIP-1559 fees: {e}"))?;
+
+    // 30% buffer on the max fee absorbs a base-fee bump between estimation
+    // and submission without overpaying on the priority fee.
+    let buffered_max_fee = max_fee.saturating_mul(U256::from(130)) / U256::from(100);
+
+    let mut tx = Eip1559TransactionRequest::new()
+        .to(to)
+        .data(data)
+        .max_fee_per_gas(buffered_max_fee)
+        .max_priority_fee_per_gas(max_priority_fee);
+
+    let typed: TypedTransaction = tx.clone().into();
+    let gas_estimate = client
+        .estimate_gas(&typed, None)
+        .await
+        .map_err(|e| format!("Could not estimate gas limit: {e}"))?;
+    // 20% buffer on gas so a slightly-off estimate doesn't run out mid-execution.
+    let buffered_gas = gas_estimate.saturating_mul(U256::from(120)) / U256::from(100);
+    tx = tx.gas(buffered_gas);
+
+    Ok(tx)
+}
+
 /// Approves the router for EXACTLY this trade's amount — never a standing
 /// allowance. The router can never pull more than what's approved here.
 async fn approve_exact_amount(
@@ -251,7 +307,7 @@ async fn approve_exact_amount(
     );
     let to = Address::from_str(token_contract).map_err(|e| format!("Bad token address: {e}"))?;
     let data = Bytes::from_str(&data_hex).map_err(|e| format!("Bad approve calldata: {e}"))?;
-    let tx = TransactionRequest::new().to(to).data(data);
+    let tx = build_tx_with_fee_buffer(client, to, data).await?;
 
     let pending = client
         .send_transaction(tx, None)
@@ -274,16 +330,21 @@ async fn approve_exact_amount(
 /// Asks KyberSwap to encode the actual swap calldata for the route we
 /// already quoted. Prints the raw response every time — verify it before
 /// trusting it, since the exact schema wasn't something I could fully
-/// confirm from documentation alone.
-async fn kyberswap_build(route_summary_raw: &serde_json::Value, sender: &str) -> ErrStr<(String, String)> {
+/// confirm from documentation alone. `slippage_bps` is basis points
+/// (e.g. 50 = 0.50%) and comes from the CLI, not a hardcoded value.
+async fn kyberswap_build(
+    route_summary_raw: &serde_json::Value,
+    sender: &str,
+    slippage_bps: u16,
+) -> ErrStr<(String, String)> {
     let body = serde_json::json!({
         "routeSummary": route_summary_raw,
         "sender": sender,
         "recipient": sender,
-        "slippageTolerance": 50
+        "slippageTolerance": slippage_bps
     });
 
-    let resp = reqwest::Client::new()
+    let resp = http_client()?
         .post(format!("https://aggregator-api.kyberswap.com/{KYBERSWAP_CHAIN}/api/v1/route/build"))
         .header("X-Client-Id", "pivoteur-arbitrage")
         .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36")
@@ -327,7 +388,7 @@ async fn send_swap_tx(
 ) -> ErrStr<String> {
     let to = Address::from_str(router).map_err(|e| format!("Bad router address: {e}"))?;
     let data = Bytes::from_str(calldata_hex).map_err(|e| format!("Bad calldata from KyberSwap: {e}"))?;
-    let tx = TransactionRequest::new().to(to).data(data);
+    let tx = build_tx_with_fee_buffer(client, to, data).await?;
 
     let pending = client
         .send_transaction(tx, None)
@@ -350,12 +411,86 @@ async fn send_swap_tx(
 }
 
 //============================================================================
+//----- Trade Log --------------------------------------------------------------
+//============================================================================
+// Every attempt — success, floor rejection, or execution error — gets one
+// append-only line here. Terminal println!s disappear when the terminal
+// closes; this doesn't.
+
+const TRADE_LOG_PATH: &str = "arbitrage_trades.log";
+
+fn log_trade_outcome(eth_amount: f64, min_btc_floor: f64, quote_btc: f64, outcome: &str) {
+    let ts = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0);
+    let line = format!("{ts},{eth_amount:.6},{min_btc_floor:.8},{quote_btc:.8},{outcome}\n");
+    let result = OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(TRADE_LOG_PATH)
+        .and_then(|mut f| f.write_all(line.as_bytes()));
+    if let Err(e) = result {
+        eprintln!("Warning: could not write to trade log ({TRADE_LOG_PATH}): {e}");
+    }
+}
+
+//============================================================================
 //----- Trade Flow -------------------------------------------------------------
 //============================================================================
+/// Everything from keystore unlock through the swap. Split out of
+/// `run_trade` so the quote can be refreshed right before committing funds —
+/// the password prompt takes real wall-clock time, and Avalanche's base fee
+/// (and the KyberSwap route itself) can move during it.
+async fn execute_trade(
+    wallet_address: &str,
+    registry: &TokenRegistry,
+    eth_amount: f64,
+    min_btc_floor: f64,
+    slippage_bps: u16,
+) -> ErrStr<String> {
+    let signer = load_signer(wallet_address).await?;
+    let provider = Provider::<Http>::try_from(AVALANCHE_RPC)
+        .map_err(|e| format!("Could not create RPC provider: {e}"))?;
+    let client = SignerMiddleware::new(provider, signer);
+
+    println!(">>> Re-checking the quote after keystore unlock (it may have moved)...");
+    let fresh_quote = live_quote(registry, eth_amount).await?;
+    println!("Fresh quote: {eth_amount:.6} ETH -> {:.8} BTC now", fresh_quote.amount_out);
+    if fresh_quote.amount_out < min_btc_floor {
+        return Err(format!(
+            "Quote moved below your floor while unlocking the keystore ({:.8} BTC < {min_btc_floor:.8} BTC). \
+             That's not happening. No funds used.",
+            fresh_quote.amount_out
+        ));
+    }
+
+    let eth_entry = token_entry(registry, "ETH")?;
+    let eth_addr = eth_entry.address.as_deref().ok_or("ETH missing address")?.to_string();
+    let amount_base = (eth_amount * 10f64.powi(eth_entry.decimals as i32)).round() as u128;
+
+    println!(">>> Approving exact amount ({eth_amount:.6} ETH) for the router...");
+    approve_exact_amount(&client, &eth_addr, &fresh_quote.router_address, amount_base).await?;
+
+    println!(">>> Requesting swap calldata from KyberSwap...");
+    let (router, calldata) =
+        kyberswap_build(&fresh_quote.route_summary_raw, wallet_address, slippage_bps).await?;
+
+    println!(">>> Sending swap transaction...");
+    send_swap_tx(&client, &router, &calldata).await
+}
+
 /// The whole flow: check wallet, get a live quote, check it against your
-/// floor. Running this program IS the approval — there's no interactive
-/// prompt. A missed floor is a hard error, not a question: no funds used.
-pub async fn run_trade(eth_amount: f32, min_btc_floor: f32) -> ErrStr<()> {
+/// floor. Running this program IS the approval. 
+///  A missed floor is a hard error, not a question: no funds used.
+/// `dry_run` stops right after the floor check, before the keystore is ever
+/// touched or anything is sent.
+pub async fn run_trade(
+    eth_amount: f64,
+    min_btc_floor: f64,
+    slippage_bps: u16,
+    dry_run: bool,
+) -> ErrStr<()> {
     if eth_amount <= 0.0 {
         return Err("eth_amount must be greater than zero".to_string());
     }
@@ -368,7 +503,7 @@ pub async fn run_trade(eth_amount: f32, min_btc_floor: f32) -> ErrStr<()> {
 
     let available = wallet_balance(&wallet_address, "ETH", &registry).await?;
     println!("Wallet ({wallet_address}): {available:.6} ETH available");
-    if available + 1e-6 < eth_amount as f64 {
+    if available + 1e-6 < eth_amount {
         return Err(format!(
             "Insufficient ETH — need {eth_amount:.6}, only {available:.6} available. \
              That's not happening. No funds used."
@@ -379,7 +514,8 @@ pub async fn run_trade(eth_amount: f32, min_btc_floor: f32) -> ErrStr<()> {
     println!("Live quote: {eth_amount:.6} ETH -> {:.8} BTC right now", quote.amount_out);
     println!("Your floor: {min_btc_floor:.8} BTC");
 
-    if quote.amount_out < min_btc_floor as f64 {
+    if quote.amount_out < min_btc_floor {
+        log_trade_outcome(eth_amount, min_btc_floor, quote.amount_out, "REJECTED_FLOOR");
         return Err(format!(
             "Quote ({:.8} BTC) is below your floor ({min_btc_floor:.8} BTC). \
              That's not happening. No funds used.",
@@ -387,43 +523,47 @@ pub async fn run_trade(eth_amount: f32, min_btc_floor: f32) -> ErrStr<()> {
         ));
     }
 
+    if dry_run {
+        println!(">>> DRY RUN: quote clears your floor. No keystore touched, nothing sent, no funds moved.");
+        log_trade_outcome(eth_amount, min_btc_floor, quote.amount_out, "DRY_RUN_OK");
+        return Ok(());
+    }
+
     println!(">>> Quote clears your floor. Proceeding to execute.");
 
-    let signer = load_signer(&wallet_address).await?;
-    let provider = Provider::<Http>::try_from(AVALANCHE_RPC)
-        .map_err(|e| format!("Could not create RPC provider: {e}"))?;
-    let client = SignerMiddleware::new(provider, signer);
-
-    let eth_entry = token_entry(&registry, "ETH")?;
-    let eth_addr = eth_entry.address.as_deref().ok_or("ETH missing address")?.to_string();
-    let amount_base = (eth_amount as f64 * 10f64.powi(eth_entry.decimals as i32)).round() as u128;
-
-    println!(">>> Approving exact amount ({eth_amount:.6} ETH) for the router...");
-    approve_exact_amount(&client, &eth_addr, &quote.router_address, amount_base).await?;
-
-    println!(">>> Requesting swap calldata from KyberSwap...");
-    let (router, calldata) = kyberswap_build(&quote.route_summary_raw, &wallet_address).await?;
-
-    println!(">>> Sending swap transaction...");
-    let tx_hash = send_swap_tx(&client, &router, &calldata).await?;
-
-    println!(">>> Trade complete. Tx hash: {tx_hash}");
-    Ok(())
+    match execute_trade(&wallet_address, &registry, eth_amount, min_btc_floor, slippage_bps).await {
+        Ok(tx_hash) => {
+            println!(">>> Trade complete. Tx hash: {tx_hash}");
+            log_trade_outcome(eth_amount, min_btc_floor, quote.amount_out, &format!("SUCCESS tx={tx_hash}"));
+            Ok(())
+        }
+        Err(e) => {
+            log_trade_outcome(eth_amount, min_btc_floor, quote.amount_out, &format!("ERROR: {e}"));
+            Err(e)
+        }
+    }
 }
 
 #[derive(Debug, Parser)]
 #[command(name = "arbitrage")]
-#[command(version = "0.3.0")]
+#[command(version = "0.5.0")]
 struct Args {
     /// Amount of ETH to trade from your wallet
-    eth_amount: f32,
+    eth_amount: f64,
     /// Minimum acceptable BTC back — trade won't proceed below this
-    min_btc_floor: f32,
+    min_btc_floor: f64,
+    /// Slippage tolerance in basis points (50 = 0.50%)
+    #[arg(long, default_value_t = 50)]
+    slippage_bps: u16,
+    /// Check balance, quote, and floor only — never touches the keystore
+    /// or sends a transaction
+    #[arg(long, default_value_t = false)]
+    dry_run: bool,
 }
 
 pub async fn runoff_with_args() -> ErrStr<()> {
     let args = parse_args_add_banner!(Args);
-    run_trade(args.eth_amount, args.min_btc_floor).await
+    run_trade(args.eth_amount, args.min_btc_floor, args.slippage_bps, args.dry_run).await
 }
 //============================================================================
 //----- UNIT TESTS -------------------------------------------------------------
@@ -465,9 +605,9 @@ mod unit_tests {
 
     #[tokio::test]
     async fn test_run_trade_rejects_zero_or_negative_amounts() {
-        assert!(run_trade(0.0, 1.0).await.is_err());
-        assert!(run_trade(1.0, 0.0).await.is_err());
-        assert!(run_trade(-1.0, 1.0).await.is_err());
+        assert!(run_trade(0.0, 1.0, 50, true).await.is_err());
+        assert!(run_trade(1.0, 0.0, 50, true).await.is_err());
+        assert!(run_trade(-1.0, 1.0, 50, true).await.is_err());
     }
 }
 //============================================================================
@@ -497,5 +637,10 @@ pub mod functional_tests {
         let registry = load_token_registry()?;
         let quote = now(live_quote(&registry, 0.01))?;
         println!("\t0.01 ETH -> {:.8} BTC right now (router: {})", quote.amount_out, quote.router_address);
+    });
+
+    run!("dry_run", " (real balance + quote, never touches keystore)", {
+        now(run_trade(0.01, 0.00000001, 50, true))?;
+        println!("\tdry run completed without touching the keystore");
     });
 }
