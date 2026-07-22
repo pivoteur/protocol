@@ -1,6 +1,8 @@
 use std::pin::Pin;
 use clap::Parser;
 use reqwest::Client;
+use csv::{ReaderBuilder, ErrorKind, DeserializeErrorKind};
+use serde::Deserialize;
 use book::{
    parse_args_add_banner,
    cli_utils::add_banner,
@@ -34,6 +36,21 @@ pub struct DistributionRow {
     pub send:    bool,
 }
 
+#[derive(Debug, Deserialize)]
+struct DistributionRecord {
+    name: String,
+    #[serde(rename = "amount distributed")]
+    amount_distributed: String,
+    primary: String,
+    pivot: String,
+    #[serde(rename = "tweet url")]
+    tweet_url: String,
+    #[serde(rename = "tx url")]
+    tx_url: String,
+    #[serde(rename = "send?")]
+    send: String,
+}
+
 fn parse_bool_cell(field: &str, raw: &str) -> ErrStr<bool> {
     match raw.trim().to_lowercase().as_str() {
         "yes" | "true"  => Ok(true),
@@ -44,39 +61,18 @@ fn parse_bool_cell(field: &str, raw: &str) -> ErrStr<bool> {
     }
 }
 
-/// Returns `Ok(None)` for rows that should be skipped:
-///   - blank lines
-///   - the column-name header row               (col 0 == "name")
-///   - data rows where amount distributed == 0  (handled by `reinvested`, not `distributed`)
-/// Returns `Err` only for rows that look like data but are malformed.
-pub fn parse_row(line: &str) -> ErrStr<Option<DistributionRow>> {
-    let line = line.trim();
-    if line.is_empty() {
-        return Ok(None);
-    }
+/// Returns `Ok(None)` only for rows where amount distributed == 0 (handled
+/// by `reinvested`, not `distributed`). Returns `Err` for malformed data.
+/// Structural issues (blank lines, ragged/short rows, the header row) never
+/// reach this function — the CSV reader in `process_csv` filters them out.
+fn parse_row(record: &DistributionRecord) -> ErrStr<Option<DistributionRow>> {
+    let name    = record.name.trim();
+    let amount  = record.amount_distributed.trim();
+    let primary = record.primary.trim();
+    let pivot   = record.pivot.trim();
+    let url     = record.tweet_url.trim();
+    let tx_url  = record.tx_url.trim();
 
-    let cols: Vec<&str> = line.split('\t').collect();
-
-    // not enough columns to be a data row
-    if cols.len() < 13 {
-        return Ok(None);
-    }
-
-    // cols: 0=name 1=reinvested% 2=precentage 3=amount_reinvested 4=amount_distributed
-    //        5=primary 6=pivot 7=usd 8=pivots 9=tweet_url 10=tx_url 11=send 12=flipped
-    let name    = cols[0].trim();
-    let amount  = cols[4].trim();
-    let primary = cols[5].trim();
-    let pivot   = cols[6].trim();
-    let url     = cols[9].trim();
-    let tx_url  = cols[10].trim();
-
-    // column-name header row
-    if name == "name" {
-        return Ok(None);
-    }
-
-    // skip investors with nothing distributed this run
     let amount_val: u64 = match amount.parse() {
         Ok(v) => v,
         Err(e) => return Err(format!(
@@ -87,7 +83,7 @@ pub fn parse_row(line: &str) -> ErrStr<Option<DistributionRow>> {
         return Ok(None);
     }
 
-    let send = parse_bool_cell("send?", cols[11])?;
+    let send = parse_bool_cell("send?", &record.send)?;
 
     Ok(Some(DistributionRow {
         name:    name.to_string(),
@@ -98,6 +94,13 @@ pub fn parse_row(line: &str) -> ErrStr<Option<DistributionRow>> {
         tx_url:  tx_url.to_string(),
         send,
     }))
+}
+
+fn is_ragged_row(e: &csv::Error) -> bool {
+    matches!(
+        e.kind(),
+        ErrorKind::Deserialize { err, .. } if matches!(err.kind(), DeserializeErrorKind::UnexpectedEndOfRow)
+    )
 }
 
 //============================================================================
@@ -150,11 +153,20 @@ pub async fn process_csv<F>(
 where
     F: for<'a> Fn(&'a str, i64, &'a str) -> SendFuture<'a>,
 {
-    let content = std::fs::read_to_string(csv_path)
+    let mut rdr = ReaderBuilder::new()
+        .delimiter(b'\t')
+        .flexible(true)
+        .from_path(csv_path)
         .map_err(|e| format!("cannot read '{csv_path}': {e}"))?;
 
-    for line in content.lines() {
-        let Some(row) = parse_row(line)? else { continue };
+    for result in rdr.deserialize::<DistributionRecord>() {
+        let record = match result {
+            Ok(r) => r,
+            Err(e) if is_ragged_row(&e) => continue,
+            Err(e) => return Err(format!("malformed row in '{csv_path}': {e}")),
+        };
+
+        let Some(row) = parse_row(&record)? else { continue };
 
         let msg = build_message(&row);
         println!("[{}] {msg}", row.name);
@@ -177,7 +189,7 @@ where
 /// The investors and their distributions are listed in CSV file
 #[derive(Debug, Parser)]
 #[command(name = "distributed")]
-#[command(version = "1.01")]
+#[command(version = "1.02")]
 struct Args {
    /// The path to the list of the investors and their distributions
    csv_path: String,
@@ -205,7 +217,6 @@ mod unit_tests {
     use super::*;
 
     // ---- helpers -----------------------------------------------------------
-
     fn make_row(name: &str, amount: &str, send: &str) -> String {
         // cols: 0=name 1=reinvested% 2=precentage 3=amount_reinvested 4=amount_distributed
         //       5=primary 6=pivot 7=usd 8=pivots 9=tweet_url 10=tx_url 11=send 12=flipped
@@ -229,11 +240,27 @@ mod unit_tests {
         }
     }
 
-    // ---- parse_row ---------------------------------------------------------
+    fn parse_test_row(line: &str) -> ErrStr<Option<DistributionRow>> {
+        let header = "name\treinvested %\tprecentage\tamount reinvested\tamount distributed\t\
+                      primary\tpivot\tUSD-value\tnumber of pivots closed\ttweet url\ttx url\tsend?\tflipped";
+        let tsv = format!("{header}\n{line}\n");
+        let mut rdr = ReaderBuilder::new()
+            .delimiter(b'\t')
+            .flexible(true)
+            .from_reader(tsv.as_bytes());
 
+        match rdr.deserialize::<DistributionRecord>().next() {
+            None                              => Ok(None),
+            Some(Err(e)) if is_ragged_row(&e) => Ok(None),
+            Some(Err(e))                      => Err(format!("test fixture malformed: {e}")),
+            Some(Ok(record))                  => parse_row(&record),
+        }
+    }
+
+    // ---- parse_row ---------------------------------------------------------
     #[test]
     fn test_parse_row_normal() -> ErrStr<()> {
-        let row = parse_row(&make_row("γ", "42910", "yes"))?.unwrap();
+        let row = parse_test_row(&make_row("γ", "42910", "yes"))?.unwrap();
         assert_eq!(row.name,    "γ");
         assert_eq!(row.amount,  42910);
         assert_eq!(row.primary, "BTC");
@@ -244,7 +271,7 @@ mod unit_tests {
 
     #[test]
     fn test_parse_row_send_no() -> ErrStr<()> {
-        let row = parse_row(&make_row("τ", "2004", "no"))?.unwrap();
+        let row = parse_test_row(&make_row("τ", "2004", "no"))?.unwrap();
         assert!(!row.send, "send=no should parse as false");
         Ok(())
     }
@@ -252,37 +279,37 @@ mod unit_tests {
     #[test]
     fn test_parse_row_amount_zero_skipped() -> ErrStr<()> {
         assert!(
-            parse_row(&make_row("α", "0", "yes"))?.is_none(),
+            parse_test_row(&make_row("α", "0", "yes"))?.is_none(),
             "amount distributed=0 row should be skipped"
         );
         Ok(())
     }
 
     #[test]
-    fn test_parse_row_column_header_skipped() -> ErrStr<()> {
+    fn test_parse_row_column_header_repeated_errors() -> ErrStr<()> {
         let header = "name\treinvested %\tprecentage\tamount reinvested\tamount distributed\t\
                       primary\tpivot\tUSD-value\tnumber of pivots closed\ttweet url\ttx url\tsend?\tflipped";
-        assert!(parse_row(header)?.is_none(), "column header row should be skipped");
+        let err = parse_test_row(header).unwrap_err();
+        assert!(err.contains("invalid amount distributed"), "a duplicated header row should now error loudly, not skip silently: {err}");
         Ok(())
     }
 
     #[test]
     fn test_parse_row_blank_skipped() -> ErrStr<()> {
-        assert!(parse_row("")?.is_none(),   "blank line should be skipped");
-        assert!(parse_row("  ")?.is_none(), "whitespace line should be skipped");
+        assert!(parse_test_row("")?.is_none(),   "blank line should be skipped");
+        assert!(parse_test_row("  ")?.is_none(), "whitespace line should be skipped");
         Ok(())
     }
 
     #[test]
     fn test_parse_row_amount_invalid_errors() -> ErrStr<()> {
-        let err = parse_row(&make_row("ψ", "not-a-number", "yes"))
+        let err = parse_test_row(&make_row("ψ", "not-a-number", "yes"))
             .unwrap_err();
         assert!(err.contains("invalid amount distributed"), "should error loudly, not skip");
         Ok(())
     }
 
     // ---- build_message -----------------------------------------------------
-
     #[test]
     fn test_build_message_exact() {
         let mut row = make_distribution("γ", 4349, true);
@@ -324,7 +351,7 @@ mod unit_tests {
 
     #[test]
     fn test_parse_row_unrecognized_send_errors() -> ErrStr<()> {
-        let err = parse_row(&make_row("γ", "42910", "maybe")).unwrap_err();
+        let err = parse_test_row(&make_row("γ", "42910", "maybe")).unwrap_err();
         assert!(err.contains("send?"), "unrecognized send must error: {err}");
         Ok(())
     }
@@ -334,13 +361,13 @@ mod unit_tests {
         // 12 columns — tx_url omitted (the malformed-export case)
         let short = "γ\t0%\t10.25%\t0\t42910\tBTC\tUNDEAD\t$35.66\t15\t\
                      https://x.com/pivocateur/status/2069591552733712719\tyes\tyes";
-        assert!(parse_row(short)?.is_none(), "a 12-column row must be skipped");
+        assert!(parse_test_row(short)?.is_none(), "a 12-column row must be skipped");
         Ok(())
     }
 
     #[test]
     fn test_parse_row_reads_url_and_tx_url() -> ErrStr<()> {
-        let row = parse_row(&make_row("γ", "42910", "yes"))?.unwrap();
+        let row = parse_test_row(&make_row("γ", "42910", "yes"))?.unwrap();
         assert_eq!(row.url,    "https://x.com/pivocateur/status/2069591552733712719");
         assert_eq!(row.tx_url, "https://snowtrace.io/tx/0x04454ba7f8484359d821f18a5c5e1e6334fa43c416ec345d1de6df10c3e13765");
         Ok(())
