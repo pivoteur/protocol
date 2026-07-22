@@ -3,8 +3,16 @@ name = "arbitrage"
 version = "0.1.0"
 edition = "2024"
 
-[dependencies]
+[[bin]]
+name = "arbitrage"
+path = "../../quizzes/src/quiz11/arbitrage/src/main.rs"
 
+[dependencies]
 quizzes = { path = "../../quizzes" }
 book = { path = "../../../crypto-n-rust/src/libs/book" }
+libs = { path = "../../libs" }
+
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(tarpaulin_include)'] }
