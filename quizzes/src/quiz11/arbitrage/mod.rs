@@ -1,4 +1,4 @@
-use clap::{Parser, ValueEnum};
+use clap::{Parser, Subcommand, ValueEnum};
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::fs::OpenOptions;
@@ -18,6 +18,7 @@ use book::{
         err_utils::ErrStr,
         parse_args_add_banner,
 };
+use libs::{ fetchers::calls::fetch_calls, types::calls::Call };
 
 
 //============================================================================
@@ -474,9 +475,9 @@ fn log_trade_outcome(
 //----- Trade Flow -------------------------------------------------------------
 //============================================================================
 /// Everything from keystore unlock through the swap. Split out of
-/// `run_trade` so the quote can be refreshed right before committing funds.
-/// The password prompt takes real wall-clock time, and Avalanche's base fee
-/// (and the KyberSwap route itself) can move during it. Direction-agnostic.
+/// `run_trade_for_symbols` so the quote can be refreshed right before
+/// committing funds. The password prompt takes real wall-clock time, and
+/// Avalanche's base fee (and the KyberSwap route itself) can move during it.
 async fn execute_trade(
     wallet_address: &str,
     registry: &TokenRegistry,
@@ -517,16 +518,13 @@ async fn execute_trade(
     send_swap_tx(&client, &router, &calldata).await
 }
 
-/// The whole flow: check wallet, get a live quote, check it against your
-/// floor. Running this program IS the approval — there's no interactive
-/// prompt. A missed floor is a hard error, not a question: no funds used.
-/// `dry_run` stops right after the floor check, before the keystore is ever
-/// touched or anything is sent. `direction` picks which token is "from" and
-/// which is "to" — ETH->BTC or BTC->ETH — everything else is identical.
-pub async fn run_trade(
+async fn run_trade_for_symbols(
+    wallet_address: &str,
+    registry: &TokenRegistry,
+    from_symbol: &str,
+    to_symbol: &str,
     amount: f64,
     min_floor: f64,
-    direction: Direction,
     slippage_bps: u16,
     dry_run: bool,
 ) -> ErrStr<()> {
@@ -537,21 +535,17 @@ pub async fn run_trade(
         return Err("min_floor must be greater than zero".to_string());
     }
 
-    let (from_symbol, to_symbol) = direction.symbols();
-
-    let wallet_address = wallet_address_from_env()?;
-    let registry = load_token_registry()?;
-
-    let available = wallet_balance(&wallet_address, from_symbol, &registry).await?;
+    let available = wallet_balance(wallet_address, from_symbol, registry).await?;
     println!("Wallet ({wallet_address}): {available:.6} {from_symbol} available");
     if available + 1e-6 < amount {
+        log_trade_outcome(from_symbol, to_symbol, amount, min_floor, 0.0, "REJECTED_INSUFFICIENT_FUNDS");
         return Err(format!(
             "Insufficient {from_symbol} — need {amount:.6}, only {available:.6} available. \
              That's not happening. No funds used."
         ));
     }
 
-    let quote = live_quote(&registry, from_symbol, to_symbol, amount).await?;
+    let quote = live_quote(registry, from_symbol, to_symbol, amount).await?;
     println!("Live quote: {amount:.6} {from_symbol} -> {:.8} {to_symbol} right now", quote.amount_out);
     println!("Your floor: {min_floor:.8} {to_symbol}");
 
@@ -572,7 +566,7 @@ pub async fn run_trade(
 
     println!(">>> Quote clears your floor. Proceeding to execute.");
 
-    match execute_trade(&wallet_address, &registry, from_symbol, to_symbol, amount, min_floor, slippage_bps).await {
+    match execute_trade(wallet_address, registry, from_symbol, to_symbol, amount, min_floor, slippage_bps).await {
         Ok(tx_hash) => {
             println!(">>> Trade complete. Tx hash: {tx_hash}");
             log_trade_outcome(from_symbol, to_symbol, amount, min_floor, quote.amount_out, &format!("SUCCESS tx={tx_hash}"));
@@ -585,25 +579,101 @@ pub async fn run_trade(
     }
 }
 
-#[derive(Debug, Parser)]
-#[command(name = "arbitrage")]
-#[command(version = "0.8.0")]
-struct Args {
+pub async fn run_trade(
     amount: f64,
     min_floor: f64,
-    /// Reverse the trade direction (default: BTC -> ETH; --flip: ETH -> BTC)
-    #[arg(long, default_value_t = false)]
-    flip: bool,
-    #[arg(long, default_value_t = 50)]
+    direction: Direction,
     slippage_bps: u16,
-    #[arg(long, default_value_t = false)]
     dry_run: bool,
+) -> ErrStr<()> {
+    let (from_symbol, to_symbol) = direction.symbols();
+    let wallet_address = wallet_address_from_env()?;
+    let registry = load_token_registry()?;
+    run_trade_for_symbols(&wallet_address, &registry, from_symbol, to_symbol, amount, min_floor, slippage_bps, dry_run).await
+}
+
+/// Reads calls.csv and, for each row, either executes the FULL proposed
+/// trade or does nothing at all for that row. 
+pub async fn run_calls_batch(root_url: &str, slippage_bps: u16, dry_run: bool) -> ErrStr<()> {
+    let wallet_address = wallet_address_from_env()?;
+    let registry = load_token_registry()?;
+
+    let calls: Vec<Call> = fetch_calls(root_url)
+        .await
+        .map_err(|e| format!("Could not fetch calls.csv from {root_url}: {e}"))?;
+    println!("Fetched {} call(s) from {root_url}", calls.len());
+
+    for call in &calls {
+        let from_symbol = call.pivot_token.as_str();
+        let to_symbol = call.proposed_token.as_str();
+        let amount = call.pivot_amount as f64;
+        let min_floor = call.proposed_amount as f64;
+
+        println!("--- Call #{} ({from_symbol} -> {to_symbol}) ---", call.ix);
+
+        if token_entry(&registry, from_symbol).is_err() || token_entry(&registry, to_symbol).is_err() {
+            println!("SKIPPED: '{from_symbol}' or '{to_symbol}' not in tokens.toml");
+            log_trade_outcome(from_symbol, to_symbol, amount, min_floor, 0.0, "SKIPPED_UNKNOWN_TOKEN");
+            continue;
+        }
+
+        if let Err(e) = run_trade_for_symbols(
+            &wallet_address, &registry, from_symbol, to_symbol, amount, min_floor, slippage_bps, dry_run,
+        ).await {
+            println!("Call #{} did not execute: {e}", call.ix);
+        }
+    }
+
+    Ok(())
+}
+
+#[derive(Debug, Subcommand)]
+enum Command {
+    /// Trade a specific amount directly — manual / one-off mode
+    Trade {
+        amount: f64,
+        min_floor: f64,
+        /// Reverse the trade direction (default: BTC -> ETH; --flip: ETH -> BTC)
+        #[arg(long, default_value_t = false)]
+        flip: bool,
+        #[arg(long, default_value_t = 50)]
+        slippage_bps: u16,
+        #[arg(long, default_value_t = false)]
+        dry_run: bool,
+    },
+    /// Read calls.csv and execute any row the wallet can fully cover — 100% or nothing
+    Calls {
+        /// Root URL calls.csv is fetched relative to. Falls back to the
+        /// PIVOT_URL env var (same convention every other binary uses) if
+        /// not passed explicitly.
+        #[arg(long, env = "PIVOT_URL")]
+        root_url: String,
+        #[arg(long, default_value_t = 50)]
+        slippage_bps: u16,
+        #[arg(long, default_value_t = false)]
+        dry_run: bool,
+    },
+}
+
+#[derive(Debug, Parser)]
+#[command(name = "arbitrage")]
+#[command(version = "0.9.0")]
+struct Args {
+    #[command(subcommand)]
+    command: Command,
 }
 
 pub async fn runoff_with_args() -> ErrStr<()> {
     let args = parse_args_add_banner!(Args);
-    let direction = if args.flip { Direction::Flipped } else { Direction::Normal };
-    run_trade(args.amount, args.min_floor, direction, args.slippage_bps, args.dry_run).await
+    match args.command {
+        Command::Trade { amount, min_floor, flip, slippage_bps, dry_run } => {
+            let direction = if flip { Direction::Flipped } else { Direction::Normal };
+            run_trade(amount, min_floor, direction, slippage_bps, dry_run).await
+        }
+        Command::Calls { root_url, slippage_bps, dry_run } => {
+            run_calls_batch(&root_url, slippage_bps, dry_run).await
+        }
+    }
 }
 
 //============================================================================
@@ -667,6 +737,7 @@ pub mod functional_tests {
     use paste::paste;
     use book::{ create_testing, utils::now };
 
+    const PIVOT_ROOT_URL: &str = "https://raw.githubusercontent.com/pivoteur/pivoteur.github.io";
 
     create_testing!("quiz11::arbitrage");
 
@@ -702,11 +773,14 @@ pub mod functional_tests {
         if available <= 0.0 {
             println!("\tskipping: test wallet currently has 0 BTC (last trade may have converted it to ETH)");
         } else {
-            // Reads a small slice of whatever's actually in the wallet, so this test
-            // survives regardless of what the last live trade left behind.
             let amount = available * 0.1;
             now(run_trade(amount, 0.00000001, Direction::Normal, 50, true))?;
             println!("\tdry run completed without touching the keystore ({amount:.8} BTC checked)");
         }
+    });
+
+    run!("calls_batch_dry_run", " (real calls.csv fetch + read-only per-row checks)", {
+        now(run_calls_batch(PIVOT_ROOT_URL, 50, true))?;
+        println!("\tcalls batch dry run completed without touching the keystore");
     });
 }
