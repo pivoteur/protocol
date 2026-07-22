@@ -1,0 +1,10 @@
+[package]
+name = "arbitrage"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+
+quizzes = { path = "../../quizzes" }
+book = { path = "../../../crypto-n-rust/src/libs/book" }
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
