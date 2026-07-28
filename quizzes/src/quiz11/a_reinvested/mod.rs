@@ -110,10 +110,11 @@ fn parse_row(record: &PivotRecord) -> ErrStr<Option<InvestorRow>> {
 }
 
 fn is_ragged_row(e: &csv::Error) -> bool {
-    matches!(
+    let ans = matches!(
         e.kind(),
         ErrorKind::Deserialize { err, .. } if matches!(err.kind(), DeserializeErrorKind::UnexpectedEndOfRow)
-    )
+    );
+    ans
 }
 
 //============================================================================
