@@ -42,24 +42,14 @@ pub struct InvestorRow {
 #[derive(Debug, Deserialize)]
 struct PivotRecord {
     name: String,
-    #[serde(rename = "reinvested %")]
-    _reinvested_pct: String,
-    #[serde(rename = "precentage")]
-    _percentage: String,
     #[serde(rename = "amount reinvested")]
     amount_reinvested: String,
-    #[serde(rename = "amount distributed")]
-    _amount_distributed: String,
     primary: String,
     pivot: String,
-    #[serde(rename = "USD-value")]
-    _usd_value: String,
     #[serde(rename = "number of pivots closed")]
     pivots: String,
     #[serde(rename = "tweet url")]
     tweet_url: String,
-    #[serde(rename = "tx url")]
-    _tx_url: String,
     #[serde(rename = "send?")]
     send: String,
     flipped: String,

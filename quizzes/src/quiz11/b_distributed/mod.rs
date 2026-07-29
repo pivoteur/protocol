@@ -97,17 +97,18 @@ fn parse_row(record: &DistributionRecord) -> ErrStr<Option<DistributionRow>> {
 }
 
 fn is_ragged_row(e: &csv::Error) -> bool {
-    matches!(
+    let ans = matches!(
         e.kind(),
         ErrorKind::Deserialize { err, .. } if matches!(err.kind(), DeserializeErrorKind::UnexpectedEndOfRow)
-    )
+    );
+    ans
 }
 
 //============================================================================
 //----- Message Building and Sending -----------------------------------------
 //============================================================================
 pub fn build_message(row: &DistributionRow) -> String {
-    format!(
+    let ans = format!(
         "I close an {primary}-on-{pivot} pivot (please see the twitter post: {tweet_url}). \
          I sent {amount} {primary} to you; tx_id: {tx_url}",
         primary   = row.primary,
@@ -115,7 +116,8 @@ pub fn build_message(row: &DistributionRow) -> String {
         tweet_url = row.url,
         amount    = row.amount,
         tx_url    = row.tx_url,
-    )
+    );
+    ans
 }
 
 pub async fn send_telegram(bot_token: &str, chat_id: i64, text: &str) -> ErrStr<()> {
@@ -183,9 +185,7 @@ where
 //============================================================================
 //----- fn runoff_with_args --------------------------------------------------
 //============================================================================
-
 /// Sends distribution message to investors
-///
 /// The investors and their distributions are listed in CSV file
 #[derive(Debug, Parser)]
 #[command(name = "distributed")]
@@ -193,7 +193,6 @@ where
 struct Args {
    /// The path to the list of the investors and their distributions
    csv_path: String,
-
    /// Send a telegram? (yes/no)
    send: String
 }
@@ -220,12 +219,13 @@ mod unit_tests {
     fn make_row(name: &str, amount: &str, send: &str) -> String {
         // cols: 0=name 1=reinvested% 2=precentage 3=amount_reinvested 4=amount_distributed
         //       5=primary 6=pivot 7=usd 8=pivots 9=tweet_url 10=tx_url 11=send 12=flipped
-        format!(
+        let ans = format!(
             "{name}\t0%\t10.25%\t0\t{amount}\tBTC\tUNDEAD\t$35.66\t15\t\
              https://x.com/pivocateur/status/2069591552733712719\t\
              https://snowtrace.io/tx/0x04454ba7f8484359d821f18a5c5e1e6334fa43c416ec345d1de6df10c3e13765\t\
              {send}\tyes"
-        )
+        ); 
+        ans
     }
 
     fn make_distribution(name: &str, amount: u64, send: bool) -> DistributionRow {
