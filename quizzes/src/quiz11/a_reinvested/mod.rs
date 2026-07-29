@@ -3,7 +3,7 @@ use clap::Parser;
 use reqwest::Client;
 use book::{
     parse_args_add_banner,
-    cli_utils::add_banner,
+    cli_utils::generate_banner,
     err_utils::{ ErrStr, err_or },
     parse_utils::parse_id,
     string_utils::plural,
@@ -177,7 +177,7 @@ pub async fn process_csv<F>(csv_path: &str, global_send: bool, send_fn: F)
 /// The investors and their reinvestments are listed in CSV file
 #[derive(Debug, Parser)]
 #[command(name = "reinvested")]
-#[command(version = "1.01")]
+#[command(version = "1.02")]
 struct Args {
    /// The path to the list of the investors and their distributions
    csv_path: String,

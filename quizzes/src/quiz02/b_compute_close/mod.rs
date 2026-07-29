@@ -2,8 +2,8 @@ use chrono::NaiveDate;
 use clap::Parser;
 
 use book::{
-   parse_args_add_banner,
-   cli_utils::add_banner,
+   parse_args_print_banner,
+   cli_utils::generate_banner,
    csv_utils::{CsvHeader,print_csv},
    err_utils::ErrStr,
    string_utils::UppercaseString,
@@ -83,8 +83,6 @@ fn report_proposes(rpt: Report) -> ErrStr<()> {
    Ok(())
 }
 
-fn print_heading() { println!("chihuahua, version: 1.02\n"); }
-
 /// Proposes close pivots for a selected pivot pool
 ///
 /// The pivot pools are reposed (in git, currently)
@@ -110,7 +108,7 @@ struct Args {
 }
 
 pub async fn runoff_get_args() -> ErrStr<()> {
-   let args = parse_args_add_banner!(Args);
+   let args = parse_args_print_banner!(Args);
    let pool = mk_pool(&args.primary, &args.pivot);
    report_calls(&args.protocol, &pool, &args.date, args.debug).await
 }
@@ -118,7 +116,6 @@ pub async fn runoff_get_args() -> ErrStr<()> {
 async fn report_calls(protocol: &str, pool: &Pool, date: &NaiveDate,
                       debug: bool) -> ErrStr<()> {
    let root_url = get_env(&format!("{}_URL", protocol))?;
-   print_heading();
    let report = compute_closes(&root_url, pool, date, debug).await?;
    report_proposes(report)
 }

@@ -3,7 +3,7 @@ use clap::Parser;
 use reqwest::Client;
 use book::{
    parse_args_add_banner,
-   cli_utils::add_banner,
+   cli_utils::generate_banner,
    err_utils::{ ErrStr, err_or },
    utils::get_env
 };
@@ -177,7 +177,7 @@ where
 /// The investors and their distributions are listed in CSV file
 #[derive(Debug, Parser)]
 #[command(name = "distributed")]
-#[command(version = "1.01")]
+#[command(version = "1.02")]
 struct Args {
    /// The path to the list of the investors and their distributions
    csv_path: String,
