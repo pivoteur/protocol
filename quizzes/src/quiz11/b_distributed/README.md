@@ -10,12 +10,12 @@ where:
 * `<tsv_path>` is the pathing to the <investors-test.tsv> file within: protocol/data/
 * `<send>` is the "yes or no" option of if you want to use the Telgram bot, Robbie
 
-* [src](../../quizzes/src/quiz11/b_distributed/mod.rs)
+* [src](mod.rs)
 
 * `vesion 2.00`: workflow restructure, passing in a TSV file for `distributed` to read and 
 gather all bits of data before constructing the costume messge for each investor. 
 
-[<investors-test.tsv> sample](../../quizzes/data/investors-test.tsv)
+[<investors-test.tsv> sample](../../../data/investors-test.tsv)
 
 ## Revisions
 
