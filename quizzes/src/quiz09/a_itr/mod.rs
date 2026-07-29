@@ -1,8 +1,9 @@
 use std::process::{Command,Stdio};
 
-use clap::{ Parser, CommandFactory, FromArgMatches };
+use clap::Parser;
 
 use book::{
+   parse_args_print_banner,
    cli_utils::generate_banner,
    err_utils::ErrStr,
    file_utils::subdirs,
@@ -70,13 +71,7 @@ struct Args {
 }
 
 pub fn runoff_get_args() -> ErrStr<()> {
-   let cmd = Args::command();
-   let custom_banner = generate_banner(&cmd);
-   let thunk = cmd.about(custom_banner.clone())
-                  .long_about(custom_banner.clone())
-                  .get_matches();
-   let args = Args::from_arg_matches(&thunk).unwrap_or_else(|e| e.exit());
-   println!("{}", custom_banner);
+   let args = parse_args_print_banner!(Args);
    build_dapps_and_report(&args.dir)
 }
 

@@ -2,7 +2,7 @@ use clap::Parser;
 
 use book::{
    parse_args_add_banner,
-   cli_utils::add_banner,
+   cli_utils::generate_banner,
    err_utils::ErrStr,
    file_utils::{dirs_files,file_names}
 };

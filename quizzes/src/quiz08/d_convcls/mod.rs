@@ -6,7 +6,7 @@ use serde_with::{serde_as, DisplayFromStr};
 
 use book::{
    parse_args_add_banner,
-   cli_utils::add_banner,
+   cli_utils::generate_banner,
    currency::usd::USD,
    csv_utils::as_tsv,
    err_utils::{ErrStr,err_or},
@@ -166,7 +166,7 @@ fn new_close_pivots<R: io::Read>(opens: &Opens, closes: &mut Closes<R>)
 /// convcls computes the 10% gains from the open pivot table.
 #[derive(Debug, Parser)]
 #[command(name = "convcls")]
-#[command(version = "1.01")]
+#[command(version = "1.02")]
 struct Args {
    /// Path to the open pivots table
    opens: String,
