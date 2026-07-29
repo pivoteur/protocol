@@ -1,4 +1,4 @@
-# reinvested 
+# `reinvested` 
 
 A program that will automatically send a Telegram message, via `Robbie`, 
 to each of Pivot Tech's investors, at a mass
