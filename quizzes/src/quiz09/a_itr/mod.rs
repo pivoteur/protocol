@@ -1,10 +1,9 @@
 use std::process::{Command,Stdio};
 
-use clap::{ Parser, CommandFactory };
+use clap::{ Parser, CommandFactory, FromArgMatches };
 
 use book::{
-   parse_args_add_banner,
-   cli_utils::add_banner,
+   cli_utils::generate_banner,
    err_utils::ErrStr,
    file_utils::subdirs,
    string_utils::plural,
@@ -64,15 +63,20 @@ fn report_dirs(hdr: &str, kind: &str, dirs: &[String], total: usize) {
 /// Runs integration tests by building all dapps of the protocol
 #[derive(Debug, Parser)]
 #[command(name = "itr")]
-#[command(version = "1.02")]
+#[command(version = "1.03")]
 struct Args {
    /// directory in which the protocol dapps reside
    dir: String
 }
 
 pub fn runoff_get_args() -> ErrStr<()> {
-   let args = parse_args_add_banner!(Args);
-   println!("{}", Args::command().render_version());
+   let cmd = Args::command();
+   let custom_banner = generate_banner(&cmd);
+   let thunk = cmd.about(custom_banner.clone())
+                  .long_about(custom_banner.clone())
+                  .get_matches();
+   let args = Args::from_arg_matches(&thunk).unwrap_or_else(|e| e.exit());
+   println!("{}", custom_banner);
    build_dapps_and_report(&args.dir)
 }
 
