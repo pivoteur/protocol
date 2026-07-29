@@ -3,13 +3,15 @@ use clap::Parser;
 use reqwest::Client;
 use csv::{ReaderBuilder, ErrorKind, DeserializeErrorKind};
 use serde::Deserialize;
+use serde_with::{serde_as, DisplayFromStr};
 use book::{
-    parse_args_add_banner,
-    cli_utils::generate_banner,
-    err_utils::{ ErrStr, err_or },
-    parse_utils::parse_id,
-    string_utils::plural,
-    utils::get_env
+        parse_args_add_banner,
+        cli_utils::generate_banner,
+        err_utils::{ErrStr, err_or},
+        parse_utils::parse_id,
+        string_utils::plural,
+        utils::get_env,
+        num::floats::comma_floats::CommaFloat
 };
 
 //============================================================================
@@ -30,7 +32,7 @@ fn chat_id_for(investor: &str) -> ErrStr<i64> {
 #[derive(Debug)]
 pub struct InvestorRow {
     pub name:    String,
-    pub amount:  u64,
+    pub amount:  f32,
     pub primary: String,
     pub pivot:   String,
     pub pivots:  String,
@@ -38,12 +40,13 @@ pub struct InvestorRow {
     pub send:    bool,
     pub flipped: bool,
 }
-
+#[serde_as]
 #[derive(Debug, Deserialize)]
 struct PivotRecord {
     name: String,
+    #[serde_as(as = "DisplayFromStr")]
     #[serde(rename = "amount reinvested")]
-    amount_reinvested: String,
+    amount_reinvested: CommaFloat,
     primary: String,
     pivot: String,
     #[serde(rename = "number of pivots closed")]
@@ -68,28 +71,18 @@ fn parse_bool_cell(field: &str, raw: &str) -> ErrStr<bool> {
 /// reach this function — the CSV reader in `process_csv` filters them out.
 fn parse_row(record: &PivotRecord) -> ErrStr<Option<InvestorRow>> {
     let name    = record.name.trim();
-    let amount  = record.amount_reinvested.trim();
+    let amount  = record.amount_reinvested;
     let primary = record.primary.trim();
     let pivot   = record.pivot.trim();
     let pivots  = record.pivots.trim();
     let url     = record.tweet_url.trim();
-
-    let amount_val: u64 = match amount.parse() {
-        Ok(v) => v,
-        Err(e) => return Err(format!(
-            "row '{name}': invalid amount reinvested '{amount}': {e}"
-        )),
-    };
-    if amount_val == 0 {
-        return Ok(None);
-    }
 
     let send    = parse_bool_cell("send", &record.send)?;
     let flipped = parse_bool_cell("flipped", &record.flipped)?;
 
     Ok(Some(InvestorRow {
         name:    name.to_string(),
-        amount:  amount_val,
+        amount:  amount.into(),
         primary: primary.to_string(),
         pivot:   pivot.to_string(),
         pivots:  pivots.to_string(),
@@ -231,7 +224,7 @@ mod unit_tests {
         ans
     }
 
-    fn make_investor(name: &str, amount: u64, send: bool, flipped: bool) -> InvestorRow {
+    fn make_investor(name: &str, amount: f32, send: bool, flipped: bool) -> InvestorRow {
         InvestorRow {
             name:    name.to_string(),
             amount,
@@ -266,7 +259,7 @@ mod unit_tests {
     fn test_parse_row_normal() -> ErrStr<()> {
         let row = parse_test_row(&make_row("α", "14492", "yes", "yes"))?.unwrap();
         assert_eq!(row.name,    "α");
-        assert_eq!(row.amount,  14492);
+        assert_eq!(row.amount,  14492.0);
         assert_eq!(row.primary, "BTC");
         assert_eq!(row.pivot,   "UNDEAD");
         assert_eq!(row.pivots,  "15");
@@ -317,7 +310,7 @@ mod unit_tests {
     // ---- build_message -----------------------------------------------------
     #[test]
     fn test_build_message_normal() -> ErrStr<()> {
-        let row = make_investor("α", 14492, true, false);
+        let row = make_investor("α", 14492.0, true, false);
         let msg = build_message(&row)?;
         assert!(msg.contains("BTC-on-UNDEAD"),         "trade direction");
         assert!(msg.contains("BTC+UNDEAD pivot pool"), "pool name");
@@ -327,7 +320,7 @@ mod unit_tests {
 
     #[test]
     fn test_build_message_flipped() -> ErrStr<()> {
-        let row = make_investor("α", 14492, true, true);
+        let row = make_investor("α", 14492.0, true, true);
         let msg = build_message(&row)?;
         assert!(msg.contains("UNDEAD-on-BTC"),         "flipped trade direction");
         assert!(msg.contains("BTC+UNDEAD pivot pool"), "pool always prim+piv");
@@ -337,7 +330,7 @@ mod unit_tests {
 
     #[test]
     fn test_build_message_singular_pivot() -> ErrStr<()> {
-        let mut row = make_investor("α", 500, true, false);
+        let mut row = make_investor("α", 500.0, true, false);
         row.pivots = "1".to_string();
         let msg = build_message(&row)?;
         assert!(msg.contains("BTC-on-UNDEAD pivot "), "singular: no trailing 's'");
@@ -346,14 +339,14 @@ mod unit_tests {
 
     #[test]
     fn test_build_message_plural_pivots() -> ErrStr<()> {
-        let msg = build_message(&make_investor("φ", 173748, true, true))?;
+        let msg = build_message(&make_investor("φ", 173748.0, true, true))?;
         assert!(msg.contains("15 UNDEAD-on-BTC pivots"), "plural pivot count");
         Ok(())
     }
 
     #[test]
     fn test_build_message_exact_normal() -> ErrStr<()> {
-        let mut row = make_investor("α", 1552, true, false);
+        let mut row = make_investor("α", 1552.0, true, false);
         row.primary = "UNDEAD".to_string();
         row.pivot   = "USDC".to_string();
         row.pivots  = "1".to_string();
@@ -369,7 +362,7 @@ mod unit_tests {
 
     #[test]
     fn test_build_message_exact_flipped() -> ErrStr<()> {
-        let mut row = make_investor("α", 500, true, true);
+        let mut row = make_investor("α", 500.0, true, true);
         row.pivots = "1".to_string();
         row.url    = "https://x.com/pivocateur/status/2056884438156398786".to_string();
         assert_eq!(
@@ -420,6 +413,22 @@ mod unit_tests {
         assert_eq!(row.url, "https://x.com/pivocateur/status/2069591552733712719");
         Ok(())
     }
+
+    #[test]
+    fn test_build_message_with_btc() -> ErrStr<()> {
+        let mut row = make_investor("α", 0.002, true, false);
+        row.primary = "BTC".to_string();
+        row.pivot   = "UNDEAD".to_string();
+        row.pivots  = "1".to_string();
+        row.url     = "https://x.com/pivocateur/status/2056884438156398786".to_string();
+        assert_eq!(
+            build_message(&row)?,
+            "I close BTC-on-UNDEAD pivot (see tweet: \
+            https://x.com/pivocateur/status/2056884438156398786). \
+            I reinvest 0.002 BTC into the BTC+UNDEAD pivot pool for you."
+        );
+        Ok(())
+    }
 }
 
 //============================================================================
@@ -430,7 +439,7 @@ mod unit_tests {
 pub mod functional_tests {
     use super::*;
     use paste::paste;
-    use book::{ create_testing, utils::now };
+    use book::{create_testing, utils::now};
 
     
     create_testing!("quiz11::a_reinvested");
