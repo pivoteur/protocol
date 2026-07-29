@@ -5,7 +5,7 @@ use std::collections::HashMap;
 
 use book::{
    parse_args_add_banner,
-   cli_utils::add_banner,
+   cli_utils::generate_banner,
    currency::usd::{USD,mk_usd},
    err_utils::ErrStr,
    num_utils::parse_num,
@@ -87,7 +87,7 @@ async fn print_assets(auth: &str, date: &NaiveDate) -> ErrStr<()> {
 /// Prints the assets of the protocol, giving the TVL
 #[derive(Debug, Parser)]
 #[command(name = "assets")]
-#[command(version = "1.09")]
+#[command(version = "1.10")]
 struct Args {
    /// The protocol to compute TVL, e.g.: PIVOT
    protocol: UppercaseString,

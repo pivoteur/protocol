@@ -5,7 +5,7 @@ use csv::{ReaderBuilder, ErrorKind, DeserializeErrorKind};
 use serde::Deserialize;
 use book::{
     parse_args_add_banner,
-    cli_utils::add_banner,
+    cli_utils::generate_banner,
     err_utils::{ ErrStr, err_or },
     parse_utils::parse_id,
     string_utils::plural,
@@ -233,11 +233,12 @@ mod unit_tests {
     ) -> String {
         // cols: 0=name 1=reinvested% 2=precentage 3=amount_reinvested 4=amount_distributed
         //        5=primary 6=pivot 7=usd 8=pivots 9=tweet_url 10=tx_url 11=send 12=flipped
-        format!(
+        let ans = format!(
             "{name}\t100%\t3.46%\t{amount}\t0\tBTC\tUNDEAD\t$12.04\t15\t\
              https://x.com/pivocateur/status/2069591552733712719\t\
              https://snowtrace.io/tx/0xabc\t{send}\t{flipped}"
-        )
+        );
+        ans
     }
 
     fn make_investor(name: &str, amount: u64, send: bool, flipped: bool) -> InvestorRow {

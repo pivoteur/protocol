@@ -5,7 +5,7 @@ use csv::{ReaderBuilder, ErrorKind, DeserializeErrorKind};
 use serde::Deserialize;
 use book::{
    parse_args_add_banner,
-   cli_utils::add_banner,
+   cli_utils::generate_banner,
    err_utils::{ ErrStr, err_or },
    utils::get_env
 };

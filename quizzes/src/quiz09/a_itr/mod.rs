@@ -1,10 +1,10 @@
 use std::process::{Command,Stdio};
 
-use clap::{ Parser, CommandFactory };
+use clap::Parser;
 
 use book::{
-   parse_args_add_banner,
-   cli_utils::add_banner,
+   parse_args_print_banner,
+   cli_utils::generate_banner,
    err_utils::ErrStr,
    file_utils::subdirs,
    string_utils::plural,
@@ -64,15 +64,14 @@ fn report_dirs(hdr: &str, kind: &str, dirs: &[String], total: usize) {
 /// Runs integration tests by building all dapps of the protocol
 #[derive(Debug, Parser)]
 #[command(name = "itr")]
-#[command(version = "1.02")]
+#[command(version = "1.03")]
 struct Args {
    /// directory in which the protocol dapps reside
    dir: String
 }
 
 pub fn runoff_get_args() -> ErrStr<()> {
-   let args = parse_args_add_banner!(Args);
-   println!("{}", Args::command().render_version());
+   let args = parse_args_print_banner!(Args);
    build_dapps_and_report(&args.dir)
 }
 

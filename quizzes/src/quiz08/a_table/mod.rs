@@ -2,7 +2,7 @@ use clap::Parser;
 
 use book::{
    parse_args_add_banner,
-   cli_utils::add_banner,
+   cli_utils::generate_banner,
    csv_utils::CsvWriter,
    err_utils::ErrStr,
    parse_utils::{parse_id,parse_str},
