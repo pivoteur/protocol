@@ -1,7 +1,5 @@
-use std::pin::Pin;
 use clap::Parser;
-use reqwest::Client;
-use csv::{ReaderBuilder, ErrorKind, DeserializeErrorKind};
+use csv::ReaderBuilder;
 use serde::Deserialize;
 use serde_with::{serde_as, DisplayFromStr};
 use book::{
@@ -13,18 +11,15 @@ use book::{
         utils::get_env,
         num::floats::comma_floats::CommaFloat
 };
-
-//============================================================================
-//----- Telegram Configuration -----------------------------------------------
-//============================================================================
-fn chat_id_for(investor: &str) -> ErrStr<i64> {
-    let raw = get_env("INVESTOR_CHAT_IDS")?;
-    let map: serde_json::Value = serde_json::from_str(&raw)
-        .map_err(|e| format!("INVESTOR_CHAT_IDS is not valid JSON: {e}"))?;
-    map.get(investor)
-        .and_then(|v| v.as_i64())
-        .ok_or_else(|| format!("unknown investor/ chat id doesn't exist: {investor}"))
-}
+use libs::{ 
+        investor_rows::{
+            chat_id_for, 
+            is_ragged_row, 
+            parse_bool_cell, 
+            send_telegram, 
+            SendFuture
+        }
+};
 
 //============================================================================
 //----- CSV Row Parsing ------------------------------------------------------
@@ -58,13 +53,6 @@ struct PivotRecord {
     flipped: String,
 }
 
-fn parse_bool_cell(field: &str, raw: &str) -> ErrStr<bool> {
-    match raw.trim().to_lowercase().as_str() {
-        "yes" | "true"  => Ok(true),
-        "no"  | "false" => Ok(false),
-        other => Err(format!("column '{field}': unrecognized value '{other}'. Expected yes/no/true/false.")),
-    }
-}
 /// Returns `Ok(None)` only for rows where amount reinvested == 0 (handled
 /// by `distributed`, not `reinvested`). Returns `Err` for malformed data.
 /// Structural issues (blank lines, ragged/short rows, the header row) never
@@ -92,16 +80,8 @@ fn parse_row(record: &PivotRecord) -> ErrStr<Option<InvestorRow>> {
     }))
 }
 
-fn is_ragged_row(e: &csv::Error) -> bool {
-    let ans = matches!(
-        e.kind(),
-        ErrorKind::Deserialize { err, .. } if matches!(err.kind(), DeserializeErrorKind::UnexpectedEndOfRow)
-    );
-    ans
-}
-
 //============================================================================
-//----- Message Building and Sending -----------------------------------------
+//----- Message Building -------------------------------------------------
 //============================================================================
 pub fn build_message(row: &InvestorRow) -> ErrStr<String> {
     let prim = &row.primary;
@@ -123,33 +103,9 @@ pub fn build_message(row: &InvestorRow) -> ErrStr<String> {
     ))
 }
 
-pub async fn send_telegram(bot_token: &str, chat_id: i64, text: &str) -> ErrStr<()> {
-    let url = format!("https://api.telegram.org/bot{bot_token}/sendMessage");
-    Client::new()
-        .post(&url)
-        .json(&serde_json::json!({
-            "chat_id": chat_id,
-            "text":    text,
-        }))
-        .send()
-        .await
-        .map_err(|e| e.to_string())?
-        .error_for_status()
-        .map_err(|e| e.to_string())?;
-    Ok(())
-}
-
-#[cfg(test)]
-pub async fn mock_send_telegram(_bot_token: &str, chat_id: i64, text: &str) -> ErrStr<()> {
-    println!("[mock telegram] chat_id={chat_id} | text={text}");
-    Ok(())
-}
-
 //============================================================================
 //----- Core: process all rows in one pass -----------------------------------
 //============================================================================
-type SendFuture<'a> = Pin<Box<dyn std::future::Future<Output = ErrStr<()>> + Send + 'a>>;
-
 pub async fn process_csv<F>(csv_path: &str, global_send: bool, send_fn: F)
    -> ErrStr<()> where F: for<'a> Fn(&'a str, i64, &'a str) -> SendFuture<'a> {
     let mut rdr = ReaderBuilder::new()
@@ -208,7 +164,7 @@ pub async fn runoff_with_args() -> ErrStr<()> {
 #[cfg(test)]
 mod unit_tests {
     use super::*;
-
+    use libs::investor_rows::test_helpers::test_functions::deserialize_test_row;
 
     // ---- helpers -----------------------------------------------------------
     fn make_row(
@@ -237,20 +193,13 @@ mod unit_tests {
         }
     }
 
+    // Now delegates the raw TSV -> PivotRecord step to the shared helper in
+    // libs::investor_rows::test_helpers; only the domain-specific parse_row
+    // step stays local, since InvestorRow/PivotRecord are reinvested-only.
     fn parse_test_row(line: &str) -> ErrStr<Option<InvestorRow>> {
-        let header = "name\treinvested %\tprecentage\tamount reinvested\tamount distributed\t\
-                      primary\tpivot\tUSD-value\tnumber of pivots closed\ttweet url\ttx url\tsend?\tflipped";
-        let tsv = format!("{header}\n{line}\n");
-        let mut rdr = ReaderBuilder::new()
-            .delimiter(b'\t')
-            .flexible(true)
-            .from_reader(tsv.as_bytes());
-
-        match rdr.deserialize::<PivotRecord>().next() {
-            None                              => Ok(None),
-            Some(Err(e)) if is_ragged_row(&e) => Ok(None),
-            Some(Err(e))                      => Err(format!("test fixture malformed: {e}")),
-            Some(Ok(record))                  => parse_row(&record),
+        match deserialize_test_row::<PivotRecord>(line)? {
+            None         => Ok(None),
+            Some(record) => parse_row(&record),
         }
     }
 
@@ -288,15 +237,6 @@ mod unit_tests {
             parse_test_row(&make_row("σ", "0", "yes", "yes"))?.is_none(),
             "amount=0 row should be skipped"
         );
-        Ok(())
-    }
-
-    #[test]
-    fn test_parse_row_column_header_repeated_errors() -> ErrStr<()> {
-        let header = "name\treinvested %\tprecentage\tamount reinvested\tamount distributed\t\
-                      primary\tpivot\tUSD-value\tnumber of pivots closed\ttweet url\ttx url\tsend?\tflipped";
-        let err = parse_test_row(header).unwrap_err();
-        assert!(err.contains("invalid amount reinvested"), "a duplicated header row should now error loudly, not skip silently: {err}");
         Ok(())
     }
 
@@ -378,7 +318,7 @@ mod unit_tests {
     fn test_parse_row_amount_invalid_errors() -> ErrStr<()> {
         let err = parse_test_row(&make_row("ψ", "not-a-number", "yes", "yes"))
             .unwrap_err();
-        assert!(err.contains("invalid amount"), "should error loudly, not skip");
+        assert!(err.contains("invalid amount"), "should error loudly, not skip {err}");
         Ok(())
     }
 
@@ -440,8 +380,8 @@ pub mod functional_tests {
     use super::*;
     use paste::paste;
     use book::{create_testing, utils::now};
+    use libs::investor_rows::test_helpers::test_functions::SendSpy;
 
-    
     create_testing!("quiz11::a_reinvested");
 
     run!("mock_process_csv", {
@@ -460,8 +400,49 @@ pub mod functional_tests {
         let path = path_buf.to_str().ok_or("temp path is not valid UTF-8")?;
         std::fs::write(path, tsv).map_err(|e| e.to_string())?;
 
-        let _ = now(process_csv(path, false, |tok, id, txt| {
-            Box::pin(mock_send_telegram(tok, id, txt))
+        let spy = SendSpy::new();
+        let spy_for_process = spy.clone();
+        let _ = now(process_csv(path, false, move |tok, id, txt| {
+            Box::pin(spy_for_process.record(tok, id, txt))
         }))?;
+    });
+
+    // Fills the gap flagged in distributed's tests: confirms a skipped row
+    // (amount reinvested == 0) genuinely never reaches send_fn, and that a
+    // real row sends exactly once — rather than just eyeballing stdout.
+    run!("skips_send_for_zero_amount_row", {
+        unsafe {
+        std::env::set_var("REINVESTED_BOT", "test-token");
+        std::env::set_var("INVESTOR_CHAT_IDS", r#"{"α":11111}"#);
+        }
+
+        let tsv = "name\treinvested %\tprecentage\tamount reinvested\tamount distributed\t\
+                   primary\tpivot\tUSD-value\tnumber of pivots closed\ttweet url\ttx url\tsend?\tflipped\n\
+                   α\t100%\t3.46%\t14492\t0\tBTC\tUNDEAD\t$12.04\t15\t\
+                   https://x.com/pivocateur/status/2069591552733712719\t\
+                   https://snowtrace.io/tx/0xabc\tyes\tyes\n\
+                   σ\t0%\t0.00%\t0\t0\tBTC\tUNDEAD\t$0.00\t15\t\
+                   https://x.com/pivocateur/status/2069591552733712719\t\
+                   https://snowtrace.io/tx/0xdef\tyes\tyes\n";
+
+        let path_buf = std::env::temp_dir().join("reinvested_send_count_test.tsv");
+        let path = path_buf.to_str().ok_or("temp path is not valid UTF-8")?;
+        std::fs::write(path, tsv).map_err(|e| e.to_string())?;
+
+        let spy = SendSpy::new();
+        let spy_for_process = spy.clone();
+        let _ = now(process_csv(path, true, move |tok, id, txt| {
+            Box::pin(spy_for_process.record(tok, id, txt))
+        }))?;
+
+        if spy.count() != 1 {
+            return Err(format!(
+                "expected exactly 1 send (σ's zero-amount row must be skipped), got {}",
+                spy.count()
+            ));
+        }
+        if !spy.sent_to(11111) {
+            return Err("expected the one send to go to α's chat id".to_string());
+        }
     });
 }

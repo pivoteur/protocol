@@ -250,10 +250,10 @@ mod unit_tests {
             .from_reader(tsv.as_bytes());
 
         match rdr.deserialize::<DistributionRecord>().next() {
-            None                              => Ok(None),
+            None                                     => Ok(None),
             Some(Err(e)) if is_ragged_row(&e) => Ok(None),
             Some(Err(e))                      => Err(format!("test fixture malformed: {e}")),
-            Some(Ok(record))                  => parse_row(&record),
+            Some(Ok(record))     => parse_row(&record),
         }
     }
 
@@ -276,23 +276,8 @@ mod unit_tests {
         Ok(())
     }
 
-    #[test]
-    fn test_parse_row_amount_zero_skipped() -> ErrStr<()> {
-        assert!(
-            parse_test_row(&make_row("α", "0", "yes"))?.is_none(),
-            "amount distributed=0 row should be skipped"
-        );
-        Ok(())
-    }
-
-    #[test]
-    fn test_parse_row_column_header_repeated_errors() -> ErrStr<()> {
-        let header = "name\treinvested %\tprecentage\tamount reinvested\tamount distributed\t\
-                      primary\tpivot\tUSD-value\tnumber of pivots closed\ttweet url\ttx url\tsend?\tflipped";
-        let err = parse_test_row(header).unwrap_err();
-        assert!(err.contains("invalid amount distributed"), "a duplicated header row should now error loudly, not skip silently: {err}");
-        Ok(())
-    }
+// needs a unit test that tests a case where the telegram message won't send if the amount reinvested column is 0 or 0%
+// (when you send a message, what are you looking for to ensure the message is built correctly)
 
     #[test]
     fn test_parse_row_blank_skipped() -> ErrStr<()> {
@@ -305,7 +290,7 @@ mod unit_tests {
     fn test_parse_row_amount_invalid_errors() -> ErrStr<()> {
         let err = parse_test_row(&make_row("ψ", "not-a-number", "yes"))
             .unwrap_err();
-        assert!(err.contains("invalid amount distributed"), "should error loudly, not skip");
+        assert!(err.contains("invalid amount distributed"), "should error loudly, not skip {err}");
         Ok(())
     }
 

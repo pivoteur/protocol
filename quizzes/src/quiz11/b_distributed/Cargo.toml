@@ -6,11 +6,12 @@ edition = "2024"
 [dependencies]
 book = { path = "../../../../../crypto-n-rust/src/libs/book" }
 quizzes = { path = "../../.."}
+libs = { path = "../../../../libs" }
 
 teloxide   = { version = "0.17.0", features = ["macros"] }
-tokio      = { version = "1.52.3", features = ["full"] }
+tokio      = { version = "1.53.1", features = ["full"] }
 reqwest    = { version = "0.13.4", features = ["json"] }
-serde_json = "1"
+serde_json = "1.0.151"
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(tarpaulin_include)'] }
