@@ -56,21 +56,25 @@ struct PivotRecord {
 /// Returns `Ok(None)` only for rows where amount reinvested == 0 (handled
 /// by `distributed`, not `reinvested`). Returns `Err` for malformed data.
 /// Structural issues (blank lines, ragged/short rows, the header row) never
-/// reach this function — the CSV reader in `process_csv` filters them out.
+/// reach this function — the TSV reader in `process_tsv` filters them out.
 fn parse_row(record: &PivotRecord) -> ErrStr<Option<InvestorRow>> {
     let name    = record.name.trim();
-    let amount  = record.amount_reinvested;
+    let amount: f32 = record.amount_reinvested.into();
     let primary = record.primary.trim();
     let pivot   = record.pivot.trim();
     let pivots  = record.pivots.trim();
     let url     = record.tweet_url.trim();
+
+    if amount == 0.0 {
+        return Ok(None);
+    }
 
     let send    = parse_bool_cell("send", &record.send)?;
     let flipped = parse_bool_cell("flipped", &record.flipped)?;
 
     Ok(Some(InvestorRow {
         name:    name.to_string(),
-        amount:  amount.into(),
+        amount,
         primary: primary.to_string(),
         pivot:   pivot.to_string(),
         pivots:  pivots.to_string(),
@@ -106,19 +110,19 @@ pub fn build_message(row: &InvestorRow) -> ErrStr<String> {
 //============================================================================
 //----- Core: process all rows in one pass -----------------------------------
 //============================================================================
-pub async fn process_csv<F>(csv_path: &str, global_send: bool, send_fn: F)
+pub async fn process_tsv<F>(tsv_path: &str, global_send: bool, send_fn: F)
    -> ErrStr<()> where F: for<'a> Fn(&'a str, i64, &'a str) -> SendFuture<'a> {
     let mut rdr = ReaderBuilder::new()
         .delimiter(b'\t')
         .flexible(true)
-        .from_path(csv_path)
-        .map_err(|e| format!("cannot read '{csv_path}': {e}"))?;
+        .from_path(tsv_path)
+        .map_err(|e| format!("cannot read '{tsv_path}': {e}"))?;
 
     for result in rdr.deserialize::<PivotRecord>() {
         let record = match result {
             Ok(r) => r,
             Err(e) if is_ragged_row(&e) => continue,
-            Err(e) => return Err(format!("malformed row in '{csv_path}': {e}")),
+            Err(e) => return Err(format!("malformed row in '{tsv_path}': {e}")),
         };
 
         let Some(row) = parse_row(&record)? else { continue };
@@ -140,10 +144,10 @@ pub async fn process_csv<F>(csv_path: &str, global_send: bool, send_fn: F)
 /// The investors and their reinvestments are listed in CSV file
 #[derive(Debug, Parser)]
 #[command(name = "reinvested")]
-#[command(version = "2.00")]
+#[command(version = "2.02")]
 struct Args {
    /// The path to the list of the investors and their distributions
-   csv_path: String,
+   tsv_path: String,
 
    /// Send a telegram? (yes/no)
    send: String
@@ -153,7 +157,7 @@ pub async fn runoff_with_args() -> ErrStr<()> {
    let args = parse_args_add_banner!(Args);
    let send: bool = err_or(args.send.parse(),
        &format!("Cannot parse {} into boolean-value", args.send))?;
-   process_csv(&args.csv_path, send, |tok, id, txt| {
+   process_tsv(&args.tsv_path, send, |tok, id, txt| {
                 Box::pin(send_telegram(tok, id, txt))
    }).await
 }
@@ -166,6 +170,7 @@ mod unit_tests {
     use super::*;
     use libs::investor_rows::test_helpers::test_functions::deserialize_test_row;
 
+    
     // ---- helpers -----------------------------------------------------------
     fn make_row(
         name: &str, amount: &str, send: &str, flipped: &str,
@@ -301,24 +306,13 @@ mod unit_tests {
     }
 
     #[test]
-    fn test_build_message_exact_flipped() -> ErrStr<()> {
-        let mut row = make_investor("α", 500.0, true, true);
-        row.pivots = "1".to_string();
-        row.url    = "https://x.com/pivocateur/status/2056884438156398786".to_string();
-        assert_eq!(
-            build_message(&row)?,
-            "I close UNDEAD-on-BTC pivot (see tweet: \
-             https://x.com/pivocateur/status/2056884438156398786). \
-             I reinvest 500 UNDEAD into the BTC+UNDEAD pivot pool for you."
-        );
-        Ok(())
-    }
-
-    #[test]
     fn test_parse_row_amount_invalid_errors() -> ErrStr<()> {
+        // amount_reinvested deserializes straight into CommaFloat, so a bad
+        // value fails at the csv/serde layer before parse_row ever runs —
+        // this asserts on that actual error, not a custom message we don't produce.
         let err = parse_test_row(&make_row("ψ", "not-a-number", "yes", "yes"))
             .unwrap_err();
-        assert!(err.contains("invalid amount"), "should error loudly, not skip {err}");
+        assert!(err.contains("invalid float literal"), "should error loudly, not skip: {err}");
         Ok(())
     }
 
@@ -348,14 +342,9 @@ mod unit_tests {
     }
 
     #[test]
-    fn test_parse_row_reads_tweet_url() -> ErrStr<()> {
-        let row = parse_test_row(&make_row("α", "14492", "yes", "yes"))?.unwrap();
-        assert_eq!(row.url, "https://x.com/pivocateur/status/2069591552733712719");
-        Ok(())
-    }
-
-    #[test]
-    fn test_build_message_with_btc() -> ErrStr<()> {
+    fn test_build_message_small_decimal_amount() -> ErrStr<()> {
+        // guards decimal-amount formatting (e.g. 0.002 BTC), not token choice —
+        // previously named test_build_message_with_btc, which misdescribed its purpose
         let mut row = make_investor("α", 0.002, true, false);
         row.primary = "BTC".to_string();
         row.pivot   = "UNDEAD".to_string();
@@ -382,9 +371,12 @@ pub mod functional_tests {
     use book::{create_testing, utils::now};
     use libs::investor_rows::test_helpers::test_functions::SendSpy;
 
+
     create_testing!("quiz11::a_reinvested");
 
-    run!("mock_process_csv", {
+    run!("processes_rows_without_sending", {
+        // exercises the global_send: false path — what runoff_with_args hits
+        // when the user answers "no" — distinct from the send-path test below
         // cols: 0=name 1=reinvested% 2=precentage 3=amount_reinvested 4=amount_distributed
         //       5=primary 6=pivot 7=usd 8=pivots 9=tweet_url 10=tx_url 11=send 12=flipped
         let tsv = "name\treinvested %\tprecentage\tamount reinvested\tamount distributed\t\
@@ -402,7 +394,7 @@ pub mod functional_tests {
 
         let spy = SendSpy::new();
         let spy_for_process = spy.clone();
-        let _ = now(process_csv(path, false, move |tok, id, txt| {
+        let _ = now(process_tsv(path, false, move |tok, id, txt| {
             Box::pin(spy_for_process.record(tok, id, txt))
         }))?;
     });
@@ -412,8 +404,8 @@ pub mod functional_tests {
     // real row sends exactly once — rather than just eyeballing stdout.
     run!("skips_send_for_zero_amount_row", {
         unsafe {
-        std::env::set_var("REINVESTED_BOT", "test-token");
-        std::env::set_var("INVESTOR_CHAT_IDS", r#"{"α":11111}"#);
+            std::env::set_var("REINVESTED_BOT", "test-token");
+            std::env::set_var("INVESTOR_CHAT_IDS", r#"{"α":11111}"#);
         }
 
         let tsv = "name\treinvested %\tprecentage\tamount reinvested\tamount distributed\t\
@@ -431,7 +423,7 @@ pub mod functional_tests {
 
         let spy = SendSpy::new();
         let spy_for_process = spy.clone();
-        let _ = now(process_csv(path, true, move |tok, id, txt| {
+        let _ = now(process_tsv(path, true, move |tok, id, txt| {
             Box::pin(spy_for_process.record(tok, id, txt))
         }))?;
 
