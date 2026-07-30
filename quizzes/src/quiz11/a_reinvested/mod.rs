@@ -5,7 +5,7 @@ use serde_with::{serde_as, DisplayFromStr};
 use book::{
         parse_args_add_banner,
         cli_utils::generate_banner,
-        err_utils::{ErrStr, err_or},
+        err_utils::ErrStr,
         parse_utils::parse_id,
         string_utils::plural,
         utils::get_env,
@@ -91,11 +91,8 @@ pub fn build_message(row: &InvestorRow) -> ErrStr<String> {
     let prim = &row.primary;
     let piv  = &row.pivot;
     let pool = format!("{prim}+{piv}");
-    let (reinvested, trade) = if row.flipped {
-        (piv.as_str(), format!("{piv}-on-{prim}"))
-    } else {
-        (prim.as_str(), format!("{prim}-on-{piv}"))
-    };
+    let trade = format!("{prim}-on-{piv}");
+    let reinvested = if row.flipped { piv.as_str() } else { prim.as_str() };
     let n      = parse_id(&row.pivots)?;
     let noun   = format!("{trade} pivot");
     let pivots = if n == 1 { noun.clone() } else { plural(n, &noun) };
@@ -144,7 +141,7 @@ pub async fn process_tsv<F>(tsv_path: &str, global_send: bool, send_fn: F)
 /// The investors and their reinvestments are listed in CSV file
 #[derive(Debug, Parser)]
 #[command(name = "reinvested")]
-#[command(version = "2.02")]
+#[command(version = "2.04")]
 struct Args {
    /// The path to the list of the investors and their distributions
    tsv_path: String,
@@ -155,8 +152,7 @@ struct Args {
 
 pub async fn runoff_with_args() -> ErrStr<()> {
    let args = parse_args_add_banner!(Args);
-   let send: bool = err_or(args.send.parse(),
-       &format!("Cannot parse {} into boolean-value", args.send))?;
+   let send = parse_bool_cell("send", &args.send)?;
    process_tsv(&args.tsv_path, send, |tok, id, txt| {
                 Box::pin(send_telegram(tok, id, txt))
    }).await
@@ -170,7 +166,7 @@ mod unit_tests {
     use super::*;
     use libs::investor_rows::test_helpers::test_functions::deserialize_test_row;
 
-    
+
     // ---- helpers -----------------------------------------------------------
     fn make_row(
         name: &str, amount: &str, send: &str, flipped: &str,
@@ -217,6 +213,7 @@ mod unit_tests {
         assert_eq!(row.primary, "BTC");
         assert_eq!(row.pivot,   "UNDEAD");
         assert_eq!(row.pivots,  "15");
+        assert_eq!(row.url,     "https://x.com/pivocateur/status/2069591552733712719");
         assert!(row.send);
         assert!(row.flipped);
         Ok(())
@@ -265,9 +262,11 @@ mod unit_tests {
 
     #[test]
     fn test_build_message_flipped() -> ErrStr<()> {
+        // flipped only swaps which token is reinvested — trade direction
+        // (the pool's actual X-on-Y order) never changes.
         let row = make_investor("α", 14492.0, true, true);
         let msg = build_message(&row)?;
-        assert!(msg.contains("UNDEAD-on-BTC"),         "flipped trade direction");
+        assert!(msg.contains("BTC-on-UNDEAD"),         "trade direction never flips");
         assert!(msg.contains("BTC+UNDEAD pivot pool"), "pool always prim+piv");
         assert!(msg.contains("14492 UNDEAD"),          "reinvested token is piv when flipped");
         Ok(())
@@ -284,8 +283,10 @@ mod unit_tests {
 
     #[test]
     fn test_build_message_plural_pivots() -> ErrStr<()> {
+        // flipped=true here on purpose, to confirm trade direction stays
+        // fixed even when flipped — only the reinvested token would swap.
         let msg = build_message(&make_investor("φ", 173748.0, true, true))?;
-        assert!(msg.contains("15 UNDEAD-on-BTC pivots"), "plural pivot count");
+        assert!(msg.contains("15 BTC-on-UNDEAD pivots"), "plural pivot count, trade direction unaffected by flipped");
         Ok(())
     }
 
