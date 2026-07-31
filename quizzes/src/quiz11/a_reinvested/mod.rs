@@ -164,7 +164,7 @@ pub async fn runoff_with_args() -> ErrStr<()> {
 #[cfg(test)]
 mod unit_tests {
     use super::*;
-    use libs::investor_rows::test_helpers::test_functions::deserialize_test_row;
+    use libs::investor_rows::test_functions::deserialize_test_row;
 
 
     // ---- helpers -----------------------------------------------------------
@@ -370,7 +370,7 @@ pub mod functional_tests {
     use super::*;
     use paste::paste;
     use book::{create_testing, utils::now};
-    use libs::investor_rows::test_helpers::test_functions::SendSpy;
+    use libs::investor_rows::test_functions::SendSpy;
 
 
     create_testing!("quiz11::a_reinvested");
