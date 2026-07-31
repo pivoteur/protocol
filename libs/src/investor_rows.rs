@@ -37,7 +37,7 @@ pub fn parse_bool_cell(field: &str, raw: &str) -> ErrStr<bool> {
 }
 
 //============================================================================
-//----- Message Sending -------------------------------------------------
+//----- Message Sending ------------------------------------------------------
 //============================================================================
 pub type SendFuture<'a> = Pin<Box<dyn std::future::Future<Output = ErrStr<()>> + Send + 'a>>;
 
@@ -79,10 +79,10 @@ pub mod test_functions {
             .from_reader(tsv.as_bytes());
 
         match rdr.deserialize::<T>().next() {
-            None                              => Ok(None),
+            None                                     => Ok(None),
             Some(Err(e)) if is_ragged_row(&e) => Ok(None),
             Some(Err(e))                      => Err(format!("test fixture malformed: {e}")),
-            Some(Ok(record))                  => Ok(Some(record)),
+            Some(Ok(record))                      => Ok(Some(record)),
         }
     }
 
