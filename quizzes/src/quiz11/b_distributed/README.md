@@ -12,13 +12,14 @@ where:
 
 * [src](mod.rs)
 
-* `vesion 2.00`: workflow restructure, passing in a TSV file for `distributed` to read and 
+* `vesion 2.04`: workflow restructure, passing in a TSV file for `distributed` to read and 
 gather all bits of data before constructing the costume messge for each investor. 
 
 [<investors-test.tsv> sample](../../../data/investors-test.tsv)
 
 ## Revisions
 
+* 2.04, 2026-07-31: extracted shared Telegram/CSV logic (chat_id_for, parse_bool_cell, is_ragged_row, send_telegram, SendSpy) into libs::investor_rows; deduplicated shared test fixtures; cargo build and cargo test passing
 * 2.00, 2026-07-29: Workflow change, this program reads from a TSV now instead of indivisual args
 * 1.02, 2026-07-29: library-upgrades
 * 1.01, 2026-07-07: use clap to parse arguments and for usage-documentation
