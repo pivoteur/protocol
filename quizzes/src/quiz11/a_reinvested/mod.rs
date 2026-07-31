@@ -141,7 +141,7 @@ pub async fn process_tsv<F>(tsv_path: &str, global_send: bool, send_fn: F)
 /// The investors and their reinvestments are listed in CSV file
 #[derive(Debug, Parser)]
 #[command(name = "reinvested")]
-#[command(version = "2.04")]
+#[command(version = "2.05")]
 struct Args {
    /// The path to the list of the investors and their distributions
    tsv_path: String,
@@ -370,7 +370,7 @@ pub mod functional_tests {
     use super::*;
     use paste::paste;
     use book::{create_testing, utils::now};
-    use libs::investor_rows::test_functions::SendSpy;
+    use libs::investor_rows::test_functions::{SendSpy, INVESTOR_TSV_HEADER};
 
 
     create_testing!("quiz11::a_reinvested");
@@ -380,14 +380,15 @@ pub mod functional_tests {
         // when the user answers "no" — distinct from the send-path test below
         // cols: 0=name 1=reinvested% 2=precentage 3=amount_reinvested 4=amount_distributed
         //       5=primary 6=pivot 7=usd 8=pivots 9=tweet_url 10=tx_url 11=send 12=flipped
-        let tsv = "name\treinvested %\tprecentage\tamount reinvested\tamount distributed\t\
-                   primary\tpivot\tUSD-value\tnumber of pivots closed\ttweet url\ttx url\tsend?\tflipped\n\
-                   α\t100%\t3.46%\t14492\t0\tBTC\tUNDEAD\t$12.04\t15\t\
-                   https://x.com/pivocateur/status/2069591552733712719\t\
-                   https://snowtrace.io/tx/0xabc\tyes\tyes\n\
-                   σ\t0%\t0.00%\t0\t0\tBTC\tUNDEAD\t$0.00\t15\t\
-                   https://x.com/pivocateur/status/2069591552733712719\t\
-                   https://snowtrace.io/tx/0xdef\tyes\tyes\n";
+        let tsv = format!(
+            "{INVESTOR_TSV_HEADER}\n\
+             α\t100%\t3.46%\t14492\t0\tBTC\tUNDEAD\t$12.04\t15\t\
+             https://x.com/pivocateur/status/2069591552733712719\t\
+             https://snowtrace.io/tx/0xabc\tyes\tyes\n\
+             σ\t0%\t0.00%\t0\t0\tBTC\tUNDEAD\t$0.00\t15\t\
+             https://x.com/pivocateur/status/2069591552733712719\t\
+             https://snowtrace.io/tx/0xdef\tyes\tyes\n"
+        );
 
         let path_buf = std::env::temp_dir().join("reinvested_test.tsv");
         let path = path_buf.to_str().ok_or("temp path is not valid UTF-8")?;
@@ -409,14 +410,15 @@ pub mod functional_tests {
             std::env::set_var("INVESTOR_CHAT_IDS", r#"{"α":11111}"#);
         }
 
-        let tsv = "name\treinvested %\tprecentage\tamount reinvested\tamount distributed\t\
-                   primary\tpivot\tUSD-value\tnumber of pivots closed\ttweet url\ttx url\tsend?\tflipped\n\
-                   α\t100%\t3.46%\t14492\t0\tBTC\tUNDEAD\t$12.04\t15\t\
-                   https://x.com/pivocateur/status/2069591552733712719\t\
-                   https://snowtrace.io/tx/0xabc\tyes\tyes\n\
-                   σ\t0%\t0.00%\t0\t0\tBTC\tUNDEAD\t$0.00\t15\t\
-                   https://x.com/pivocateur/status/2069591552733712719\t\
-                   https://snowtrace.io/tx/0xdef\tyes\tyes\n";
+        let tsv = format!(
+            "{INVESTOR_TSV_HEADER}\n\
+             α\t100%\t3.46%\t14492\t0\tBTC\tUNDEAD\t$12.04\t15\t\
+             https://x.com/pivocateur/status/2069591552733712719\t\
+             https://snowtrace.io/tx/0xabc\tyes\tyes\n\
+             σ\t0%\t0.00%\t0\t0\tBTC\tUNDEAD\t$0.00\t15\t\
+             https://x.com/pivocateur/status/2069591552733712719\t\
+             https://snowtrace.io/tx/0xdef\tyes\tyes\n"
+        );
 
         let path_buf = std::env::temp_dir().join("reinvested_send_count_test.tsv");
         let path = path_buf.to_str().ok_or("temp path is not valid UTF-8")?;
