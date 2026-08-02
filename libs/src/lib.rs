@@ -22,3 +22,6 @@ pub mod reports;
 
 /// the whole kit-and-kaboodle
 pub mod processors;
+
+/// Shared plumbing for investor-facing Telegram binaries (reinvested, distributed)
+pub mod investor_rows;
