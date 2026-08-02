@@ -19,6 +19,7 @@ where:
 
 ## Revisions
 
+* 2.08, 2026-08-02: computing, reporting, and sorting by USD-gains
 * 2.07, 2026-07-29: library upgrade
 * 2.06, 2026-07-07: use clap to parse arguments and for usage-documentation
 * 2.04, 2026-06-30: Fail out if error
