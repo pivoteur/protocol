@@ -11,7 +11,8 @@ use book::{
 use super::{
    tables::{c2t, csv2tsv},
    types::{
-      measurable::{Measurable,tvl},
+      gains::Gains,
+      measurable::Measurable,
       pools::Pool,
       proposals::proposes::Propose
    }
@@ -46,6 +47,10 @@ pub struct Proposal {
    opens: usize,
    max_date: NaiveDate,
    proposal: Propose,
+}
+
+impl Proposal {
+   fn gain_usd(&self) -> USD { self.proposal.gain_usd() }
 }
 
 pub fn mk_proposal(pool: &Pool, dt: &NaiveDate, opens: usize, p: Propose)
@@ -100,7 +105,7 @@ pub fn report_proposes(proposes: Vec<Proposal>, no_closes: &[Pool], min: bool) {
       ("analyzed", 12)
    } else {
       let mut ps = proposes;
-      ps.sort_by_key(|pool| Reverse(tvl(pool)));
+      ps.sort_by_key(|pool| Reverse(pool.gain_usd()));
       let ix_props: Vec<_> =
          ps.iter().enumerate().map(mk_idx_offset(1)).collect();
       print_table_d("Close Pivot Calls", &ix_props, !min);
