@@ -9,3 +9,4 @@ pub mod quiz09;
 pub mod quiz10;
 pub mod quiz11;
 
+pub mod quiz12;

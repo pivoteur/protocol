@@ -5,7 +5,7 @@ edition = "2024"
 
 [[bin]]
 name = "arbitrage"
-path = "../../quizzes/src/quiz11/arbitrage/src/main.rs"
+path = "../../quizzes/src/quiz12/arbitrage/src/main.rs"
 
 [dependencies]
 quizzes = { path = "../../quizzes" }

@@ -14,7 +14,7 @@ use ethers::{
     },
 };
 use book::{
-        cli_utils::add_banner,
+        cli_utils::generate_banner,
         err_utils::ErrStr,
         parse_args_add_banner,
 };
@@ -657,7 +657,7 @@ enum Command {
 
 #[derive(Debug, Parser)]
 #[command(name = "arbitrage")]
-#[command(version = "0.9.0")]
+#[command(version = "0.10.0")]
 struct Args {
     #[command(subcommand)]
     command: Command,
@@ -739,7 +739,7 @@ pub mod functional_tests {
 
     const PIVOT_ROOT_URL: &str = "https://raw.githubusercontent.com/pivoteur/pivoteur.github.io";
 
-    create_testing!("quiz11::arbitrage");
+    create_testing!("quiz12::arbitrage");
 
     run!("wallet_balance", " (real ETH read against dedicated test wallet, read-only)", {
         let registry = load_token_registry()?;
