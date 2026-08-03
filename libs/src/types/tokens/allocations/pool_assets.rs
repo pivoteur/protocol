@@ -35,7 +35,7 @@ impl PoolAssets {
 #[cfg(test)]
 #[cfg(not(tarpaulin_include))]
 pub mod test_data {
-   use rand::Rng;
+   use rand::RngExt;
    use super::*;
    use crate::types::tokens::allocations::allocations::{
       Allocation,
@@ -44,7 +44,7 @@ pub mod test_data {
    use book::err_utils::ErrStr;
 
    fn rnd_alloc(tok: &str, alloc: f32) -> ErrStr<Allocation> {
-      let virt: f32 = rand::thread_rng().gen_range(0.0 .. alloc);
+      let virt: f32 = rand::rng().random_range(0.0 .. alloc);
       let act = alloc - virt;
       let ans = sample_allocation(&tok.to_uppercase(), virt, act)?;
       Ok(ans)

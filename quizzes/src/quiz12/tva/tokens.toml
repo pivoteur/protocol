@@ -1,0 +1,15 @@
+# native = true means this is the chain's native gas asset (AVAX), queried
+# via eth_getBalance instead of an ERC-20 balanceOf() call.
+# BTC.b and UNDEAD are what this program trades; AVAX is gas only.
+
+[AVAX]
+native = true
+decimals = 18
+
+[BTC]
+address = "0x152b9d0FdC40C096757F570A51E494bd4b943E50"
+decimals = 8
+
+[UNDEAD]
+address = "0x5a3534720A4f29FA0dc53cE474Db88973A95f65C"
+decimals = 18

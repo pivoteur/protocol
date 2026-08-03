@@ -22,3 +22,6 @@ pub mod reports;
 
 /// the whole kit-and-kaboodle
 pub mod processors;
+
+/// Shared core for live-fund-moving auto-trading binaries (arbitrage, tva)
+pub mod auto_trading;
