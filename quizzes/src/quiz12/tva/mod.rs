@@ -1,20 +1,3 @@
-//! `tvá` — bidirectional BTC⇄UNDEAD auto-trader.
-//!
-//! Strategy (see undead_btc_pivot_spec.md for the full derivation from real
-//! trading data): each hourly cycle, every currently-open pivot is checked
-//! against a live reverse-direction quote. If the amount that would come
-//! back exceeds what was originally put in — ANY gain, not the eventual 10%
-//! target — it closes. Afterward, whatever BTC/UNDEAD capital isn't tied up
-//! in still-open pivots gets committed to new fixed-size pivots in both
-//! directions. No cap on concurrent open pivots, no stop-loss — a pivot can
-//! sit open indefinitely until it clears.
-//!
-//! State lives entirely in `tva-trades.log`, replayed fresh on every run
-//! (this binary is invoked hourly by CI as a fresh process — nothing is
-//! held in memory between runs). An OPEN line followed later by a CLOSE
-//! line for the same pivot_id means that pivot is no longer open; anything
-//! without a matching CLOSE is still open.
-
 use std::fs::{File, OpenOptions};
 use std::io::{BufRead, BufReader, Write};
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -33,9 +16,7 @@ use libs::auto_trading::{
 //============================================================================
 //----- Token Registry --------------------------------------------------------
 //============================================================================
-/// AVAX (gas, native — registered for completeness like arbitrage's, but
-/// never balance-checked here since libs::auto_trading::wallet_balance only
-/// supports ERC-20 balanceOf), BTC, and UNDEAD. Nothing else.
+/// AVAX as gas and trading BTC and UNDEAD. Nothing else.
 const TOKENS_TOML: &str = include_str!("tokens.toml");
 
 pub fn load_token_registry() -> ErrStr<TokenRegistry> {
@@ -45,14 +26,12 @@ pub fn load_token_registry() -> ErrStr<TokenRegistry> {
 //============================================================================
 //----- Fixed Trade Sizes ------------------------------------------------------
 //============================================================================
-// Locked per spec section 5/7 — no dynamic sizing yet. Raise these once
-// pool depth supports larger amounts at acceptable price impact.
+// Raise these once pool depth supports larger amounts at acceptable price impact.
 const UNDEAD_TRADE_AMOUNT: f64 = 500_000.0;
 const BTC_TRADE_AMOUNT: f64 = 0.005;
 
-// KyberSwap UI showed 2% as its own slippage default while Paris was
-// testing manually — matching that here rather than arbitrage's tighter
-// 50 bps, since this pool is thinner.
+// KyberSwap UI showed 2% as its own slippage default, matching 
+// that here rather than arbitrage's tighter 50 bps, since this pool is thinner.
 const SLIPPAGE_BPS: u16 = 200;
 
 // execute_trade requires min_floor > 0 strictly. Opens have no real floor
