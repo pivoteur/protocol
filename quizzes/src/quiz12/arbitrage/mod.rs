@@ -135,7 +135,7 @@ async fn run_trade_for_symbols(
 
     println!(">>> Quote clears your floor. Proceeding to execute.");
 
-    match execute_trade(wallet_address, registry, from_symbol, to_symbol, amount, min_floor, slippage_bps).await {
+    match execute_trade(wallet_address, registry, from_symbol, to_symbol, amount, min_floor, slippage_bps, "KEYSTORE_PATH").await {
         Ok((tx_hash, _gas_avax)) => {
             // gas tracking isn't part of arbitrage's log format (yet) —
             // available here if that changes later.
@@ -158,7 +158,7 @@ pub async fn run_trade(
     dry_run: bool,
 ) -> ErrStr<()> {
     let (from_symbol, to_symbol) = direction.symbols();
-    let wallet_address = wallet_address_from_env()?;
+    let wallet_address = wallet_address_from_env("WALLET_ADDRESS")?;
     let registry = load_token_registry()?;
     run_trade_for_symbols(&wallet_address, &registry, from_symbol, to_symbol, amount, min_floor, slippage_bps, dry_run).await
 }
@@ -166,7 +166,7 @@ pub async fn run_trade(
 /// Reads calls.csv and, for each row, either executes the FULL proposed
 /// trade or does nothing at all for that row. 
 pub async fn run_calls_batch(root_url: &str, slippage_bps: u16, dry_run: bool) -> ErrStr<()> {
-    let wallet_address = wallet_address_from_env()?;
+    let wallet_address = wallet_address_from_env("WALLET_ADDRESS")?;
     let registry = load_token_registry()?;
 
     let calls: Vec<Call> = fetch_calls(root_url)
@@ -228,7 +228,7 @@ enum Command {
 
 #[derive(Debug, Parser)]
 #[command(name = "arbitrage")]
-#[command(version = "0.10.0")]
+#[command(version = "0.11.0")]
 struct Args {
     #[command(subcommand)]
     command: Command,
@@ -289,6 +289,7 @@ pub mod functional_tests {
     use super::*;
     use paste::paste;
     use book::{ create_testing, utils::now };
+
 
     const PIVOT_ROOT_URL: &str = "https://raw.githubusercontent.com/pivoteur/pivoteur.github.io";
 

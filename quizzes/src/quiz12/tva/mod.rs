@@ -1,22 +1,24 @@
 use std::fs::{File, OpenOptions};
 use std::io::{BufRead, BufReader, Write};
 use std::time::{SystemTime, UNIX_EPOCH};
-
 use clap::Parser;
 use book::{
-    cli_utils::generate_banner,
-    err_utils::ErrStr,
-    parse_args_add_banner,
+        cli_utils::generate_banner,
+        err_utils::ErrStr,
+        parse_args_add_banner,
 };
 use libs::auto_trading::{
-    TokenRegistry, parse_token_registry, wallet_address_from_env,
-    wallet_balance, live_quote, execute_trade,
+            TokenRegistry, 
+            parse_token_registry, 
+            wallet_address_from_env,
+            wallet_balance, 
+            live_quote, 
+            execute_trade,
 };
 
 //============================================================================
 //----- Token Registry --------------------------------------------------------
 //============================================================================
-/// AVAX as gas and trading BTC and UNDEAD. Nothing else.
 const TOKENS_TOML: &str = include_str!("tokens.toml");
 
 pub fn load_token_registry() -> ErrStr<TokenRegistry> {
@@ -26,43 +28,31 @@ pub fn load_token_registry() -> ErrStr<TokenRegistry> {
 //============================================================================
 //----- Fixed Trade Sizes ------------------------------------------------------
 //============================================================================
-// Raise these once pool depth supports larger amounts at acceptable price impact.
 const UNDEAD_TRADE_AMOUNT: f64 = 500_000.0;
 const BTC_TRADE_AMOUNT: f64 = 0.005;
-
-// KyberSwap UI showed 2% as its own slippage default, matching 
-// that here rather than arbitrage's tighter 50 bps, since this pool is thinner.
 const SLIPPAGE_BPS: u16 = 200;
 
-// execute_trade requires min_floor > 0 strictly. Opens have no real floor
-// (spec: unconditional once capital is available) — this is close enough
-// to zero to never meaningfully constrain anything while still satisfying
-// that requirement.
+// execute_trade requires min_floor > 0. Opens have no real floor, so this
+// is close enough to zero to never meaningfully constrain anything.
 const NO_REAL_FLOOR: f64 = 0.000_000_01;
 
 //============================================================================
 //----- Trade Log — format & replay --------------------------------------------
 //============================================================================
-// Minimal, append-only, one line per event. Every run replays the whole log to
-// reconstruct which pivots are still open.
-//
 //   OPEN:  timestamp,OPEN,pivot_id,prim,prim_amount,proper,proper_amount,gas_avax,tx_hash
 //   CLOSE: timestamp,CLOSE,pivot_id,close_id,proper_amount,gain,roi,apr,gas_avax,tx_hash
 //   CHECK: timestamp,CHECK,pivot_id,not_closed
 //
-// gas_avax is the TOTAL AVAX spent on gas for that trade
-//
-// proper_amount on both OPEN and CLOSE lines is the ACTUAL amount received,
-// the quote is only used to decide whether to attempt the trade at all.
+// proper_amount is the ACTUAL amount received (balance delta), not the quote.
 const TRADE_LOG_PATH: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/src/quiz12/tva/tva-trades.log");
 
 #[derive(Debug, Clone)]
 struct OpenPivot {
-    pivot_id: u32,
-    opened_at: u64,
-    prim: String,
-    prim_amount: f64,
-    proper: String,
+    pivot_id:      u32,
+    opened_at:     u64,
+    prim:          String,
+    prim_amount:   f64,
+    proper:        String,
     proper_amount: f64,
 }
 
@@ -99,8 +89,7 @@ fn log_check_not_closed(pivot_id: u32) {
     append_log(&format!("{},CHECK,{pivot_id},not_closed", now_ts()));
 }
 
-/// Replays `tva-trades.log` and returns (still-open pivots, next pivot_id,
-/// next close_id). A missing log file means a fresh start (ids begin at 1).
+/// Missing log file means a fresh start (ids begin at 1).
 fn replay_log(path: &str) -> ErrStr<(Vec<OpenPivot>, u32, u32)> {
     let file = match File::open(path) {
         Ok(f) => f,
@@ -133,9 +122,6 @@ fn replay_log(path: &str) -> ErrStr<(Vec<OpenPivot>, u32, u32)> {
                     .map_err(|_| format!("bad prim_amount at {path}:{}: '{line}'", line_no + 1))?;
                 let proper_amount: f64 = fields[6].parse()
                     .map_err(|_| format!("bad proper_amount at {path}:{}: '{line}'", line_no + 1))?;
-                // gas_avax (fields[7]) isn't needed to reconstruct open
-                // state, but still validated here so a corrupted log line
-                // fails loudly rather than being silently accepted.
                 let _gas_avax: f64 = fields[7].parse()
                     .map_err(|_| format!("bad gas_avax at {path}:{}: '{line}'", line_no + 1))?;
                 max_pivot_id = max_pivot_id.max(pivot_id);
@@ -159,7 +145,7 @@ fn replay_log(path: &str) -> ErrStr<(Vec<OpenPivot>, u32, u32)> {
                 closed_ids.insert(pivot_id);
                 max_close_id = max_close_id.max(close_id);
             }
-            Some(&"CHECK") => {} // informational only, no replay effect
+            Some(&"CHECK") => {}
             _ => return Err(format!("unrecognized log line at {path}:{}: '{line}'", line_no + 1)),
         }
     }
@@ -171,18 +157,12 @@ fn replay_log(path: &str) -> ErrStr<(Vec<OpenPivot>, u32, u32)> {
 //============================================================================
 //----- One Trading Cycle -------------------------------------------------------
 //============================================================================
-
-/// Outcome of one trade attempt, distinguishing "didn't clear the floor"
-/// from "would have cleared, but this is a dry run" — these print very
-/// different messages and must not be conflated.
 enum AttemptOutcome {
     NotCleared,
     DryRunWouldClear { quoted_amount_out: f64 },
     Executed { tx_hash: String, actual_received: f64, gas_avax: f64 },
 }
 
-/// Attempts one trade with a balance-delta measurement of what was actually
-/// received (more precise than trusting the pre-trade quote).
 async fn attempt_trade_with_actual_amount(
     wallet_address: &str,
     registry: &TokenRegistry,
@@ -202,7 +182,7 @@ async fn attempt_trade_with_actual_amount(
     }
 
     let balance_before = wallet_balance(wallet_address, to_symbol, registry).await?;
-    let (tx_hash, gas_avax) = execute_trade(wallet_address, registry, from_symbol, to_symbol, amount, min_floor, SLIPPAGE_BPS).await?;
+    let (tx_hash, gas_avax) = execute_trade(wallet_address, registry, from_symbol, to_symbol, amount, min_floor, SLIPPAGE_BPS, "TVA_KEYSTORE_PATH").await?;
     let balance_after = wallet_balance(wallet_address, to_symbol, registry).await?;
     let actual_received = balance_after - balance_before;
 
@@ -210,13 +190,22 @@ async fn attempt_trade_with_actual_amount(
 }
 
 pub async fn run_cycle(dry_run: bool) -> ErrStr<()> {
-    let wallet_address = wallet_address_from_env()?;
+    let wallet_address = wallet_address_from_env("TVA_WALLET_ADDRESS")?;
+
+    println!("Using wallet: {wallet_address}");
+    if let Ok(expected) = std::env::var("TVA_EXPECTED_WALLET") {
+        if !expected.eq_ignore_ascii_case(&wallet_address) {
+            return Err(format!(
+                "WALLET_ADDRESS ({wallet_address}) does not match TVA_EXPECTED_WALLET ({expected}) — refusing to run."
+            ));
+        }
+    }
+
     let registry = load_token_registry()?;
     let (open_pivots, mut next_pivot_id, mut next_close_id) = replay_log(TRADE_LOG_PATH)?;
 
     println!("=== tvá cycle starting: {} open pivot(s) ===", open_pivots.len());
 
-    // --- Step 1: check every open pivot; close whatever clears ---
     let mut remaining_open: Vec<OpenPivot> = Vec::new();
     for pivot in open_pivots {
         println!(
@@ -239,7 +228,6 @@ pub async fn run_cycle(dry_run: bool) -> ErrStr<()> {
                 );
                 log_close(pivot.pivot_id, next_close_id, actual_received, gain, roi, apr, gas_avax, &tx_hash);
                 next_close_id += 1;
-                // not pushed to remaining_open — it's closed
             }
             Ok(AttemptOutcome::DryRunWouldClear { quoted_amount_out }) => {
                 println!(
@@ -262,7 +250,6 @@ pub async fn run_cycle(dry_run: bool) -> ErrStr<()> {
         }
     }
 
-    // --- Step 2: recompute committed / available from what's still open ---
     let btc_committed: f64 = remaining_open.iter().filter(|p| p.proper == "BTC").map(|p| p.proper_amount).sum();
     let undead_committed: f64 = remaining_open.iter().filter(|p| p.proper == "UNDEAD").map(|p| p.proper_amount).sum();
 
@@ -274,16 +261,15 @@ pub async fn run_cycle(dry_run: bool) -> ErrStr<()> {
     println!("BTC:    {btc_balance:.8} total, {btc_committed:.8} committed, {btc_available:.8} available");
     println!("UNDEAD: {undead_balance:.2} total, {undead_committed:.2} committed, {undead_available:.2} available");
 
-    // --- Step 3: open new pivots wherever capital allows, both directions ---
     if btc_available > BTC_TRADE_AMOUNT {
         println!("--- Opening pivot #{next_pivot_id}: {BTC_TRADE_AMOUNT} BTC -> UNDEAD ---");
+        let attempted_id = next_pivot_id;
         match attempt_trade_with_actual_amount(
             &wallet_address, &registry, "BTC", "UNDEAD", BTC_TRADE_AMOUNT, NO_REAL_FLOOR, dry_run,
         ).await {
             Ok(AttemptOutcome::Executed { tx_hash, actual_received, gas_avax }) => {
                 println!(">>> Opened: {BTC_TRADE_AMOUNT} BTC -> {actual_received:.2} UNDEAD (gas {gas_avax:.8} AVAX)");
-                log_open(next_pivot_id, "BTC", BTC_TRADE_AMOUNT, "UNDEAD", actual_received, gas_avax, &tx_hash);
-                next_pivot_id += 1;
+                log_open(attempted_id, "BTC", BTC_TRADE_AMOUNT, "UNDEAD", actual_received, gas_avax, &tx_hash);
             }
             Ok(AttemptOutcome::DryRunWouldClear { quoted_amount_out }) => {
                 println!(">>> DRY RUN: would open — {BTC_TRADE_AMOUNT} BTC -> ~{quoted_amount_out:.2} UNDEAD. No funds moved.");
@@ -291,6 +277,12 @@ pub async fn run_cycle(dry_run: bool) -> ErrStr<()> {
             Ok(AttemptOutcome::NotCleared) => println!(">>> Unexpected: open quote didn't clear the near-zero floor — check the pool."),
             Err(e) => println!(">>> Open (BTC->UNDEAD) failed: {e}"),
         }
+        // Advances once an attempt is actually made, regardless of outcome —
+        // otherwise a dry-run or failed first attempt leaves the second
+        // attempt showing the same id, even though they're two distinct
+        // attempts. A skipped id (attempt failed, never logged) is
+        // harmless: replay_log only tracks the max logged id, not a count.
+        next_pivot_id += 1;
     } else {
         println!("Not enough BTC available to open ({btc_available:.8} <= {BTC_TRADE_AMOUNT}).");
     }
@@ -323,9 +315,8 @@ pub async fn run_cycle(dry_run: bool) -> ErrStr<()> {
 //============================================================================
 #[derive(Debug, Parser)]
 #[command(name = "tva")]
-#[command(version = "0.1.0")]
+#[command(version = "0.4.0")]
 struct Args {
-    /// Check-only: no funds moved, no log entries written for opens/closes.
     #[arg(long, default_value_t = false)]
     dry_run: bool,
 }
@@ -341,6 +332,7 @@ pub async fn runoff_with_args() -> ErrStr<()> {
 #[cfg(test)]
 mod unit_tests {
     use super::*;
+
 
     #[test]
     fn test_load_token_registry_has_btc_undead_avax() -> ErrStr<()> {
@@ -412,8 +404,6 @@ mod unit_tests {
 //============================================================================
 //----- FUNCTIONAL TESTS -------------------------------------------------------
 //============================================================================
-// Real, read-only checks against the actual test wallet — never touches
-// the keystore. Same pattern as arbitrage's functional_tests.
 #[cfg(test)]
 #[cfg(not(tarpaulin_include))]
 pub mod functional_tests {
@@ -421,12 +411,13 @@ pub mod functional_tests {
     use paste::paste;
     use book::{ create_testing, utils::now };
 
+
     create_testing!("quiz12::tva");
 
     run!("wallet_balance_btc", " (real BTC.b read against dedicated test wallet, read-only)", {
         let registry = load_token_registry()?;
         let balance = now(wallet_balance(
-            "0xd16E431b1363Ed90C4fD4906Cf7Fc33E51115429",
+            "0x6700bD7EAE41434f566e48738813fC585B95669a",
             "BTC",
             &registry,
         ))?;
@@ -436,7 +427,7 @@ pub mod functional_tests {
     run!("wallet_balance_undead", " (real UNDEAD read against dedicated test wallet, read-only)", {
         let registry = load_token_registry()?;
         let balance = now(wallet_balance(
-            "0xd16E431b1363Ed90C4fD4906Cf7Fc33E51115429",
+            "0x6700bD7EAE41434f566e48738813fC585B95669a",
             "UNDEAD",
             &registry,
         ))?;

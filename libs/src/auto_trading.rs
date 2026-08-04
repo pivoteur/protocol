@@ -18,9 +18,9 @@ use serde::Deserialize;
 #[derive(Debug, Deserialize, Clone, PartialEq)]
 pub struct TokenEntry {
     #[serde(default)]
-    pub native: bool,
+    pub native:   bool,
     #[serde(default)]
-    pub address: Option<String>,
+    pub address:  Option<String>,
     pub decimals: u32,
 }
 
@@ -60,16 +60,17 @@ pub const AVALANCHE_RPC: &str = "https://api.avax.network/ext/bc/C/rpc";
 pub const AVALANCHE_CHAIN_ID: u64 = 43114;
 const KYBERSWAP_CHAIN: &str = "avalanche";
 
-pub fn wallet_address_from_env() -> ErrStr<String> {
-    std::env::var("WALLET_ADDRESS").map_err(|_| {
-        "Missing required env var: WALLET_ADDRESS (your public wallet address)".to_string()
+pub fn wallet_address_from_env(var_name: &str) -> ErrStr<String> {
+    std::env::var(var_name).map_err(|_| {
+        let ans = format!("Missing required env var: {var_name} (your public wallet address)");
+        ans
     })
 }
 
 #[derive(Debug, Deserialize)]
 struct RpcResponse {
     result: Option<String>,
-    error: Option<serde_json::Value>,
+    error:  Option<serde_json::Value>,
 }
 
 async fn rpc_call(method: &str, params: serde_json::Value) -> ErrStr<String> {
@@ -141,9 +142,9 @@ pub async fn wallet_balance(
 /// A live quote plus everything needed to actually build and sign the swap
 /// afterward.
 pub struct KyberQuote {
-    pub amount_out: f64,
-    pub route_summary_raw: serde_json::Value,
-    pub router_address: String,
+    pub amount_out:         f64,
+    pub route_summary_raw:  serde_json::Value,
+    pub router_address:     String,
 }
 
 pub async fn live_quote(
@@ -231,31 +232,22 @@ fn gas_cost_avax(gas_used: Option<U256>, effective_gas_price: Option<U256>) -> f
     }
 }
 
-/// Loads the encrypted keystore and verifies the derived address actually
-/// matches `expected_address` before handing back a signer — refuses to
-/// proceed on a mismatch rather than silently signing with the wrong key.
-///
-/// Password source: if `KEYSTORE_PASSWORD` is set in the environment, it's
-/// used directly (no prompt) — this is what makes unattended CI runs
-/// possible. Locally, where that env var typically isn't set, it falls
-/// back to an interactive prompt so nothing changes for manual runs.
-/// Either way the password itself is never logged or written anywhere.
-pub async fn load_signer(expected_address: &str) -> ErrStr<LocalWallet> {
-    let keystore_path = std::env::var("KEYSTORE_PATH").map_err(|_| {
-        "Missing required env var: KEYSTORE_PATH (full path to the encrypted keystore file)".to_string()
+pub async fn load_signer(expected_address: &str, keystore_path_var: &str) -> ErrStr<LocalWallet> {
+    let keystore_path = std::env::var(keystore_path_var).map_err(|_| {
+        format!("Missing required env var: {keystore_path_var} (full path to the encrypted keystore file). No funds moved.")
     })?;
     let password = match std::env::var("KEYSTORE_PASSWORD") {
         Ok(pw) => pw,
         Err(_) => rpassword::prompt_password("Keystore password: ")
-            .map_err(|e| format!("Could not read password: {e}"))?,
+            .map_err(|e| format!("Could not read password: {e}. No funds moved."))?,
     };
     let wallet = LocalWallet::decrypt_keystore(&keystore_path, &password)
-        .map_err(|e| format!("Could not decrypt keystore: {e}"))?
+        .map_err(|e| format!("Could not decrypt keystore: {e}. No funds moved."))?
         .with_chain_id(AVALANCHE_CHAIN_ID);
     let derived = format!("{:?}", wallet.address());
     if !derived.eq_ignore_ascii_case(expected_address) {
         return Err(format!(
-            "Keystore address ({derived}) does not match expected address ({expected_address}) — refusing to proceed."
+            "Keystore address ({derived}) does not match expected address ({expected_address}) — refusing to proceed. No funds moved."
         ));
     }
     Ok(wallet)
@@ -452,8 +444,9 @@ pub async fn execute_trade(
     amount: f64,
     min_floor: f64,
     slippage_bps: u16,
+    keystore_path_var: &str,
 ) -> ErrStr<(String, f64)> {
-    let signer = load_signer(wallet_address).await?;
+    let signer = load_signer(wallet_address, keystore_path_var).await?;
     let provider = Provider::<Http>::try_from(AVALANCHE_RPC)
         .map_err(|e| format!("Could not create RPC provider: {e}"))?;
     let client = SignerMiddleware::new(provider, signer);
