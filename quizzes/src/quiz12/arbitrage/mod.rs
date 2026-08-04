@@ -228,7 +228,7 @@ enum Command {
 
 #[derive(Debug, Parser)]
 #[command(name = "arbitrage")]
-#[command(version = "0.11.0")]
+#[command(version = "0.10.1")]
 struct Args {
     #[command(subcommand)]
     command: Command,
