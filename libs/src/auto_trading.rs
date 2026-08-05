@@ -405,6 +405,65 @@ pub async fn send_swap_tx(
     }
 }
 
+/// Sends `amount` of `symbol` from the wallet straight to `to_address` —
+/// a plain ERC-20 transfer(), not a swap. Same safety baseline as
+/// execute_trade: verified signer, EIP-1559 fee buffering, hard error on
+/// revert/drop/failure rather than a false success. Does not support
+/// native AVAX (no tokens.toml address to encode against) — only ERC-20s
+/// with a real contract address.
+pub async fn send_tokens(
+    wallet_address: &str,
+    registry: &TokenRegistry,
+    symbol: &str,
+    to_address: &str,
+    amount: f64,
+    keystore_path_var: &str,
+) -> ErrStr<(String, f64)> {
+    if amount <= 0.0 {
+        return Err(format!("send_tokens: amount must be positive, got {amount}"));
+    }
+
+    let signer = load_signer(wallet_address, keystore_path_var).await?;
+    let provider = Provider::<Http>::try_from(AVALANCHE_RPC)
+        .map_err(|e| format!("Could not create RPC provider: {e}"))?;
+    let client = SignerMiddleware::new(provider, signer);
+
+    let entry = token_entry(registry, symbol)?;
+    let token_addr = entry.address.as_deref().ok_or_else(|| {
+        format!("'{symbol}' has no address in tokens.toml (or is native — send_tokens only supports ERC-20 transfers)")
+    })?;
+    let amount_base = (amount * 10f64.powi(entry.decimals as i32)).round() as u128;
+
+    // transfer(address,uint256) selector = 0xa9059cbb
+    let data_hex = format!(
+        "0xa9059cbb{}{}",
+        pad_address_for_call(to_address),
+        pad_u256_for_call(amount_base)
+    );
+    let to = Address::from_str(token_addr).map_err(|e| format!("Bad token address: {e}"))?;
+    let data = Bytes::from_str(&data_hex).map_err(|e| format!("Bad transfer calldata: {e}"))?;
+    let tx = build_tx_with_fee_buffer(&client, to, data).await?;
+
+    let pending = client
+        .send_transaction(tx, None)
+        .await
+        .map_err(|e| format!("Transfer transaction failed to send: {e}"))?;
+    let tx_hash = format!("{:?}", pending.tx_hash());
+    println!("    Transfer tx submitted: {tx_hash}");
+
+    let receipt = pending
+        .await
+        .map_err(|e| format!("Transfer transaction failed while confirming: {e}"))?;
+    match receipt {
+        Some(r) if r.status == Some(1.into()) => {
+            println!("    Transfer confirmed in block {:?}", r.block_number);
+            Ok((tx_hash, gas_cost_avax(r.gas_used, r.effective_gas_price)))
+        }
+        Some(_) => Err(format!("Transfer transaction REVERTED on-chain. Hash: {tx_hash}")),
+        None => Err(format!("Transfer transaction was dropped or replaced. Hash: {tx_hash}")),
+    }
+}
+
 //============================================================================
 //----- UNIT TESTS -------------------------------------------------------------
 //============================================================================
