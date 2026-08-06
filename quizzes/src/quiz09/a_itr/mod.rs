@@ -64,7 +64,7 @@ fn report_dirs(hdr: &str, kind: &str, dirs: &[String], total: usize) {
 /// Runs integration tests by building all dapps of the protocol
 #[derive(Debug, Parser)]
 #[command(name = "itr")]
-#[command(version = "1.03")]
+#[command(version = "1.04")]
 struct Args {
    /// directory in which the protocol dapps reside
    dir: String
