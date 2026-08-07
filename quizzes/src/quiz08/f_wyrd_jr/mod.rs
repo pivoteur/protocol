@@ -3,7 +3,7 @@ use clap::Parser;
 use book::{
    not_implemented,
    parse_args_add_banner,
-   cli_utils::add_banner,
+   cli_utils::generate_banner,
    err_utils::ErrStr,
    num::floats::comma_floats::CommaFloat,
    string_utils::UppercaseString,
@@ -39,9 +39,13 @@ struct Args {
 
 pub async fn runoff_with_args() -> ErrStr<()> {
    let args = parse_args_add_banner!(Args);
-   let root_url = get_env(&format!("{}_URL", args.protocol))?;
+   runoff_continuation(&args.protocol, args.debug).await
+}
+
+async fn runoff_continuation(protocol: &str, debug: bool) -> ErrStr<()> {
+   let root_url = get_env(&format!("{}_URL", protocol))?;
    let calls = fetch_calls(&root_url).await?;
-   not_implemented!("f_wyrd_jr::runoff_with_args", calls)
+   not_implemented!("f_wyrd_jr::runoff_with_args", calls, debug)
 }
 
 // ----- TESTS -------------------------------------------------------
@@ -55,6 +59,6 @@ mod functional_tests {
 
    create_testing!("quizzes::quiz08::f_wyrd_jr");
 
-   run!("convert", now(runoff_with_args()));
+   run!("convert", now(runoff_continuation("PIVOT", true)));
 }
 

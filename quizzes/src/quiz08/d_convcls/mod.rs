@@ -3,7 +3,7 @@ use clap::Parser;
 
 use book::{
    parse_args_add_banner,
-   cli_utils::add_banner,
+   cli_utils::generate_banner,
    csv_utils::as_tsv,
    err_utils::{ErrStr,err_or}
 };
@@ -13,7 +13,8 @@ use libs::{
       process_open_pivots,
       process_old_close_pivots,
       new_close_pivots
-   }
+   },
+   types::gains::Gains
 };
 
 /// Converts the old close-pivot format to the current close pivot format,
@@ -143,4 +144,3 @@ mod tests {
       Ok(())
    }
 }
-

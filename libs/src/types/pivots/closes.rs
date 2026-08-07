@@ -12,7 +12,7 @@ use crate::{
       serialize_semicolon_list,
       deserialize_semicolon_list
    },
-   types::util::Id
+   types::{ gains::Gains, util::Id }
 };
 
 #[serde_as]
@@ -31,7 +31,8 @@ pub struct ClosePivot {
     to: String,
     #[serde_as(as = "DisplayFromStr")]
     to_quote: USD,
-    trade: f32,
+    #[serde_as(as = "DisplayFromStr")]
+    trade: USD,
     #[serde_as(as = "DisplayFromStr")]
     vol: USD,
     gain_10_percent: f32,
@@ -45,8 +46,11 @@ pub struct ClosePivot {
     apr: Percentage,
 }
 
-impl ClosePivot {
-   pub fn gain(&self) -> f32 { self.gain_10_percent }
+impl Gains for ClosePivot {
+   fn roi(&self) -> Percentage { self.roi.clone() }
+   fn apr(&self) -> Percentage { self.apr.clone() }
+   fn gain(&self) -> f32 { self.gain }
+   fn gain_usd(&self) -> USD { self.gain_total_usd.clone() }
 }
 
 pub fn transform(old_row: &OldClosePivotRow, gain_10: f32) -> ClosePivot {
@@ -90,7 +94,8 @@ pub struct OldClosePivotRow {
     #[serde_as(as = "DisplayFromStr")]
     #[serde(alias = "to quote")]
     to_quote: USD,
-    trade: f32,
+    #[serde_as(as = "DisplayFromStr")]
+    trade: USD,
     #[serde_as(as = "DisplayFromStr")]
     vol: USD,
     #[serde(alias = "new to-actual")]
