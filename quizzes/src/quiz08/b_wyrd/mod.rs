@@ -7,7 +7,7 @@ use libs::{
 };
 use book::{
     parse_args_add_banner,
-    cli_utils::add_banner,
+    cli_utils::generate_banner,
     currency::usd::{ USD, mk_usd },
     date_utils::parse_date,
     err_utils::ErrStr,
@@ -349,7 +349,7 @@ mod tests {
 /// Generates close pivot row from transaction id and calls-table
 #[derive(Debug, Parser)]
 #[command(name = "wyrd")]
-#[command(version = "1.03")]
+#[command(version = "1.04")]
 struct Args {
    /// Protocol to construct the close pivot, e.g.: PIVOT
    protocol: UppercaseString,

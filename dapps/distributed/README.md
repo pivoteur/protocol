@@ -16,6 +16,7 @@ Creates a distribution message for investors.
 
 ## Revisions
 
+* 1.02, 2026-07-29: library-upgrades
 * 1.01, 2026-07-07: use clap to parse arguments and for usage-documentation
 * 1.00, 2026-05-19: release, and adding into the quizzes testing framework
 

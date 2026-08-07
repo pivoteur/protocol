@@ -30,6 +30,7 @@ impl PropAsset {
    }
    pub fn blockchain(&self) -> Blockchain { self.blockchain.clone() }
    pub fn token(&self) -> Token { self.token.clone() }
+   pub fn gain_for(&self, from: f32) -> f32 { self.amount - from }
 }
 
 impl CsvHeader for PropAsset {

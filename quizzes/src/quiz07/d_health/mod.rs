@@ -3,7 +3,7 @@ use clap::Parser;
 
 use book::{
    parse_args_add_banner,
-   cli_utils::add_banner,
+   cli_utils::generate_banner,
    err_utils::ErrStr,
    num::floats::safe_floats::mk_safe_float,
    string_utils::UppercaseString,
@@ -63,7 +63,7 @@ fn report_health(dt: NaiveDate, v: Vec<Composition>) -> ErrStr<()> {
 /// prints the current available assets for all pivot pools: a health-check.
 #[derive(Debug, Parser)]
 #[command(name = "hwaet")]
-#[command(version = "1.06")]
+#[command(version = "1.07")]
 struct Args {
    /// protocol to run the health-check on, e.g.: PIVOT
    protocol: UppercaseString,
