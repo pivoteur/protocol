@@ -12,7 +12,7 @@ use super::utils::fetch_lines;
 use crate::{
    paths::open_pivot_path,
    tables::index_table,
-   types::{ aliases::Aliases, pivots::{Pivot,parse_pivot}, pools::Pool }
+   types::{ aliases::Aliases, pivots::opens::{Pivot,parse_pivot}, pools::Pool }
 };
 
 // ----- PIVOTS -------------------------------------------------------

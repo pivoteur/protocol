@@ -8,6 +8,7 @@ fn raw_url(root_url: &str) -> String {
 }
 
 fn data_dir(root_url: &str) -> String { format!("{}/data", raw_url(root_url)) }
+
 pub fn pivots_dir(root_url: &str) -> String {
    format!("{}/pivots", data_dir(root_url))
 }

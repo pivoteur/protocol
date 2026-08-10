@@ -1,6 +1,6 @@
 use crate::types::{
    calls::Call,
-   pivots::{ Pivot, mk_pivot },
+   pivots::opens::{ Pivot, mk_pivot },
    quotes::Quotes
 };
 
@@ -56,7 +56,7 @@ mod counter_offerer {
    use crate::types::{
       calls::Call,
       measurable::Measurable,
-      pivots::Pivot,
+      pivots::opens::Pivot,
       pools::Pool
    };
 
@@ -153,7 +153,7 @@ mod counter_offerer {
    #[cfg(test)]
    mod tests {
       use super::*;
-      use crate::processors::virtuals::test_data::{ sample_call, target };
+      use crate::types::calls::test_data::{ sample_call, target };
       use book::num::estimate::mk_estimate;
 
       #[test] fn test_compute_new_pivot() -> ErrStr<()> {
@@ -191,37 +191,6 @@ pub fn compute_counter_offer(call_data: &(Call, Vec<Pivot>),
 
 // ----- TESTS -----------------------------------------------------------
 
-#[cfg(not(tarpaulin_include))]
-pub mod test_data {
-   use super::*;
-   use crate::{
-      fetchers::test_helpers::test_functions::{
-         parse_test_pivots_from_file,
-         fetch_local_data
-      },
-      types::calls::parse_calls
-   };
-
-   pub fn target() -> USD { mk_usd(2500.0) }
-   pub fn tenk() -> USD { mk_usd(10000.0) }
-
-   pub fn sample_call(ix: usize) -> ErrStr<Call> {
-      let raw_csv_data = fetch_local_data("../quizzes", "sample_calls.csv")?;
-      let calls = parse_calls(&raw_csv_data)?;
-      Ok(calls[ix-1].clone()) // ix - 1 because 1 is 0 sometimes. *sigh*
-   }
-
-   pub fn sample_avax_undead_offrian(relative: &str)
-         -> ErrStr<(Call, Vec<Pivot>)> {
-      let call = sample_call(2)?;
-      let pool = "avax-undead";
-      let file = "data/sample_avax_undead_open_pivots.tsv";
-      let filename = format!("{relative}/{file}");
-      let (opens, _closes) = parse_test_pivots_from_file(pool, &filename)?;
-      Ok((call, opens))
-   }
-}
-
 #[cfg(test)]
 #[cfg(not(tarpaulin_include))]
 pub mod functional_tests {
@@ -236,7 +205,7 @@ pub mod functional_tests {
       },
       types::{
          assets::amounts::mk_amt,
-         pivots::test_data::mk_btc_usdc_piv,
+         pivots::opens::test_data::mk_btc_usdc_piv,
          quotes::sample_data::sample_quotes_maker
       }
    };
@@ -256,7 +225,7 @@ pub mod functional_tests {
       let tok = s(&call.from_token);
       let virtual_amt = compute_virtual_pivot_amount(&call_data, true);
       println!("For call:\n\n{}\nvirtual amount: {virtual_amt} {}",
-               as_csv(&[call])?, tok);
+               as_csv(&[call], true)?, tok);
    });
 }
 
@@ -264,16 +233,11 @@ pub mod functional_tests {
 #[cfg(not(tarpaulin_include))]
 mod tests {
    use super::*;
-   use super::test_data::{
-      sample_avax_undead_offrian,
-      tenk
-   };
-   use crate::{
-      types::{
-         assets::amounts::mk_amt,
-         pivots::test_data::mk_btc_usdc_piv,
-         quotes::sample_data::sample_quotes_maker
-      }
+   use crate::types::{
+      assets::amounts::mk_amt,
+      calls::test_data::{ sample_avax_undead_offrian, tenk },
+      pivots::opens::test_data::mk_btc_usdc_piv,
+      quotes::sample_data::sample_quotes_maker
    };
 
    use book::{ num::estimate::mk_estimate, types::values::Value };

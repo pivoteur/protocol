@@ -13,7 +13,7 @@ use book::{
 use libs::{
    fetchers::{ pivots::fetch_pivots, quotes::fetch_quotes},
    types::{
-      pivots::{ Pivot, next_close_id },
+      pivots::opens::{ Pivot, next_close_id },
       pools::{Pool,mk_pool},
       proposals::proposes::{propose,Propose}
    }

@@ -1,5 +1,5 @@
 use chrono::NaiveDate;
-use serde::{Serialize, Serializer, Deserialize, Deserializer};
+use serde::{Serialize, Deserialize};
 use serde_with::{serde_as, DisplayFromStr};
 
 use book::{
@@ -8,7 +8,18 @@ use book::{
    num::percentage::Percentage
 };
 
-use super::{ blockchains::Blockchain, pools::Pool, util::Id };
+use super::{
+   blockchains::Blockchain,
+   pools::Pool,
+   util::Id,
+   pivots::opens::Pivot
+};
+use crate::processors::utils::{
+   deserialize_semicolon_list,
+   serialize_semicolon_list
+};
+
+pub type CallData = (Call, Vec<Pivot>);
 
 #[serde_as]
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -57,28 +68,6 @@ pub struct Call {
     pub apr: Percentage
 }
 
-fn deserialize_semicolon_list<'de, D>(deserializer: D)
-      -> Result<Vec<usize>, D::Error> where D: Deserializer<'de> {
-    let s: String = Deserialize::deserialize(deserializer)?;
-    if s.trim().is_empty() { return Ok(Vec::new()); }
-    s.split(';')
-     .map(|val| val.trim().parse::<usize>().map_err(serde::de::Error::custom))
-     .collect()
-}
-
-fn serialize_semicolon_list<S>(data: &Vec<usize>, serializer: S)
-      -> Result<S::Ok, S::Error> where S: Serializer {
-
-   // 1. Convert each usize to a String
-   let parts: Vec<String> = data.iter().map(|x| x.to_string()).collect();
-
-   // 2. Join the elements using a semicolon
-   let joined = parts.join(";");
-        
-   // 3. Serialize as a single string primitive
-   serializer.serialize_str(&joined)
-}
-
 pub fn parse_calls(csv_data: &str) -> ErrStr<Vec<Call>> {
    let mut reader = csv::Reader::from_reader(csv_data.as_bytes());
    let mut records = Vec::new();
@@ -107,3 +96,32 @@ mod tests {
       Ok(())
    }
 }
+
+#[cfg(not(tarpaulin_include))] 
+pub mod test_data {
+   use super::*;
+   use book::currency::usd::mk_usd;
+   use crate::fetchers::test_helpers::test_functions::{
+      parse_test_pivots_from_file,
+      fetch_local_data
+   }; 
+      
+   pub fn target() -> USD { mk_usd(2500.0) }
+   pub fn tenk() -> USD { mk_usd(10000.0) }
+         
+   pub fn sample_call(ix: usize) -> ErrStr<Call> {
+      let raw_csv_data = fetch_local_data("../quizzes", "sample_calls.csv")?;
+      let calls = parse_calls(&raw_csv_data)?;
+      Ok(calls[ix-1].clone()) // ix - 1 because 1 is 0 sometimes. *sigh*
+   }     
+
+   pub fn sample_avax_undead_offrian(relative: &str) -> ErrStr<CallData> {
+      let call = sample_call(2)?;
+      let pool = "avax-undead";
+      let file = "data/sample_avax_undead_open_pivots.tsv";
+      let filename = format!("{relative}/{file}");
+      let (opens, _closes) = parse_test_pivots_from_file(pool, &filename)?;
+      Ok((call, opens))
+   }
+}     
+

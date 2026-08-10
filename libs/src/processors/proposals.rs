@@ -14,7 +14,7 @@ use crate::{
    reports::{Proposal,mk_proposal},
    types::{
       measurable::sort_descending,
-      pivots::{Pivot,next_close_id,partition_on},
+      pivots::opens::{Pivot,next_close_id,partition_on},
       pools::Pool,
       proposals::proposes::{Propose,propose as propose_f},
       util::Token

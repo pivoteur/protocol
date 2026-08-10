@@ -12,7 +12,7 @@ pub mod test_functions {
       fetchers::pivots::{fetch_pivots,parse_pivots},
       types::{
          aliases::{ Aliases, aliases },
-         pivots::Pivot,
+         pivots::opens::Pivot,
          pools::pool_from_str
       }
    };

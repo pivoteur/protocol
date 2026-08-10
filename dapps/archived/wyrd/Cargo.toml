@@ -5,14 +5,14 @@ edition = "2024"
 
 [[bin]]
 name = "wyrd"
-path = "../../quizzes/src/quiz08/f_wyrd_jr/src/main.rs"
+path = "../../../quizzes/src/quiz08/b_wyrd/src/main.rs"
 
 [dependencies]
 tokio = { version = "1.51.3", features = ["macros", "rt-multi-thread"] }
 
-libs = { path = "../../libs" }
-book = { path = "../../../crypto-n-rust/src/libs/book" }
-quizzes = { path = "../../quizzes" }
+libs = { path = "../../../libs" }
+book = { path = "../../../../crypto-n-rust/src/libs/book" }
+quizzes = { path = "../../../quizzes" }
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(tarpaulin_include)'] }
