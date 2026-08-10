@@ -2,7 +2,12 @@ use std::{ borrow::Borrow, collections::HashMap };
 
 use super::util::Token;
 
-use book::{ csv_utils::CsvWriter, string_utils::words };
+use book::{
+   csv_utils::CsvWriter,
+   list_utils::fst_snd,
+   string_utils::{ s, words },
+   utils::composer
+};
 
 type Alias = HashMap<Token, Token>;
 
@@ -10,18 +15,12 @@ type Alias = HashMap<Token, Token>;
 pub struct Aliases { aliaz: Alias }
 
 pub fn aliases() -> Aliases {
-   let mut aliaz = HashMap::new();
-   fn inserter(h: &mut Alias, t1: &str, t2: &str) {
-      h.insert(t1.to_string(), t2.to_string());
-   }
-   inserter(&mut aliaz, "WBTC", "BTC");
-   inserter(&mut aliaz, "IBTC", "BTC");
-   inserter(&mut aliaz, "WETH", "ETH");
-   inserter(&mut aliaz, "IETH", "ETH");
-   inserter(&mut aliaz, "IUSD", "USDC");
-   inserter(&mut aliaz, "ISOL", "SOL");
-   inserter(&mut aliaz, "STABLE", "USDC");
-   inserter(&mut aliaz, "LIQUIDITY POOLS", "USDC");
+   let mut aliaz: HashMap<String, String> = 
+     words("WBTC BTC IBTC BTC WETH ETH IETH ETH IUSD USDC ISOL SOL STABLE USDC")
+         .chunks_exact(2)
+         .filter_map(composer(Result::ok, fst_snd))
+         .collect();
+   aliaz.insert(s("LIQUIDITY POOLS"), s("USDC"));
    Aliases { aliaz }
 }
 
@@ -44,7 +43,7 @@ impl Aliases {
    pub fn alias(&self, t: &str) -> Token {
       let cap = t.to_uppercase();
       if let Some(ans) = self.aliaz.get(&cap).or(Some(&cap)) {
-         ans.to_string()
+         s(ans)
       } else {
          panic!("No alias for {cap}")
       }

@@ -21,7 +21,7 @@ use libs::{
    types::{
       comps::Composition,
       measurable::{Measurable,tvl},
-      pivots::Pivot,
+      pivots::opens::Pivot,
       pools::Pool,
       quotes::Quotes
    }

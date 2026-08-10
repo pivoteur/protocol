@@ -48,8 +48,11 @@ impl CsvHeader for Quotes {
    }
 }
 
-pub fn mk_quotes(date: NaiveDate, quotes: HashMap<Token, f32>) -> Quotes {
-   Quotes { date, quotes, aliases: aliases() }
+pub fn mk_quotes(dt: &NaiveDate, qts: &[(&str, f32)]) -> Quotes {
+   let a = aliases();
+   let quotes: HashMap<Token, f32> =
+      qts.into_iter().map(|(k,v)| (a.alias(k), *v)).collect();
+   Quotes { date: dt.clone(), quotes, aliases: a }
 }
 
 impl Quotes {
@@ -77,11 +80,9 @@ pub mod sample_data {
    use book::date_utils::yesterday;
 
    pub fn sample_quotes_maker(q: &[(&str, f32)]) -> Quotes {
-      let quotes: Vec<(String, f32)> =
-         once(&("USDC", 1.0)).chain(q.into_iter())
-                             .map(|(a,b)| (a.to_string(), *b))
-                             .collect();
-      mk_quotes(yesterday(), quotes.into_iter().collect())
+      let quotes: Vec<(&str, f32)> =
+         once(("USDC", 1.0)).chain(q.into_iter().cloned()).collect();
+      mk_quotes(&yesterday(), &quotes)
    }
 
    pub fn sample_btc_eth_quotes() -> Quotes {

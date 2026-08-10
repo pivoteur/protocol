@@ -15,7 +15,7 @@ use pools_impl::print_pools_as_js;
 /// pools prints a Javascript object of pool assets.
 #[derive(Debug, Parser)]
 #[command(name = "pools")]
-#[command(version = "2.04")]
+#[command(version = "2.05")]
 struct Args {
    /// Protocol to analyze active pivot pools, e.g.: PIVOT
    protocol: UppercaseString,

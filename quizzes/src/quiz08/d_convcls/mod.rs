@@ -1,165 +1,20 @@
-use std::{ collections::HashMap, fs::File, io };
+use std::fs::File;
 use clap::Parser;
-use csv::Reader;
-use serde::{Deserialize, Serialize};
-use serde_with::{serde_as, DisplayFromStr};
 
 use book::{
    parse_args_add_banner,
    cli_utils::generate_banner,
-   currency::usd::USD,
    csv_utils::as_tsv,
-   err_utils::{ErrStr,err_or},
-   num::percentage::Percentage,
-   string_utils::s,
+   err_utils::{ErrStr,err_or}
 };
 
-// Maps only what we need from the open pivots table
-#[derive(Debug, Deserialize)]
-struct OpenPivotRow {
-    #[serde(alias = "open")]
-    pivot: String,
-    close: String,
-    #[serde(alias = "10% gain")]
-    gain_10_percent: f32,
-}
-
-// Maps the incoming fields from the old close pivots table
-#[serde_as]
-#[derive(Debug, Deserialize)]
-struct OldClosePivotRow {
-    date: String,
-    #[serde(alias = "open")]
-    pivot: String,
-    close: String,
-    tx_id: String,
-    from: String,
-    #[serde_as(as = "DisplayFromStr")]
-    #[serde(alias = "from quote")]
-    from_quote: USD,
-    to: String,
-    #[serde_as(as = "DisplayFromStr")]
-    #[serde(alias = "to quote")]
-    to_quote: USD,
-    trade: String,
-    #[serde_as(as = "DisplayFromStr")]
-    vol: USD,
-    #[serde(alias = "new to-actual")]
-    new_to_actual: String,
-    gain: String,
-    #[serde_as(as = "DisplayFromStr")]
-    #[serde(alias = "gain, total $")]
-    gain_total_usd: USD,
-    #[serde_as(as = "DisplayFromStr")]
-    #[serde(alias = "ROI")]
-    roi: Percentage,
-    #[serde_as(as = "DisplayFromStr")]
-    #[serde(alias = "APR")]
-    apr: Percentage,
-}
-
-// Defines your exact output layout
-
-#[serde_as]
-#[derive(Debug, Serialize)]
-struct NewClosePivotRow {
-    date: String,
-    pivot: String,
-    close: String,
-    tx_id: String,
-    from: String,
-    #[serde_as(as = "DisplayFromStr")]
-    from_quote: USD,
-    to: String,
-    #[serde_as(as = "DisplayFromStr")]
-    to_quote: USD,
-    trade: String,
-    #[serde_as(as = "DisplayFromStr")]
-    vol: USD,
-    gain_10_percent: f32,
-    new_to_actual: String,
-    gain: String,
-    #[serde_as(as = "DisplayFromStr")]
-    gain_total_usd: USD,
-    #[serde_as(as = "DisplayFromStr")]
-    roi: Percentage,
-    #[serde_as(as = "DisplayFromStr")]
-    apr: Percentage,
-}
-
-type Opens = HashMap<(String, String), f32>;
-type Closes<R> = Reader<R>;
-
-fn process_open_pivots<R: io::Read>(opens: R) -> ErrStr<Opens> {
-    // 1. Parse Open Pivots into a lookup map using (pivot, close) 
-    //    as a compound key
-    let mut open_rdr = csv::ReaderBuilder::new()
-        .delimiter(b'\t')
-        .from_reader(opens);
-
-    let mut open_map = HashMap::new();
-    let mut ix = 0;
-    for result in open_rdr.deserialize() {
-        ix += 1;
-        let row: OpenPivotRow = err_or(result,
-             &format!("Cannot convert open pivot row, ix: {ix}"))?;
-        let key = (row.pivot.clone(), row.close.clone());
-        open_map.insert(key, row.gain_10_percent);
-    }
-    Ok(open_map)
-}
-
-fn process_old_close_pivots<R: io::Read>(closes: R) -> ErrStr<Closes<R>> {
-    Ok(csv::ReaderBuilder::new().delimiter(b'\t').from_reader(closes))
-}
-
-fn gain_10_percent_for_close(open_map: &Opens, close: &OldClosePivotRow)
-      -> ErrStr<f32> {
-   // Extract the 10% gain matching against the compound key mapping
-   let mut gain_10 = 0.0;
-   for target_pivot in close.pivot.split(|c| c == ',' || c == ';') {
-      let lookup_key = (s(target_pivot), close.close.clone());
-        
-      gain_10 += open_map
-            .get(&lookup_key)
-            .ok_or(format!("No gain 10% for open pivot {lookup_key:?}"))?;
+use libs::{
+   processors::pivots::{
+      process_open_pivots,
+      process_old_close_pivots,
+      new_close_pivots
    }
-   Ok(gain_10)
-}
-
-fn new_close_pivots<R: io::Read>(opens: &Opens, closes: &mut Closes<R>)
-      -> ErrStr<Vec<NewClosePivotRow>> {
-   let mut new_closes = Vec::new();
-
-   let mut ix = 0;
-   // 3. Process records and write new format
-   for result in closes.deserialize() {
-      ix += 1;
-      let old_row: OldClosePivotRow = err_or(result,
-           &format!("Cannot convert old close pivot row, ix: {ix}"))?;
-      let gain_10 = gain_10_percent_for_close(&opens, &old_row)?;
-      let new_row = NewClosePivotRow {
-            date: old_row.date,
-            pivot: old_row.pivot,
-            close: old_row.close,
-            tx_id: old_row.tx_id,
-            from: old_row.from,
-            from_quote: old_row.from_quote,
-            to: old_row.to,
-            to_quote: old_row.to_quote,
-            trade: old_row.trade,
-            vol: old_row.vol,
-            gain_10_percent: gain_10,
-            new_to_actual: old_row.new_to_actual,
-            gain: old_row.gain,
-            gain_total_usd: old_row.gain_total_usd,
-            roi: old_row.roi,
-            apr: old_row.apr,
-      };
-      new_closes.push(new_row);
-   }
-   Ok(new_closes)
-}
+};
 
 /// Converts the old close-pivot format to the current close pivot format,
 /// 
@@ -187,7 +42,7 @@ pub fn runoff_with_args() -> ErrStr<()> {
               &format!("Cannot open old close pivot table: {closes}"))?;
    let mut close_rdr = process_old_close_pivots(&close_file)?;
    let closes = new_close_pivots(&open_map, &mut close_rdr)?;
-   let table = as_tsv(&closes)?;
+   let table = as_tsv(&closes, true)?;
    println!("{table}");
    Ok(())
 }
@@ -238,7 +93,7 @@ mod functional_tests {
       println!("Converting\n{old_closes}");
       let mut basis = process_old_close_pivots(old_closes.as_bytes())?;
       let new_closes = new_close_pivots(&open_pivots, &mut basis)?;
-      let table = as_tsv(&new_closes)?;
+      let table = as_tsv(&new_closes, true)?;
       println!("Result:\n{table}");
    });
 }
@@ -248,13 +103,12 @@ mod functional_tests {
 mod tests {
    use super::*;
    use super::sample_data::{ sample_open_pivots, sample_old_close_pivots };
-
-   fn to_str((a, b): (&str, &str)) -> (String, String) { (s(a), s(b)) }
+   use libs::types::{ gains::Gains, pivots::closes::OldClosePivotRow };
 
    #[test] fn test_open_pivots() -> ErrStr<()> {
       let opens = process_open_pivots(sample_open_pivots().as_bytes())?;
       assert_eq!(4, opens.len(), "Need 2 parsed open pivots");
-      assert_eq!(Some(&1939.31), opens.get(&to_str(("4", "2"))));
+      assert_eq!(Some(&1939.31), opens.get(&4));
       Ok(())
    }
 
@@ -282,8 +136,7 @@ mod tests {
       let mut closes = process_old_close_pivots(input.as_bytes())?;
       let new_closes = new_close_pivots(&opens, &mut closes)?;
       assert_eq!(2, new_closes.len(), "There should be 2 new close pivots");
-      assert_eq!(49.5, new_closes[0].gain_10_percent, "composite gain 10%");
+      assert_eq!(0.000986, new_closes[0].gain(), "composite gain 10%");
       Ok(())
    }
 }
-
