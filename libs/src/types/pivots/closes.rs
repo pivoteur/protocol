@@ -4,13 +4,13 @@ use serde_with::{serde_as, DisplayFromStr};
 
 use book::{
    currency::usd::USD,
-   num::percentage::Percentage
+   num::{ floats::comma_floats::CommaFloat, percentage::Percentage }
 };
 
 use crate::{
    processors::utils::{
-      serialize_semicolon_list,
-      deserialize_semicolon_list
+      deserialize_semicolon_list,
+      serialize_semicolon_list
    },
    types::{ gains::Gains, util::Id }
 };
@@ -32,7 +32,7 @@ pub struct ClosePivot {
     #[serde_as(as = "DisplayFromStr")]
     to_quote: USD,
     #[serde_as(as = "DisplayFromStr")]
-    trade: USD,
+    trade: CommaFloat,
     #[serde_as(as = "DisplayFromStr")]
     vol: USD,
     gain_10_percent: f32,
@@ -46,6 +46,31 @@ pub struct ClosePivot {
     apr: Percentage,
 }
 
+pub fn mk_close_pivot(dt: &NaiveDate, opens: &[Id], close: Id, tx: &str,
+                      from: &str, fqt: &USD, to: &str, tqt: &USD, trad: f32,
+                      vol: &USD, gain_10_percent: f32, new_to_actual: f32,
+                      gain: f32, gain_tot: &USD, r: &Percentage, a: &Percentage)
+      -> ClosePivot {
+   ClosePivot {
+      date: dt.clone(),
+      pivot: opens.to_vec(),
+      close,
+      tx_id: tx.to_string(),
+      from: from.to_string(),
+      from_quote: fqt.clone(),
+      to: to.to_string(),
+      to_quote: tqt.clone(),
+      trade: CommaFloat(trad),
+      vol: vol.clone(),
+      gain_10_percent,
+      new_to_actual,
+      gain,
+      gain_total_usd: gain_tot.clone(),
+      roi: r.clone(),
+      apr: a.clone()
+   }
+}
+
 impl Gains for ClosePivot {
    fn roi(&self) -> Percentage { self.roi.clone() }
    fn apr(&self) -> Percentage { self.apr.clone() }
@@ -54,24 +79,10 @@ impl Gains for ClosePivot {
 }
 
 pub fn transform(old_row: &OldClosePivotRow, gain_10: f32) -> ClosePivot {
-   ClosePivot {
-      date: old_row.date.clone(),
-      pivot: old_row.pivot.clone(),
-      close: old_row.close,
-      tx_id: old_row.tx_id.clone(),
-      from: old_row.from.clone(),
-      from_quote: old_row.from_quote.clone(),
-      to: old_row.to.clone(),
-      to_quote: old_row.to_quote.clone(),
-      trade: old_row.trade,
-      vol: old_row.vol.clone(),
-      gain_10_percent: gain_10,
-      new_to_actual: old_row.new_to_actual,
-      gain: old_row.gain,
-      gain_total_usd: old_row.gain_total_usd.clone(),
-      roi: old_row.roi.clone(),
-      apr: old_row.apr.clone(),
-   }
+   let o = &old_row;
+   mk_close_pivot(&o.date, &o.pivot, o.close, &o.tx_id, &o.from, &o.from_quote,
+                  &o.to, &o.to_quote, o.trade.into(), &o.vol, gain_10,
+                  o.new_to_actual, o.gain, &o.gain_total_usd, &o.roi, &o.apr)
 }
 
 /// here is the old-style close pivot
@@ -95,7 +106,7 @@ pub struct OldClosePivotRow {
     #[serde(alias = "to quote")]
     to_quote: USD,
     #[serde_as(as = "DisplayFromStr")]
-    trade: USD,
+    trade: CommaFloat,
     #[serde_as(as = "DisplayFromStr")]
     vol: USD,
     #[serde(alias = "new to-actual")]

@@ -3,22 +3,39 @@ use std::{ fmt, str::FromStr };
 use book::{ err_utils::ErrStr, string_utils::s };
 
 #[derive(Clone, Debug,PartialEq)]
-pub enum Blockchain { AVALANCHE, BINANCE, ETHEREUM }
+pub enum Blockchain { AURORA, AVALANCHE, BINANCE, CARDANO, ETHEREUM, NEAR }
 use Blockchain::*;
 
 impl Blockchain {
    pub fn blockchain(&self) -> String {
       s(match self {
-         AVALANCHE => "avalanche", BINANCE => "bsc", ETHEREUM => "eth" })
+         AURORA    => "aurora",
+         AVALANCHE => "avalanche",
+         BINANCE   => "bsc",
+         CARDANO   => "cardano",
+         ETHEREUM  => "eth",
+         NEAR      => "near"
+      })
    }
    pub fn node(&self) -> String {
       format!("{} Mainnet", match self {
+         AURORA    => "aurora",
          AVALANCHE => "Avalanche",
          BINANCE   => "BNB Smart Chain",
-         ETHEREUM  => "Ethereum" })
+         CARDANO   => "Cardano",
+         ETHEREUM  => "Ethereum",
+         NEAR      => "Near"
+      })
    }
    pub fn protocol_token(&self) -> String {
-      s(match self { AVALANCHE => "AVAX", BINANCE => "BNB", ETHEREUM => "ETH" })
+      s(match self {
+         AURORA    => "AURORA",
+         AVALANCHE => "AVAX",
+         BINANCE   => "BNB",
+         CARDANO   => "ADA",
+         ETHEREUM  => "ETH",
+         NEAR      => "NEAR"
+      })
    }
    pub fn url(&self) -> String {
       format!("https://site1.moralis-nodes.com/{}", self.blockchain())
@@ -36,9 +53,12 @@ impl FromStr for Blockchain {
    type Err = String;
    fn from_str(elt: &str) -> ErrStr<Self> {
       match elt.to_uppercase().as_str() {
+         "AURORA"    => Ok(AURORA),
          "AVALANCHE" => Ok(AVALANCHE),
          "BINANCE"   => Ok(BINANCE),
+         "CARDANO"   => Ok(CARDANO),
          "ETHEREUM"  => Ok(ETHEREUM),
+         "NEAR"      => Ok(NEAR),
          _           => Err(format!("Unable to parse blockchain from {elt}"))
       }
    }

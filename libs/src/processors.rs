@@ -1,3 +1,4 @@
+pub mod calls;
 pub mod pivots;
 pub mod pools;
 pub mod proposals;

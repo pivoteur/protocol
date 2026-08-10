@@ -13,8 +13,7 @@ use libs::{
       process_open_pivots,
       process_old_close_pivots,
       new_close_pivots
-   },
-   types::gains::Gains
+   }
 };
 
 /// Converts the old close-pivot format to the current close pivot format,
@@ -43,7 +42,7 @@ pub fn runoff_with_args() -> ErrStr<()> {
               &format!("Cannot open old close pivot table: {closes}"))?;
    let mut close_rdr = process_old_close_pivots(&close_file)?;
    let closes = new_close_pivots(&open_map, &mut close_rdr)?;
-   let table = as_tsv(&closes)?;
+   let table = as_tsv(&closes, true)?;
    println!("{table}");
    Ok(())
 }
@@ -94,7 +93,7 @@ mod functional_tests {
       println!("Converting\n{old_closes}");
       let mut basis = process_old_close_pivots(old_closes.as_bytes())?;
       let new_closes = new_close_pivots(&open_pivots, &mut basis)?;
-      let table = as_tsv(&new_closes)?;
+      let table = as_tsv(&new_closes, true)?;
       println!("Result:\n{table}");
    });
 }
@@ -104,10 +103,7 @@ mod functional_tests {
 mod tests {
    use super::*;
    use super::sample_data::{ sample_open_pivots, sample_old_close_pivots };
-   use book::string_utils::s;
-   use libs::types::pivots::closes::OldClosePivotRow;
-
-   fn to_str((a, b): (&str, &str)) -> (String, String) { (s(a), s(b)) }
+   use libs::types::{ gains::Gains, pivots::closes::OldClosePivotRow };
 
    #[test] fn test_open_pivots() -> ErrStr<()> {
       let opens = process_open_pivots(sample_open_pivots().as_bytes())?;
@@ -140,7 +136,7 @@ mod tests {
       let mut closes = process_old_close_pivots(input.as_bytes())?;
       let new_closes = new_close_pivots(&opens, &mut closes)?;
       assert_eq!(2, new_closes.len(), "There should be 2 new close pivots");
-      assert_eq!(49.5, new_closes[0].gain(), "composite gain 10%");
+      assert_eq!(0.000986, new_closes[0].gain(), "composite gain 10%");
       Ok(())
    }
 }

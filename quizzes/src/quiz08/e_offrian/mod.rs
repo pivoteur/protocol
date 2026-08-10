@@ -61,7 +61,7 @@ fn report_counter_offer(nc: &Call, debug: bool) -> ErrStr<()> {
                        prop);
       println!("\nOffrian:\n{a}\n{b}\n{c};\nROI {} / {} APR\n", nc.roi, nc.apr);
    }
-   let output = as_csv(&[nc])?;
+   let output = as_csv(&[nc], true)?;
    println!("{output}");
    Ok(())
 }

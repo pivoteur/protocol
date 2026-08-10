@@ -8,11 +8,18 @@ use book::{
    num::percentage::Percentage
 };
 
-use super::{ blockchains::Blockchain, pools::Pool, util::Id };
+use super::{
+   blockchains::Blockchain,
+   pools::Pool,
+   util::Id,
+   pivots::opens::Pivot
+};
 use crate::processors::utils::{
    deserialize_semicolon_list,
    serialize_semicolon_list
 };
+
+pub type CallData = (Call, Vec<Pivot>);
 
 #[serde_as]
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -89,3 +96,32 @@ mod tests {
       Ok(())
    }
 }
+
+#[cfg(not(tarpaulin_include))] 
+pub mod test_data {
+   use super::*;
+   use book::currency::usd::mk_usd;
+   use crate::fetchers::test_helpers::test_functions::{
+      parse_test_pivots_from_file,
+      fetch_local_data
+   }; 
+      
+   pub fn target() -> USD { mk_usd(2500.0) }
+   pub fn tenk() -> USD { mk_usd(10000.0) }
+         
+   pub fn sample_call(ix: usize) -> ErrStr<Call> {
+      let raw_csv_data = fetch_local_data("../quizzes", "sample_calls.csv")?;
+      let calls = parse_calls(&raw_csv_data)?;
+      Ok(calls[ix-1].clone()) // ix - 1 because 1 is 0 sometimes. *sigh*
+   }     
+
+   pub fn sample_avax_undead_offrian(relative: &str) -> ErrStr<CallData> {
+      let call = sample_call(2)?;
+      let pool = "avax-undead";
+      let file = "data/sample_avax_undead_open_pivots.tsv";
+      let filename = format!("{relative}/{file}");
+      let (opens, _closes) = parse_test_pivots_from_file(pool, &filename)?;
+      Ok((call, opens))
+   }
+}     
+
