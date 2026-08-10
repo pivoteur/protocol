@@ -1,5 +1,4 @@
 use clap::Parser;
-use csv::ReaderBuilder;
 use serde::Deserialize;
 use serde_with::{serde_as, DisplayFromStr};
 use book::{
@@ -11,9 +10,10 @@ use book::{
 };
 use libs::{
         investor_rows::{
-            chat_id_for, 
-            is_ragged_row, 
-            send_telegram, 
+            chat_id_for,
+            deserialize_row,
+            deserialize_yes_no_bool,
+            send_telegram,
             SendFuture
         }
 };
@@ -47,7 +47,9 @@ struct DistributionRecord {
     #[serde(rename = "tx url")]
     tx_url: String,
     #[serde(rename = "send?")]
+    #[serde(deserialize_with = "deserialize_yes_no_bool")]
     send: bool,
+    #[serde(deserialize_with = "deserialize_yes_no_bool")]
     flipped: bool
 }
 
@@ -98,37 +100,29 @@ pub fn build_message(row: &DistributionRow) -> String {
 //============================================================================
 //----- Core: process all rows in one pass -----------------------------------
 //============================================================================
-pub async fn process_tsv<F>(
-    tsv_path:    &str,
-    global_send: bool,
-    send_fn:     F,
-) -> ErrStr<()>
-where
-    F: for<'a> Fn(&'a str, i64, &'a str) -> SendFuture<'a>,
-{
-    let mut rdr = ReaderBuilder::new()
-        .delimiter(b'\t')
-        .flexible(true)
-        .from_path(tsv_path)
-        .map_err(|e| format!("cannot read '{tsv_path}': {e}"))?;
+// File-reading step (read + skip header) now lives in
+// libs::investor_rows::tsv_data_rows — identical to reinvested's, no
+// reason to hand-roll it twice. The per-row async loop stays local since
+// mb_send_row genuinely differs between the two binaries.
+pub async fn process_tsv<F>(tsv_path: &str, global_send: bool, send_fn: F)
+   -> ErrStr<()> where F: for<'a> Fn(&'a str, i64, &'a str) -> SendFuture<'a> {
+    let rows = libs::investor_rows::tsv_data_rows(tsv_path)?;
+    for line in rows { mb_send_row(&line, global_send, &send_fn).await?; }
+    Ok(())
+}
 
-    for result in rdr.deserialize::<DistributionRecord>() {
-        let record = match result {
-            Ok(r) => r,
-            Err(e) if is_ragged_row(&e) => continue,
-            Err(e) => return Err(format!("malformed row in '{tsv_path}': {e}")),
-        };
+async fn mb_send_row<F>(line: &str, global_send: bool, send_fn: &F)
+   -> ErrStr<()> where F: for<'a> Fn(&'a str, i64, &'a str) -> SendFuture<'a> {
+    let Some(record) = deserialize_row::<DistributionRecord>(line)? else { return Ok(()) };
+    let Some(row) = parse_row(&record)? else { return Ok(()) };
 
-        let Some(row) = parse_row(&record)? else { continue };
+    let msg = build_message(&row);
+    println!("[{}] {msg}", row.name);
 
-        let msg = build_message(&row);
-        println!("[{}] {msg}", row.name);
-
-        if global_send && row.send {
-            let bot_token = get_env("REINVESTED_BOT")?;
-            let chat_id   = chat_id_for(&row.name)?;
-            send_fn(&bot_token, chat_id, &msg).await?;
-        }
+    if global_send && row.send {
+        let bot_token = get_env("REINVESTED_BOT")?;
+        let chat_id   = chat_id_for(&row.name)?;
+        send_fn(&bot_token, chat_id, &msg).await?;
     }
     Ok(())
 }
@@ -140,7 +134,7 @@ where
 /// The investors and their distributions are listed in TSV file
 #[derive(Debug, Parser)]
 #[command(name = "distributed")]
-#[command(version = "2.04")]
+#[command(version = "2.05")]
 struct Args {
    /// The path to the list of the investors and their distributions
    tsv_path: String,
@@ -163,8 +157,6 @@ pub async fn runoff_with_args() -> ErrStr<()> {
 #[cfg(test)]
 mod unit_tests {
     use super::*;
-    use libs::investor_rows::deserialize_row;
-
 
     // ---- helpers -----------------------------------------------------------
     fn make_row(name: &str, amount: &str, send: &str, flipped: &str) -> String {
@@ -192,11 +184,12 @@ mod unit_tests {
         }
     }
 
-    // Delegates the raw TSV -> DistributionRecord step to the shared helper
-    // in libs::investor_rows::test_helpers; only parse_row stays local, since
+    // Delegates the raw TSV -> DistributionRecord step to the shared
+    // `deserialize_row` helper in libs::investor_rows (same one `reinvested`
+    // uses for InvestorRow) — only parse_row stays local, since
     // DistributionRow/DistributionRecord are distributed-only.
     fn parse_test_row(line: &str) -> ErrStr<Option<DistributionRow>> {
-        match deserialize_test_row::<DistributionRecord>(line)? {
+        match deserialize_row::<DistributionRecord>(line)? {
             None         => Ok(None),
             Some(record) => parse_row(&record),
         }
@@ -310,15 +303,18 @@ mod unit_tests {
 
     #[test]
     fn test_parse_row_unrecognized_send_errors() -> ErrStr<()> {
+        // send/flipped now go through the same shared `deserialize_yes_no_bool`
+        // InvestorRow uses, so a bad cell fails the same way reinvested's does
+        // (BoolCell-style message) instead of a generic csv/serde bool error.
         let err = parse_test_row(&make_row("γ", "42910", "maybe", "yes")).unwrap_err();
-        assert!(err.contains("send?"), "unrecognized send must error: {err}");
+        assert!(err.contains("Unable to parse BoolCell from maybe"), "unrecognized send must error: {err}");
         Ok(())
     }
 
     #[test]
     fn test_parse_row_unrecognized_flipped_errors() -> ErrStr<()> {
         let err = parse_test_row(&make_row("γ", "42910", "yes", "perhaps")).unwrap_err();
-        assert!(err.contains("flipped"), "unrecognized flipped must error: {err}");
+        assert!(err.contains("Unable to parse BoolCell from perhaps"), "unrecognized flipped must error: {err}");
         Ok(())
     }
 
@@ -375,7 +371,7 @@ pub mod functional_tests {
         let spy = SendSpy::new();
         let spy_for_process = spy.clone();
         let _ = now(process_tsv(path, false, move |tok, id, txt| {
-            Box::pin(spy_for_process.record(tok, id, txt))
+            Box::pin(spy_for_process.record(tok, id, txt, false))
         }))?;
     });
 
@@ -402,7 +398,7 @@ pub mod functional_tests {
         let spy = SendSpy::new();
         let spy_for_process = spy.clone();
         let _ = now(process_tsv(path, true, move |tok, id, txt| {
-            Box::pin(spy_for_process.record(tok, id, txt))
+            Box::pin(spy_for_process.record(tok, id, txt, false))
         }))?;
 
         if spy.count() != 1 {

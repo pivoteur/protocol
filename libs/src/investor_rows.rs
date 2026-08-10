@@ -2,13 +2,15 @@ use std::pin::Pin;
 use csv::{ErrorKind, DeserializeErrorKind, ReaderBuilder};
 use book::{
    err_utils::ErrStr,
+   file_utils::lines_from_file,
+   list_utils::tail,
    num::floats::comma_floats::CommaFloat,
    utils::get_env
 };
 use serde::{ Deserialize, de::DeserializeOwned };
 use serde_with::{ serde_as, DisplayFromStr };
 
-use crate::processors::utils::deserialize_yes_no_bool;
+pub use crate::processors::utils::deserialize_yes_no_bool;
 
 #[serde_as]
 #[derive(Debug, Deserialize, PartialEq)]
@@ -98,6 +100,17 @@ pub fn deserialize_row<'de, T: DeserializeOwned>(line: &str)
      }
 }
 
+//============================================================================
+//----- Row Iteration ---------------------------------------------------------
+//============================================================================
+pub fn tsv_data_rows(tsv_path: &str) -> ErrStr<Vec<String>> {
+    let rows = lines_from_file(tsv_path)?;
+    let mut data = Vec::new();
+    for line in tail(&rows) {
+        data.push(line.to_string());
+    }
+    Ok(data)
+}
 
 #[cfg(not(tarpaulin_include))]
 pub mod spies {

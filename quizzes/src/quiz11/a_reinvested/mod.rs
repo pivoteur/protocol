@@ -3,58 +3,18 @@ use book::{
         parse_args_add_banner,
         cli_utils::generate_banner,
         err_utils::ErrStr,
-        file_utils::lines_from_file,
-        list_utils::tail,
         string_utils::plural,
         utils::get_env,
 };
-use libs::{ 
+use libs::{
         investor_rows::{
             InvestorRow,
-            chat_id_for, 
+            chat_id_for,
             deserialize_row,
-            send_telegram, 
+            send_telegram,
             SendFuture
         }
 };
-
-//============================================================================
-//----- CSV Row Parsing ------------------------------------------------------
-//============================================================================
-
-/*
-/// Returns `Ok(None)` only for rows where amount reinvested == 0 (handled
-/// by `distributed`, not `reinvested`). Returns `Err` for malformed data.
-/// Structural issues (blank lines, ragged/short rows, the header row) never
-/// reach this function — the TSV reader in `process_tsv` filters them out.
-fn parse_row(record: &PivotRecord) -> ErrStr<Option<InvestorRow>> {
-    let row: Option<InvestorRow> = deserialize_row(
-    let name    = record.name.trim();
-    let amount: f32 = record.amount_reinvested.into();
-    let primary = record.primary.trim();
-    let pivot   = record.pivot.trim();
-    let pivots  = record.pivots.trim();
-    let url     = record.tweet_url.trim();
-
-    if amount == 0.0 {
-        return Ok(None);
-    }
-
-    let send    = parse_bool_cell("send", &record.send)?;
-    let flipped = parse_bool_cell("flipped", &record.flipped)?;
-
-    Ok(Some(InvestorRow {
-        name:    name.to_string(),
-        amount,
-        primary: primary.to_string(),
-        pivot:   pivot.to_string(),
-        pivots:  pivots.to_string(),
-        url:     url.to_string(),
-        send,
-        flipped,
-    }))
-}
-*/
 
 //============================================================================
 //----- Message Building -------------------------------------------------
@@ -79,11 +39,14 @@ pub fn build_message(row: &InvestorRow) -> ErrStr<String> {
 //============================================================================
 //----- Core: process all rows in one pass -----------------------------------
 //============================================================================
+// File-reading step (read + skip header) now lives in
+// libs::investor_rows::tsv_data_rows — identical to distributed's, no
+// reason to hand-roll it twice. The per-row async loop stays local since
+// mb_send_row genuinely differs between the two binaries.
 pub async fn process_tsv<F>(tsv_path: &str, global_send: bool, send_fn: F)
    -> ErrStr<()> where F: for<'a> Fn(&'a str, i64, &'a str) -> SendFuture<'a> {
-
-    let rows = lines_from_file(tsv_path)?;
-    for line in tail(&rows) { mb_send_row(&line, global_send, &send_fn).await?; }
+    let rows = libs::investor_rows::tsv_data_rows(tsv_path)?;
+    for line in rows { mb_send_row(&line, global_send, &send_fn).await?; }
     Ok(())
 }
 
@@ -109,7 +72,7 @@ async fn mb_send_row<F>(line: &str, global_send: bool, send_fn: &F)
 /// The investors and their reinvestments are listed in CSV file
 #[derive(Debug, Parser)]
 #[command(name = "reinvested")]
-#[command(version = "2.05")]
+#[command(version = "2.06")]
 struct Args {
    /// The path to the list of the investors and their distributions
    tsv_path: String,
