@@ -234,9 +234,10 @@ mod tests {
     }
 
    fn sample_snd_msg(amt: &str, send: &str) -> String {
-      format!("α\t100%\t3.46%\t{amt}\t0\tBTC\tUNDEAD\t$12.04\t15\t\
+      let ans = format!("α\t100%\t3.46%\t{amt}\t0\tBTC\tUNDEAD\t$12.04\t15\t\
                      https://x.com/pivocateur/status/1\t\
-                     https://snowtrace.io/tx/0xabc\t{send}\tyes")
+                     https://snowtrace.io/tx/0xabc\t{send}\tyes");
+                     ans
    }
 
     #[test] fn test_full_row_deserializes() -> ErrStr<()> {
