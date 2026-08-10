@@ -7,6 +7,9 @@ pub mod assets;
 /// Enumerated blockchains that we support-...ish.
 pub mod blockchains;
 
+/// yes/no converted into bool
+pub mod bool_cells;
+
 /// A proposed call
 pub mod calls;
 

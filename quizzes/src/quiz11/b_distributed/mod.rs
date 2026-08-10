@@ -13,7 +13,6 @@ use libs::{
         investor_rows::{
             chat_id_for, 
             is_ragged_row, 
-            parse_bool_cell, 
             send_telegram, 
             SendFuture
         }
@@ -48,8 +47,8 @@ struct DistributionRecord {
     #[serde(rename = "tx url")]
     tx_url: String,
     #[serde(rename = "send?")]
-    send: String,
-    flipped: String,
+    send: bool,
+    flipped: bool
 }
 
 /// Returns `Ok(None)` only for rows where amount distributed == 0 (handled
@@ -66,9 +65,6 @@ fn parse_row(record: &DistributionRecord) -> ErrStr<Option<DistributionRow>> {
         return Ok(None);
     }
 
-    let send    = parse_bool_cell("send?", &record.send)?;
-    let flipped = parse_bool_cell("flipped", &record.flipped)?;
-
     Ok(Some(DistributionRow {
         name:    name.to_string(),
         amount,
@@ -76,8 +72,8 @@ fn parse_row(record: &DistributionRecord) -> ErrStr<Option<DistributionRow>> {
         pivot:   pivot.to_string(),
         url:     url.to_string(),
         tx_url:  tx_url.to_string(),
-        send,
-        flipped,
+        send: record.send,
+        flipped: record.flipped
     }))
 }
 
@@ -149,13 +145,13 @@ struct Args {
    /// The path to the list of the investors and their distributions
    tsv_path: String,
    /// Send a telegram? (yes/no)
-   send: String
+   #[arg(short, long)]
+   send: bool
 }
 
 pub async fn runoff_with_args() -> ErrStr<()> {
    let args = parse_args_add_banner!(Args);
-   let send = parse_bool_cell("send", &args.send)?;
-   process_tsv(&args.tsv_path, send, |tok, id, txt| {
+   process_tsv(&args.tsv_path, args.send, |tok, id, txt| {
                 Box::pin(send_telegram(tok, id, txt))
    }).await
 }
@@ -167,7 +163,7 @@ pub async fn runoff_with_args() -> ErrStr<()> {
 #[cfg(test)]
 mod unit_tests {
     use super::*;
-    use libs::investor_rows::test_functions::deserialize_test_row;
+    use libs::investor_rows::deserialize_row;
 
 
     // ---- helpers -----------------------------------------------------------
@@ -354,7 +350,7 @@ pub mod functional_tests {
     use super::*;
     use paste::paste;
     use book::{create_testing, utils::now};
-    use libs::investor_rows::test_functions::{SendSpy, INVESTOR_TSV_HEADER};
+    use libs::investor_rows::{ spies::SendSpy, INVESTOR_TSV_HEADER};
 
 
     create_testing!("quiz11::b_distributed");

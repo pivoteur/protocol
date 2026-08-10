@@ -1,4 +1,5 @@
-use serde::{ Deserializer, Deserialize, Serializer };
+use crate::types::bool_cells::BoolCell;
+use serde::{ Deserializer, Deserialize, Serializer, de::Error };
 use crate::types::util::Id;
 
 pub fn deserialize_semicolon_list<'de, D>(deserializer: D)
@@ -9,7 +10,14 @@ pub fn deserialize_semicolon_list<'de, D>(deserializer: D)
      .map(|val| val.trim().parse::<Id>().map_err(serde::de::Error::custom))
      .collect()
 }  
-   
+
+pub fn deserialize_yes_no_bool<'de, D>(deserializer: D)
+      -> Result<bool, D::Error> where D: Deserializer<'de> { 
+   let s: String = Deserialize::deserialize(deserializer)?;
+   let ans: BoolCell = s.parse().map_err(D::Error::custom)?;
+   Ok(ans.into())
+}
+
 pub fn serialize_semicolon_list<S>(data: &Vec<Id>, serializer: S)
       -> Result<S::Ok, S::Error> where S: Serializer {
 

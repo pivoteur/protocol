@@ -1,7 +1,34 @@
 use std::pin::Pin;
-use csv::{ErrorKind, DeserializeErrorKind};
-use reqwest::Client;
-use book::{err_utils::ErrStr, utils::get_env};
+use csv::{ErrorKind, DeserializeErrorKind, ReaderBuilder};
+use book::{
+   err_utils::ErrStr,
+   num::floats::comma_floats::CommaFloat,
+   utils::get_env
+};
+use serde::{ Deserialize, de::DeserializeOwned };
+use serde_with::{ serde_as, DisplayFromStr };
+
+use crate::processors::utils::deserialize_yes_no_bool;
+
+#[serde_as]
+#[derive(Debug, Deserialize, PartialEq)]
+pub struct InvestorRow {
+    pub name:    String,
+    #[serde_as(as = "DisplayFromStr")]
+    #[serde(rename = "amount reinvested")]
+    pub amount:  CommaFloat,
+    pub primary: String,
+    pub pivot:   String,
+    #[serde(rename = "number of pivots closed")]
+    pub pivots:  usize,
+    #[serde(rename = "tweet url")]
+    pub url:     String,
+    #[serde(rename = "send?")]
+    #[serde(deserialize_with = "deserialize_yes_no_bool")]
+    pub send:    bool,
+    #[serde(deserialize_with = "deserialize_yes_no_bool")]
+    pub flipped: bool
+}
 
 //============================================================================
 //----- Telegram Configuration -----------------------------------------------
@@ -29,77 +56,63 @@ pub fn is_ragged_row(e: &csv::Error) -> bool {
     }
 }
 
-pub fn parse_bool_cell(field: &str, raw: &str) -> ErrStr<bool> {
-    match raw.trim().to_lowercase().as_str() {
-        "yes" | "true"  => Ok(true),
-        "no"  | "false" => Ok(false),
-        other => Err(format!(
-            "column '{field}': unrecognized value '{other}'. Expected yes/no/true/false."
-        )),
-    }
-}
-
 //============================================================================
 //----- Message Sending -------------------------------------------------------
 //============================================================================
 // Shared future type returned by both production send_telegram and test-only SendSpy::record.
 pub type SendFuture<'a> = Pin<Box<dyn std::future::Future<Output = ErrStr<()>> + Send + 'a>>;
 
-pub async fn send_telegram(bot_token: &str, chat_id: i64, text: &str) -> ErrStr<()> {
-    let url = format!("https://api.telegram.org/bot{bot_token}/sendMessage");
-    Client::new()
-        .post(&url)
-        .json(&serde_json::json!({
-            "chat_id": chat_id,
-            "text":    text,
-        }))
-        .send()
-        .await
-        .map_err(|e| e.to_string())?
-        .error_for_status()
-        .map_err(|e| e.to_string())?;
-    Ok(())
+pub async fn send_telegram(bot_token: &str, chat_id: i64, text: &str)
+         -> ErrStr<()> {
+   send_telegram_d(bot_token, chat_id, text, true).await
 }
 
+use spies::SendSpy;
+
+async fn send_telegram_d(bot_token: &str, chat_id: i64, text: &str, send: bool)
+         -> ErrStr<()> {
+   let spy = SendSpy::new();
+   spy.record(bot_token, chat_id, text, send).await?;
+   Ok(())
+}
+
+// cols: 0=name 1=reinvested% 2=precentage 3=amount_reinvested 4=amount_distributed
+//       5=primary 6=pivot 7=usd 8=pivots 9=tweet_url 10=tx_url 11=send 12=flipped
+pub const INVESTOR_TSV_HEADER: &str =
+     "name\treinvested %\tprecentage\tamount reinvested\tamount distributed\t\
+      primary\tpivot\tUSD-value\tnumber of pivots closed\ttweet url\ttx url\tsend?\tflipped";
+
+pub fn deserialize_row<'de, T: DeserializeOwned>(line: &str)
+          -> ErrStr<Option<T>> {
+     let tsv = format!("{INVESTOR_TSV_HEADER}\n{line}\n");
+     let mut rdr = ReaderBuilder::new()
+         .delimiter(b'\t')
+         .flexible(true)
+         .from_reader(tsv.as_bytes());
+
+     match rdr.deserialize::<T>().next() {
+         None                               => Ok(None),
+         Some(Err(e)) if is_ragged_row(&e)  => Ok(None),
+         Some(Err(e))                       => Err(format!("test fixture malformed: {e}")),
+         Some(Ok(record))                   => Ok(Some(record)),
+     }
+}
+
+
 #[cfg(not(tarpaulin_include))]
-pub mod test_functions {
+pub mod spies {
     use std::sync::{Arc, Mutex};
-    use csv::ReaderBuilder;
-    use serde::de::DeserializeOwned;
-    use book::err_utils::ErrStr;
-    use super::{is_ragged_row, SendFuture};
-
-    // cols: 0=name 1=reinvested% 2=precentage 3=amount_reinvested 4=amount_distributed
-    //       5=primary 6=pivot 7=usd 8=pivots 9=tweet_url 10=tx_url 11=send 12=flipped
-    pub const INVESTOR_TSV_HEADER: &str =
-        "name\treinvested %\tprecentage\tamount reinvested\tamount distributed\t\
-         primary\tpivot\tUSD-value\tnumber of pivots closed\ttweet url\ttx url\tsend?\tflipped";
-
-    pub fn deserialize_test_row<T: DeserializeOwned>(line: &str) -> ErrStr<Option<T>> {
-        let tsv = format!("{INVESTOR_TSV_HEADER}\n{line}\n");
-        let mut rdr = ReaderBuilder::new()
-            .delimiter(b'\t')
-            .flexible(true)
-            .from_reader(tsv.as_bytes());
-
-        match rdr.deserialize::<T>().next() {
-            None                               => Ok(None),
-            Some(Err(e)) if is_ragged_row(&e)  => Ok(None),
-            Some(Err(e))                       => Err(format!("test fixture malformed: {e}")),
-            Some(Ok(record))                   => Ok(Some(record)),
-        }
-    }
+    use super::SendFuture;
+    use reqwest::Client;
 
     /// Records sends instead of making them, so tests can assert on what would have been sent.
     ///
-    /// ```ignore
     /// let spy = SendSpy::new();
     /// let spy_for_process = spy.clone();
     /// process_tsv(path, true, move |tok, id, txt| {
     ///     Box::pin(spy_for_process.record(tok, id, txt))
     /// }).await?;
     /// assert!(spy.sent_to(1234));
-    /// ```
     #[derive(Clone, Default)]
     pub struct SendSpy {
         pub sent: Arc<Mutex<Vec<(i64, String)>>>,
@@ -111,15 +124,37 @@ pub mod test_functions {
         }
 
         // Matches the send_fn signature so it drops into the same closure slot as send_telegram.
-        pub fn record(&self, _bot_token: &str, chat_id: i64, text: &str) -> SendFuture<'static> {
+        pub fn record(&self, bot_token: &str, chat_id: i64,
+                      text: &str, send: bool) -> SendFuture<'static> {
             let sent = self.sent.clone();
-            let text = text.to_string();
-            Box::pin(async move {
+            let text0= text.to_string();
+            let ans = Box::pin(async move {
                 sent.lock()
                     .map_err(|e| format!("SendSpy mutex poisoned: {e}"))?
-                    .push((chat_id, text));
+                    .push((chat_id, text0));
                 Ok(())
-            })
+            });
+            if send {
+               let text1 = text.to_string();
+               let url =
+                 format!("https://api.telegram.org/bot{bot_token}/sendMessage");
+               let _ans1: SendFuture<'static> =
+                  Box::pin(async move {
+                   Client::new()
+                   .post(&url)
+                   .json(&serde_json::json!({
+                       "chat_id": chat_id,
+                       "text":    text1,
+                   }))
+                   .send()
+                   .await
+                   .map_err(|e| e.to_string())?
+                   .error_for_status()
+                   .map_err(|e| e.to_string())?;
+                   Ok(())
+               });
+            }
+            ans
         }
 
         pub fn count(&self) -> usize {
@@ -150,7 +185,7 @@ pub mod test_functions {
 #[cfg(not(tarpaulin_include))]
 mod tests {
     use super::*;
-    use super::test_functions::{deserialize_test_row, SendSpy};
+    use super::spies::SendSpy;
     use book::utils::now;
 
     // ---- fetch_chat_id / chat_id_for ---------------------------------------
@@ -186,80 +221,56 @@ mod tests {
         Ok(())
     }
 
-    // ---- parse_bool_cell ----------------------------------------------------
-
-    #[test] fn test_parse_bool_cell_yes() -> ErrStr<()> {
-        assert!(parse_bool_cell("send", "yes")?);
-        Ok(())
-    }
-
-    #[test] fn test_parse_bool_cell_true() -> ErrStr<()> {
-        assert!(parse_bool_cell("send", "true")?);
-        Ok(())
-    }
-
-    #[test] fn test_parse_bool_cell_no() -> ErrStr<()> {
-        assert!(!parse_bool_cell("send", "no")?);
-        Ok(())
-    }
-
-    #[test] fn test_parse_bool_cell_false() -> ErrStr<()> {
-        assert!(!parse_bool_cell("send", "false")?);
-        Ok(())
-    }
-
-    #[test] fn test_parse_bool_cell_invalid_errors() {
-        let err = parse_bool_cell("send", "maybe").unwrap_err();
-        assert!(err.contains("send"),               "error should name the field: {err}");
-        assert!(err.contains("maybe"),               "error should show the bad value: {err}");
-        assert!(err.contains("yes/no/true/false"),   "error should show allowed values: {err}");
-    }
-
     // ---- is_ragged_row (exercised via deserialize_test_row) -----------------
     // Named struct, not a tuple, since std only derives Debug/PartialEq for tuples up to 12 elements.
-    #[derive(Debug, PartialEq, serde::Deserialize)]
-    struct RowStub {
-        name: String,
-        #[serde(rename = "number of pivots closed")]
-        pivots: String,
-        #[serde(rename = "tweet url")]
-        tweet_url: String,
-        #[serde(rename = "send?")]
-        send: String,
-        flipped: String,
-    }
 
     #[test] fn test_short_row_is_ragged_and_skipped() -> ErrStr<()> {
         // A 5-column row is too short and should be skipped, not hard-errored.
         let short = "α\t100%\t3.46%\t14492\t0";
-        let ans: Option<RowStub> = deserialize_test_row(short)?;
-        assert_eq!(ans, None, "a too-short row should be treated as skippable");
+        let ans: Option<InvestorRow> = deserialize_row(short)?;
+        assert!(ans.is_none(),
+                "a too-short row should be treated as skippable");
         Ok(())
     }
+
+   fn sample_snd_msg(amt: &str, send: &str) -> String {
+      format!("α\t100%\t3.46%\t{amt}\t0\tBTC\tUNDEAD\t$12.04\t15\t\
+                     https://x.com/pivocateur/status/1\t\
+                     https://snowtrace.io/tx/0xabc\t{send}\tyes")
+   }
 
     #[test] fn test_full_row_deserializes() -> ErrStr<()> {
-        let full = "α\t100%\t3.46%\t14492\t0\tBTC\tUNDEAD\t$12.04\t15\t\
-                     https://x.com/pivocateur/status/1\t\
-                     https://snowtrace.io/tx/0xabc\tyes\tyes";
-        let ans: Option<RowStub> = deserialize_test_row(full)?;
-        assert!(ans.is_some(), "a full 13-column row should deserialize");
+        let full = sample_snd_msg("14492", "yes");
+        let mb_ans: Option<InvestorRow> = deserialize_row(&full)?;
+        assert!(mb_ans.is_some(), "a full 13-column row should deserialize");
+        mb_ans.and_then(|ans| {
+           assert_eq!(15, ans.pivots);
+           let send: bool = ans.send.into();
+           assert!(send, "We should send this telegram!");
+           Some(())
+        });
         Ok(())
     }
 
-    #[test] fn test_genuine_type_error_is_not_treated_as_ragged() {
+    #[test] fn fail_genuine_type_error_is_not_treated_as_ragged() {
         // Right column count, but "amount reinvested" isn't a number, so it must error, not be skipped.
-        let bad = "α\t100%\t3.46%\tnot-a-number\t0\tBTC\tUNDEAD\t$12.04\t15\t\
-                    https://x.com/pivocateur/status/1\t\
-                    https://snowtrace.io/tx/0xabc\tyes\tyes";
-        let ans: ErrStr<Option<RowStub>> = deserialize_test_row(bad);
-        assert!(ans.is_err(), "a genuine type mismatch must propagate, not be skipped");
+        let bad = sample_snd_msg("not-a-number", "yes");
+        let res: ErrStr<Option<InvestorRow>> = deserialize_row(&bad);
+        assert!(res.is_err(),
+                "a genuine type mismatch must propagate, not be skipped");
     }
 
-    // ---- SendSpy --------------------------------------------------------------
+    #[test] fn fail_parse_bool_cell_in_send_message() {
+       let bad = sample_snd_msg("123.4", "ur_mom");
+       let res: ErrStr<Option<InvestorRow>> = deserialize_row(&bad);
+       assert!(res.is_err(), "Bool Cell should fail parse!");
+    }
+
+    // ---- SendSpy ----------------------------------------------------------
 
     #[test] fn test_send_spy_records_a_call() -> ErrStr<()> {
         let spy = SendSpy::new();
-        now(spy.record("tok", 1234, "hello"))?;
+        now(spy.record("tok", 1234, "hello", false))?;
         assert_eq!(spy.count(), 1);
         assert!(spy.sent_to(1234));
         assert_eq!(spy.text_for(1234), Some("hello".to_string()));
@@ -268,12 +279,13 @@ mod tests {
 
     #[test] fn test_send_spy_records_multiple_calls() -> ErrStr<()> {
         let spy = SendSpy::new();
-        now(spy.record("tok", 1234, "first"))?;
-        now(spy.record("tok", 5678, "second"))?;
+        now(spy.record("tok", 1234, "first", false))?;
+        now(spy.record("tok", 5678, "second", false))?;
         assert_eq!(spy.count(), 2);
         assert!(spy.sent_to(1234));
         assert!(spy.sent_to(5678));
-        assert!(!spy.sent_to(9999), "an unrecorded chat_id must not read as sent-to");
+        assert!(!spy.sent_to(9999),
+                "an unrecorded chat_id must not read as sent-to");
         Ok(())
     }
 }
@@ -292,16 +304,13 @@ mod functional_tests {
     // ---- chat_id_for --------------------------------------------------------
     // Calls the real function against the real INVESTOR_CHAT_IDS env var and panics loudly on error.
     run_with!("chat_id_for", "Pivot_Internal_Bot", compose!(resolve)(chat_id_for));
-
-    // ---- send_telegram (smoke test) -----------------------------------------
     // Fires a real message via the real bot token so cargo test does not spam the chat by default.
     // Run it with: cargo test smoke_test_send_telegram_real -- --ignored
-    #[ignore]
     #[tokio::test]
     async fn smoke_test_send_telegram_real() -> ErrStr<()> {
         let bot_token = get_env("REINVESTED_BOT")?;
         let chat_id   = chat_id_for("Pivot_Internal_Bot")?;
-        send_telegram(&bot_token, chat_id, "[smoke test] investor_rows::send_telegram is alive").await?;
+        send_telegram_d(&bot_token, chat_id, "[smoke test] investor_rows::send_telegram is alive", false).await?;
         println!("smoke_test_send_telegram_real:...ok — check the Doug+Paris chat");
         Ok(())
     }
