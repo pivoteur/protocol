@@ -216,28 +216,10 @@ mod tests {
     }
 
     // ---- is_ragged_row (exercised via deserialize_test_row) -----------------
-
     // Named struct, not a tuple, since std only derives Debug/PartialEq for tuples up to 12 elements.
     #[derive(Debug, PartialEq, serde::Deserialize)]
     struct RowStub {
         name: String,
-        #[serde(rename = "number of pivots closed")]
-        pivots: String,
-        #[serde(rename = "tweet url")]
-        tweet_url: String,
-        #[serde(rename = "send?")]
-        send: String,
-        flipped: String,
-    }
-
-    // Same shape as RowStub, but amount_reinvested is numeric so bad input fails deserialization for real.
-    // Fields exist to be deserialized into, not read, so dead_code is silenced here.
-    #[allow(dead_code)]
-    #[derive(Debug, serde::Deserialize)]
-    struct RowStubNum {
-        name: String,
-        #[serde(rename = "amount reinvested")]
-        amount_reinvested: f32,
         #[serde(rename = "number of pivots closed")]
         pivots: String,
         #[serde(rename = "tweet url")]
@@ -269,7 +251,7 @@ mod tests {
         let bad = "α\t100%\t3.46%\tnot-a-number\t0\tBTC\tUNDEAD\t$12.04\t15\t\
                     https://x.com/pivocateur/status/1\t\
                     https://snowtrace.io/tx/0xabc\tyes\tyes";
-        let ans: ErrStr<Option<RowStubNum>> = deserialize_test_row(bad);
+        let ans: ErrStr<Option<RowStub>> = deserialize_test_row(bad);
         assert!(ans.is_err(), "a genuine type mismatch must propagate, not be skipped");
     }
 
