@@ -1,12 +1,12 @@
-=== RAT Diagnostics Log (Mon Aug 10 03:38:07 UTC 2026) ===
+=== RAT Diagnostics Log (Tue Aug 11 03:30:40 UTC 2026) ===
 
---- [book] All tests passed | 83.00% coverage | 209 passed, 0 failed | lines: 737/888
+--- [book] All tests passed | 83.03% coverage | 209 passed, 0 failed | lines: 739/890
 
---- [libs] All tests passed | 82.78% coverage | 169 passed, 0 failed | lines: 899/1086
+--- [libs] All tests passed | 79.00% coverage | 185 passed, 0 failed | lines: 944/1195
 
---- [quizzes] test-flow | All tests passed | 152 passed, 0 failed
+--- [quizzes] test-flow | All tests passed | 154 passed, 0 failed
 
---- [quizzes] All tests passed | 75.99% coverage | 152 passed, 0 failed | lines: 693/912
+--- [quizzes] All tests passed | 74.46% coverage | 154 passed, 0 failed | lines: 653/877
 
 --- [dapps] itr
 total: 15/15
