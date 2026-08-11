@@ -1,4 +1,4 @@
-use chrono::{Days,NaiveDate,TimeDelta};
+use chrono::NaiveDate;
 
 use book::{
    csv_utils::{CsvHeader,CsvWriter},
@@ -20,7 +20,10 @@ use crate::types::{
    tokens::coins::Coin,
    gains::Gains,
    measurable::{Measurable,weight,size,tvl},
-   pivots::opens::{Pivot,headers,froms},
+   pivots::{
+      opens::{Pivot,headers,froms},
+      utils::weighted_days
+   },
    pools::{Pool,mk_pool},
    quotes::Quotes,
    util::{Blockchain,Id}
@@ -49,7 +52,9 @@ impl Gains for Propose {
       mk_percentage((self.propose.sz() - base) / base)
    }
    fn apr(&self) -> Percentage {
-      if let Ok((wt, _)) = self.weighted_days() {
+      let weights =
+         weighted_days(&self.header.opens(), &self.principal, &self.close_date);
+      if let Ok((wt, _)) = weights {
          mk_percentage(self.roi().of(365.0 / wt))
       } else {
          panic!("Can't get an APR for proposal")
@@ -87,21 +92,6 @@ impl Propose {
       pivot_amount0(self.blockchain(), self.pool(),
                     &self.close_date, &self.pivot)
    }
-
-   pub fn weighted_days(&self) -> ErrStr<(f32, NaiveDate)> {
-      let (start_date,days) = self.header.durations()?;
-      let weights: Vec<f32> =
-         days.iter()
-             .zip(self.principal.iter().map(Measurable::sz))
-             .map(|(&a, b)| a * b)
-             .collect();
-      let wt: f32 = weights.iter().sum();
-      let wt_days = wt / size(&self.principal);
-      let ave_dt = start_date + Days::new((wt_days - 1.0) as u64);
-      let dur: TimeDelta = self.close_date - ave_dt;
-      let duration = dur.num_days() as f32;
-      Ok((duration, ave_dt))
-   }
 }
 
 impl CsvHeader for Propose {
@@ -127,7 +117,8 @@ impl CsvWriter for Propose {
             + piv.ncols() + self.propose.ncols() + 3
    }
    fn as_csv(&self) -> String {
-      let (_, opnd) = self.weighted_days()
+      let (_, opnd) =
+         weighted_days(&self.header.opens(), &self.principal, &self.close_date)
             .unwrap_or_else(|_| panic!("No open date for proposal"));
       let prince = coalesce(&self.principal)
             .unwrap_or_else(|_| panic!("Cannot coalesce assets!"));

@@ -9,11 +9,16 @@ pub trait Measurable {
    fn aug(&self) -> f32;
 }
 
-pub fn size<T: Measurable>(v: &Vec<T>) -> f32 {
+impl Measurable for () {
+   fn sz(&self) -> f32 { 0.0 }
+   fn aug(&self) -> f32 { 0.0 }
+}
+
+pub fn size<T: Measurable>(v: &[T]) -> f32 {
    v.iter().map(Measurable::sz).sum()
 }
 
-pub fn weight<T: Measurable>(v: &Vec<T>) -> f32 {
+pub fn weight<T: Measurable>(v: &[T]) -> f32 {
    let (total, s) =
       v.iter().fold((0.0,0.0),
                     |(acc, base), x| (acc + x.sz() * x.aug(), base + x.sz()));

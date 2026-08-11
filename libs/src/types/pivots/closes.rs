@@ -131,6 +131,6 @@ pub struct OldClosePivotRow {
 }
 
 impl OldClosePivotRow {
-   pub fn open_pivots_ix(&self) -> Vec<usize> { self.pivot.clone() } 
+   pub fn open_pivots_ix(&self) -> Vec<Id> { self.pivot.clone() } 
 }
 

@@ -33,7 +33,6 @@ impl Header {
    pub fn update_to(&self, today: &NaiveDate) -> Header {
       Header { updated: Some(today.clone()), ..self.clone() }
    }
-
 }
 
 impl CsvWriter for Header {

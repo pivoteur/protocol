@@ -117,12 +117,12 @@ pub fn recompute_assets(quotes: &Quotes, from: &Asset, to: &Asset)
 
 // condensces a set of assets to one representative (summed) asset
 
-pub fn coalesce(v: &Vec<Asset>) -> ErrStr<Asset> {
+pub fn coalesce(v: &[Asset]) -> ErrStr<Asset> {
    if v.is_empty() { Err("No principal for proposal".to_string())
    } else { Ok(condense(v)) }
 }
 
-fn condense(v: &Vec<Asset>) -> Asset {
+fn condense(v: &[Asset]) -> Asset {
    let amts: Vec<Amount> = v.into_iter().map(|a| a.amount.clone()).collect();
    let prince = v.first().unwrap();
    let new_quote = mk_usd(weight(&v));
@@ -153,18 +153,63 @@ pub fn gain_10_percent(a: f32) -> f32 { a * 1.1 }
 
 // ---- TESTS -------------------------------------------------------
 
+#[cfg(test)]
 #[cfg(not(tarpaulin_include))]
-pub mod functional_tests {
+pub mod sample_assets {
    use super::*;
+
+   pub fn primary_asset(sym: &str, amt: f32, qt: f32) -> Asset {
+      mk_asset(sym, "Avalanche", mk_amt(0.0, amt), mk_usd(qt), &FROM)
+   }
+
+   pub fn btc_asset(amt: f32, qt: f32) -> Asset {
+      primary_asset("BTC", amt, qt)
+   }
+
+   pub fn pivot_asset(sym: &str, amt: f32, qt: f32) -> Asset {
+      mk_asset(sym, "Avalanche", mk_amt(amt, 0.0), mk_usd(qt), &TO)
+   }
+}
+
+#[cfg(test)]
+#[cfg(not(tarpaulin_include))]
+mod functional_tests {
+   use super::*;
+   use super::sample_assets::{ btc_asset, pivot_asset };
+   use crate::types::quotes::sample_data::sample_btc_eth_quotes;
+   use paste::paste;
+   use book::create_testing;
+
+   create_testing!("types::assets::assets");
+
+   run!("coalesce", {
+      let b1 = btc_asset(500.0, 63000.0);
+      let b2 = btc_asset(300.0, 72500.0);
+      let assets = vec![b1.clone(), b2.clone()];
+      let ans = coalesce(&assets)?;
+      println!("{}\n{}\n{}\n", b1.header(), b1.as_csv(), b2.as_csv());
+      println!("...coalesces to:\n{}\n", ans.as_csv());
+   });
+
+   run!("recompute_assets", {
+      let btc = btc_asset(1.0, 76000.0);
+      let eth = pivot_asset("ETH", 76000.0 / 2700.0, 2700.0);
+      let qts = sample_btc_eth_quotes();
+      let ans = recompute_assets(&qts, &btc, &eth)?;
+      if let Some((x1, y1)) = ans {
+         println!("Recompute from\nBTC: {}\nto assets\n{}\n{}",
+                  btc.as_csv(), x1.as_csv(), y1.as_csv());
+      } else {
+         panic!("Could not recompute virtual assets!\nBTC: {}", btc.as_csv());
+      }
+   });
+}
+
+#[cfg(test)]
+#[cfg(not(tarpaulin_include))]
+pub mod test_utils {
+   use super::Asset;
    use book::num::estimate::mk_estimate;
-
-   pub fn hbar_asset(amt: f32, qt: f32) -> Asset {
-      mk_asset("HBAR", "Hedera", mk_amt(0.0, amt), mk_usd(qt), &FROM)
-   }
-
-   pub fn assert_price_k(a: &Asset, est: f32) {
-      assert_price(a, est * 1000.0);
-   }
 
    pub fn assert_price(a: &Asset, est: f32) {
       let q1 = &a.quote;
@@ -172,54 +217,85 @@ pub mod functional_tests {
       let tok = &a.token;
       assert!(qe1.approximates(est), "{tok} price ({q1}) isn't ${est}");
    }
-
-   fn run_coalesce() -> ErrStr<usize> {
-      println!("\ntypes::assets::assets::coalesce fuctional test\n");
-      let h1 = hbar_asset(500.0, 0.2);
-      let h2 = hbar_asset(300.0, 0.25);
-      let assets = vec![h1.clone(), h2.clone()];
-      let ans = coalesce(&assets)?;
-      println!("{}\n{}\n{}\n", h1.header(), h1.as_csv(), h2.as_csv());
-      println!("...coalesces to:\n{}\n", ans.as_csv());
-      println!("\ntypes::assets::assets::coalesce...ok");
-      Ok(1)
-   }
-
-   pub fn runoff() -> ErrStr<usize> {
-      println!("\ntypes::assets::assets functional tests\n");
-      let a = run_coalesce()?;
-      Ok(a)
-   }
+   pub fn assert_price_k(a: &Asset, est: f32) { assert_price(a, est * 1000.0); }
 }
 
 #[cfg(test)]
+#[cfg(not(tarpaulin_include))]
 mod tests {
    use super::*;
-   use super::functional_tests::{assert_price,hbar_asset};
+   use super::{ sample_assets::*, test_utils::assert_price };
+   use crate::types::quotes::sample_data::sample_btc_eth_quotes;
 
-   #[test]
-   fn fail_coalesce() {
-      let ans = coalesce(&Vec::new());
+   #[test] fn fail_coalesce() {
+      let ans = coalesce(&[]);
       assert!(ans.is_err());
    }
 
-   #[test]
-   fn test_coalesce_ok() {
-      let ans = coalesce(&vec![hbar_asset(500.0, 0.2)]);
+   #[test] fn test_coalesce_ok() {
+      let ans = coalesce(&[btc_asset(500.0, 63000.2)]);
       assert!(ans.is_ok());
    }
 
-   #[test]
-   fn test_coalesce_quote() -> ErrStr<()> {
-      let ans = coalesce(&vec![hbar_asset(500.0, 0.2)])?;
-      assert_price(&ans, 0.2);
+   #[test] fn test_coalesce_quote() -> ErrStr<()> {
+      let ans = coalesce(&[btc_asset(500.0, 63000.2)])?;
+      assert_price(&ans, 63000.2);
       Ok(())
    }
 
-   #[test]
-   fn test_coalesce_amt() -> ErrStr<()> {
-      let ans = coalesce(&vec![hbar_asset(500.0, 0.2),hbar_asset(300.0, 0.1)])?;
+   #[test] fn test_coalesce_amt() -> ErrStr<()> {
+      let btcs = vec![btc_asset(500.0, 63000.2), btc_asset(300.0, 59000.1)];
+      let ans = coalesce(&btcs)?;
       assert_eq!(800.0, ans.sz());
+      Ok(())
+   }
+
+   #[test] fn fail_trade_no_avax_quote() {
+      let qts = sample_btc_eth_quotes();
+      let prim = primary_asset("AVAX", 500.0, 6.35);
+      let piv = pivot_asset("UNDEAD", 1000000.0, 0.008);
+      let tr = trade(&qts, &prim, &piv);
+      assert!(tr.is_err());
+   }
+
+   #[test] fn test_no_trade() -> ErrStr<()> {
+      let btc = btc_asset(1.0, 76000.0);
+      let eth = pivot_asset("ETH", 76000.0 / 2700.0, 2700.0);
+      let qts = sample_btc_eth_quotes();
+      let ans = trade(&qts, &btc, &eth)?;
+      assert!(ans.is_none(), "Trade succeeded? {ans:?}");
+      Ok(())
+   }
+
+   #[test] fn test_pivot_trade() -> ErrStr<()> {
+      let btc = btc_asset(1.0, 76000.0);
+      let eth = pivot_asset("ETH", 76000.0 / 1700.0, 1700.0);
+      let qts = sample_btc_eth_quotes();
+      if let Some((e1, b1)) = trade(&qts, &btc, &eth)? {
+         assert!(btc.sz() < b1.sz(),
+                 "BTC amount did not increase from {} ({})", btc.sz(), b1.sz());
+         assert_eq!(eth.sz(), e1.sz(), "ETH amount not equal in trade");
+         Ok(())
+      } else {
+         Err(format!("Trade failed for\nBTC: {}\nETH: {}",
+                     btc.as_csv(), eth.as_csv()))
+      }
+   }
+
+   #[test] fn fail_recompute_assets_no_avax_quote() {
+      let btc = btc_asset(1.0, 76000.0);
+      let eth = pivot_asset("AVAX", 76000.0 / 6.35, 6.35);
+      let qts = sample_btc_eth_quotes();
+      let ans = recompute_assets(&qts, &btc, &eth);
+      assert!(ans.is_err(), "Recompute succeeded? {ans:?}");
+   }
+
+   #[test] fn fail_recompute_assets_no_advantage() -> ErrStr<()> {
+      let btc = btc_asset(1.0, 76000.0);
+      let eth = pivot_asset("ETH", 76000.0 / 1700.0, 1700.0);
+      let qts = sample_btc_eth_quotes();
+      let ans = recompute_assets(&qts, &btc, &eth)?;
+      assert!(ans.is_none(), "Recompute succeeded? {ans:?}");
       Ok(())
    }
 }

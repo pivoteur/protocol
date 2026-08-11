@@ -2,9 +2,12 @@ use std::fmt::Display;
 
 use chrono::NaiveDate;
 
-use book::{ csv_utils::{CsvHeader,CsvWriter}, err_utils::ErrStr };
+use book::csv_utils::{CsvHeader,CsvWriter};
 
-use crate::types::{ headers::Header, util::Id };
+use crate::types::{
+   headers::Header,
+   util::Id
+};
 
 #[derive(Debug, Clone)]
 pub struct AggregateHeader {
@@ -25,15 +28,7 @@ pub fn add_header_info(v: &Vec<Header>) -> AggregateHeader {
 }
 
 impl AggregateHeader {
-   pub fn durations(&self) -> ErrStr<(NaiveDate,Vec<f32>)> {
-      if let Some(start_date) = self.opened.first().cloned() {
-         Ok((start_date, self.opened.iter()
-                .map(|&d| ((d-start_date).num_days() + 1) as f32)
-                .collect()))
-      } else {
-         Err("No start date for proposal".to_string())
-      }
-   }
+   pub fn opens(&self) -> Vec<NaiveDate> { self.opened.clone() }
 }
 
 impl CsvHeader for AggregateHeader {

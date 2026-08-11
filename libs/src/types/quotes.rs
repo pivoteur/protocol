@@ -92,7 +92,7 @@ pub mod sample_data {
 
 #[cfg(test)]
 #[cfg(not(tarpaulin_include))]
-pub mod functional_tests {
+mod functional_tests {
 
    use super::*;
    use super::sample_data::sample_btc_eth_quotes;
