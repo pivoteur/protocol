@@ -3,7 +3,7 @@ use clap::Parser;
 
 use book::{
    parse_args_add_banner,
-   cli_utils::add_banner,
+   cli_utils::generate_banner,
    currency::usd::USD,
    csv_utils::{CsvWriter,CsvHeader},
    err_utils::ErrStr,
@@ -95,7 +95,7 @@ fn tabl<T:CsvWriter + CsvHeader + Measurable>
 /// Computes assets committed to virtual pivots.
 #[derive(Debug, Parser)]
 #[command(name = "virtsz")]
-#[command(version = "2.05")]
+#[command(version = "2.06")]
 struct Args {
    /// Protocol to compute assets committed to virtual pivots, e.g.: PIVOT
    protocol: UppercaseString,

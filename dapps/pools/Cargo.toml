@@ -1,18 +1,21 @@
 [package]
-name = "wyrd"
+name = "pools"
 version = "0.1.0"
 edition = "2024"
 
 [[bin]]
-name = "wyrd"
-path = "../../quizzes/src/quiz08/f_wyrd_jr/src/main.rs"
+name = "pools"
+path = "../../quizzes/src/quiz10/c_local_pools/src/main.rs"
 
 [dependencies]
-tokio = { version = "1.51.3", features = ["macros", "rt-multi-thread"] }
+chrono = "0.4.38"
 
-libs = { path = "../../libs" }
+tokio = { version = "1.52.2", features = ["macros", "rt-multi-thread"] }
+
 book = { path = "../../../crypto-n-rust/src/libs/book" }
+
 quizzes = { path = "../../quizzes" }
+libs = { path = "../../libs" }
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(tarpaulin_include)'] }

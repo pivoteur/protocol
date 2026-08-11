@@ -16,8 +16,6 @@ where:
 
 ## Revisions
 
-* 2.01, 2026-08-10: added opened-column to close pivot output
-* 2.00, 2026-08-10: shifted to a call-to-close-pivot-type transformation
 * 1.05, 2026-07-29: library-upgrage
 * 1.04, 2026-07-10: add debugging information; correct pool-path algorithm
 * 1.03, 2026-07-05: use clap to process arguments and for usage-documentation

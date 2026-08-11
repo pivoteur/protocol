@@ -3,7 +3,7 @@ use clap::{ Parser, CommandFactory };
 
 use book:: {
    parse_args_add_banner,
-   cli_utils::add_banner,
+   cli_utils::generate_banner,
    err_utils::ErrStr,
    string_utils::UppercaseString
 };
@@ -14,6 +14,8 @@ use pools_impl::print_pools_as_js;
 ///
 /// pools prints a Javascript object of pool assets.
 #[derive(Debug, Parser)]
+#[command(name = "pools")]
+#[command(version = "2.05")]
 struct Args {
    /// Protocol to analyze active pivot pools, e.g.: PIVOT
    protocol: UppercaseString,

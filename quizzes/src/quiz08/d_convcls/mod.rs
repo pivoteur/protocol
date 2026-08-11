@@ -3,7 +3,7 @@ use clap::Parser;
 
 use book::{
    parse_args_add_banner,
-   cli_utils::add_banner,
+   cli_utils::generate_banner,
    csv_utils::as_tsv,
    err_utils::{ErrStr,err_or}
 };
@@ -21,7 +21,7 @@ use libs::{
 /// convcls computes the 10% gains from the open pivot table.
 #[derive(Debug, Parser)]
 #[command(name = "convcls")]
-#[command(version = "1.01")]
+#[command(version = "1.02")]
 struct Args {
    /// Path to the open pivots table
    opens: String,
@@ -42,7 +42,7 @@ pub fn runoff_with_args() -> ErrStr<()> {
               &format!("Cannot open old close pivot table: {closes}"))?;
    let mut close_rdr = process_old_close_pivots(&close_file)?;
    let closes = new_close_pivots(&open_map, &mut close_rdr)?;
-   let table = as_tsv(&closes)?;
+   let table = as_tsv(&closes, true)?;
    println!("{table}");
    Ok(())
 }
@@ -93,7 +93,7 @@ mod functional_tests {
       println!("Converting\n{old_closes}");
       let mut basis = process_old_close_pivots(old_closes.as_bytes())?;
       let new_closes = new_close_pivots(&open_pivots, &mut basis)?;
-      let table = as_tsv(&new_closes)?;
+      let table = as_tsv(&new_closes, true)?;
       println!("Result:\n{table}");
    });
 }
@@ -103,7 +103,7 @@ mod functional_tests {
 mod tests {
    use super::*;
    use super::sample_data::{ sample_open_pivots, sample_old_close_pivots };
-   use libs::types::pivots::closes::OldClosePivotRow;
+   use libs::types::{ gains::Gains, pivots::closes::OldClosePivotRow };
 
    #[test] fn test_open_pivots() -> ErrStr<()> {
       let opens = process_open_pivots(sample_open_pivots().as_bytes())?;
@@ -136,8 +136,7 @@ mod tests {
       let mut closes = process_old_close_pivots(input.as_bytes())?;
       let new_closes = new_close_pivots(&opens, &mut closes)?;
       assert_eq!(2, new_closes.len(), "There should be 2 new close pivots");
-      assert_eq!(49.5, new_closes[0].gain(), "composite gain 10%");
+      assert_eq!(0.000986, new_closes[0].gain(), "composite gain 10%");
       Ok(())
    }
 }
-

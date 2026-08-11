@@ -2,7 +2,7 @@ use clap::Parser;
 
 use book::{
    parse_args_add_banner,
-   cli_utils::add_banner,
+   cli_utils::generate_banner,
    csv_utils::as_csv,
    currency::usd::mk_usd,
    err_utils::ErrStr,
@@ -19,7 +19,7 @@ use libs::{
 /// Makes a counter-offer to a proposed close pivot
 #[derive(Debug, Parser)]
 #[command(name = "offrian")]
-#[command(version = "1.04")]
+#[command(version = "1.05")]
 struct Args {
    /// protocol to make the counter-offer, e.g.: PIVOT
    protocol: UppercaseString,
@@ -61,7 +61,7 @@ fn report_counter_offer(nc: &Call, debug: bool) -> ErrStr<()> {
                        prop);
       println!("\nOffrian:\n{a}\n{b}\n{c};\nROI {} / {} APR\n", nc.roi, nc.apr);
    }
-   let output = as_csv(&[nc])?;
+   let output = as_csv(&[nc], true)?;
    println!("{output}");
    Ok(())
 }

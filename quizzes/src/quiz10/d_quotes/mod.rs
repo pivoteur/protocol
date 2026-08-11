@@ -5,7 +5,7 @@ use serde_json;
 
 use book::{
    parse_args_add_banner,
-   cli_utils::add_banner,
+   cli_utils::generate_banner,
    err_utils::{ ErrStr, err_or },
 };
 
@@ -21,7 +21,7 @@ async fn print_quotes_as_json(dt: &NaiveDate) -> ErrStr<String> {
 /// fetches the quotes for the protocol
 #[derive(Debug, Parser)]
 #[command(name = "quotes")]
-#[command(version = "1.01")]
+#[command(version = "1.02")]
 struct Args {
    /// Date to run protocol-quotes
    date: NaiveDate

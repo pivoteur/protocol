@@ -2,6 +2,7 @@ use chrono::NaiveDate;
 
 use book::{
    csv_utils::{CsvHeader,CsvWriter},
+   currency::usd::{ USD, mk_usd },
    err_utils::ErrStr,
    num::percentage::{Percentage,mk_percentage}
 };
@@ -59,6 +60,10 @@ impl Gains for Propose {
          panic!("Can't get an APR for proposal")
       }
    }
+   fn gain(&self) -> f32 { self.propose.gain_for(self.sz()) }
+   fn gain_usd(&self) -> USD {
+      mk_usd(self.roi().of(tvl(&self.propose).amount()))
+   }
 }
 
 impl Propose {
@@ -95,7 +100,8 @@ impl CsvHeader for Propose {
             .unwrap_or_else(|| panic!("No principal assets for proposal"));
       let piv = self.pivot.first()
             .unwrap_or_else(|| panic!("No pivots for proposal"));
-      format!("{},close_id,close_date,{},gain_10_percent,{},{},roi,apr",
+      let gain = "roi,apr,gain_usd";
+      format!("{},close_id,close_date,{},gain_10_percent,{},{},{gain}",
               self.header.header(), prince.header(),
               piv.header(), self.propose.header())
    }
@@ -108,7 +114,7 @@ impl CsvWriter for Propose {
       let piv = self.pivot.first()
             .unwrap_or_else(|| panic!("No pivots for proposal"));
       self.header.ncols() + 2 + prince.ncols() + 1
-            + piv.ncols() + self.propose.ncols() + 2
+            + piv.ncols() + self.propose.ncols() + 3
    }
    fn as_csv(&self) -> String {
       let (_, opnd) =
@@ -119,7 +125,7 @@ impl CsvWriter for Propose {
       let pivs = &self.pivot;
       let piv = pivs.first().unwrap_or_else(|| panic!("No pivot for proposal"));
       let piv1 = piv.clone_with(weight(&pivs), size(&pivs), TO);
-      format!("{},{},{},{},{},{},{},{},{},{}", 
+      format!("{},{},{},{},{},{},{},{},{},{},{}",
               opnd,
               self.header.as_csv(),
               self.close,
@@ -128,7 +134,7 @@ impl CsvWriter for Propose {
               gain_10_percent(prince.sz()),
               piv1.as_csv(),
               self.propose.as_csv(),
-              self.roi(), self.apr())
+              self.roi(), self.apr(), self.gain_usd())
    }
 }
 

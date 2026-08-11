@@ -3,7 +3,7 @@ use clap::Parser;
 
 use book::{
    parse_args_add_banner,
-   cli_utils::add_banner,
+   cli_utils::generate_banner,
    err_utils::ErrStr,
    string_utils::UppercaseString
 };
@@ -35,7 +35,7 @@ fn tokens_to_pivot(proposals: Vec<Proposal>) {
 /// Make the close pivot call
 #[derive(Debug, Parser)]
 #[command(name = "dusk")]
-#[command(version = "2.05")]
+#[command(version = "2.08")]
 struct Args {
    /// Protocol to analyze pivots to close, e.g.: PIVOT
    protocol: UppercaseString,
