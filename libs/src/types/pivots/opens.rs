@@ -204,7 +204,7 @@ mod functional_tests {
 mod tests {
    use super::*;
    use super::test_data::{ btc_eth, btc_eth_pivots };
-   use crate::types::assets::{ assets::functional_tests::assert_price_k };
+   use crate::types::assets::{ assets::test_utils::assert_price_k };
 
    #[test] fn test_partition_on_btc() -> ErrStr<()> {
       let pivs = btc_eth_pivots()?;

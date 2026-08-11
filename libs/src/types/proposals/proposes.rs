@@ -19,7 +19,7 @@ use crate::types::{
    },
    tokens::coins::Coin,
    gains::Gains,
-   measurable::{Measurable,weight,size},
+   measurable::{Measurable,weight,size,tvl},
    pivots::{
       opens::{Pivot,headers,froms},
       utils::weighted_days
