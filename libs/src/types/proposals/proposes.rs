@@ -9,6 +9,7 @@ use book::{
 
 use super::{
    aggregate_headers::{AggregateHeader,add_header_info},
+   measurable::tvl,
    prop_assets::{PropAsset,pivot_amount0}
 };
 
