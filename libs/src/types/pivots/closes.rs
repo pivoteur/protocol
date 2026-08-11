@@ -9,7 +9,9 @@ use book::{
 
 use crate::{
    processors::utils::{
+      deserialize_optional_date,
       deserialize_semicolon_list,
+      serialize_optional_date,
       serialize_semicolon_list
    },
    types::{ gains::Gains, util::Id }
@@ -20,6 +22,9 @@ use crate::{
 pub struct ClosePivot {
     #[serde_as(as = "DisplayFromStr")]
     date: NaiveDate,
+    #[serde(deserialize_with = "deserialize_optional_date")]
+    #[serde(serialize_with = "serialize_optional_date")]
+    opened: Option<NaiveDate>,
     #[serde(deserialize_with = "deserialize_semicolon_list")]
     #[serde(serialize_with = "serialize_semicolon_list")]
     pivot: Vec<Id>,
@@ -46,13 +51,14 @@ pub struct ClosePivot {
     apr: Percentage,
 }
 
-pub fn mk_close_pivot(dt: &NaiveDate, opens: &[Id], close: Id, tx: &str,
-                      from: &str, fqt: &USD, to: &str, tqt: &USD, trad: f32,
-                      vol: &USD, gain_10_percent: f32, new_to_actual: f32,
-                      gain: f32, gain_tot: &USD, r: &Percentage, a: &Percentage)
-      -> ClosePivot {
+pub fn mk_close_pivot(dt: &NaiveDate, opened: Option<&NaiveDate>, opens: &[Id],
+                      close: Id, tx: &str, from: &str, fqt: &USD, to: &str, 
+                      tqt: &USD, trad: f32, vol: &USD, gain_10_percent: f32,
+                      new_to_actual: f32, gain: f32, gain_tot: &USD,
+                      r: &Percentage, a: &Percentage) -> ClosePivot {
    ClosePivot {
       date: dt.clone(),
+      opened: opened.cloned(),
       pivot: opens.to_vec(),
       close,
       tx_id: tx.to_string(),
@@ -80,8 +86,9 @@ impl Gains for ClosePivot {
 
 pub fn transform(old_row: &OldClosePivotRow, gain_10: f32) -> ClosePivot {
    let o = &old_row;
-   mk_close_pivot(&o.date, &o.pivot, o.close, &o.tx_id, &o.from, &o.from_quote,
-                  &o.to, &o.to_quote, o.trade.into(), &o.vol, gain_10,
+   let tr: f32 = o.trade.into();
+   mk_close_pivot(&o.date, None, &o.pivot, o.close, &o.tx_id, &o.from,
+                  &o.from_quote, &o.to, &o.to_quote, tr, &o.vol, gain_10,
                   o.new_to_actual, o.gain, &o.gain_total_usd, &o.roi, &o.apr)
 }
 
