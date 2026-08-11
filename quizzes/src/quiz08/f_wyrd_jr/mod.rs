@@ -19,7 +19,7 @@ use libs::{
 /// From a trade that closes a pivot, write out the close pivot transaction
 #[derive(Debug, Parser)]
 #[command(name = "wyrd")]
-#[command(version = "2.00")]
+#[command(version = "2.01")]
 struct Args {
    /// protocol where the pivot is closed, e.g.: PIVOT
    protocol: UppercaseString,

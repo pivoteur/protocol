@@ -19,8 +19,8 @@ pub fn transform_to_close(c: &Call, tx_id: &str, actual: f32) -> ClosePivot {
    let in_quote = &c.pivot_close_price;
    let vol = mk_usd(c.pivot_amount * in_quote.amount());
    let gain_usd = mk_usd(gain * out_quote.amount());
-   mk_close_pivot(close_dt, &c.ids, c.close_id, tx_id, &c.pivot_token,
-                  in_quote, &c.proposed_token, out_quote,
+   mk_close_pivot(close_dt, Some(&c.opened), &c.ids, c.close_id, tx_id,
+                  &c.pivot_token, in_quote, &c.proposed_token, out_quote,
                   c.pivot_amount, &vol, c.gain_10_percent, actual, gain,
                   &gain_usd, &roi, &apr)
 }
