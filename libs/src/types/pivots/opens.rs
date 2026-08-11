@@ -35,26 +35,6 @@ pub struct Pivot {
    to: Asset
 }
 
-#[derive(Debug)]
-pub struct WeightedDate {
-   date: NaiveDate,
-   amount: f32
-}
-
-pub fn mk_weighted_date(dt: &NaiveDate, amount: f32) -> WeightedDate {
-   WeightedDate { date: dt.clone(), amount }
-}
-
-impl Measurable for WeightedDate {
-   fn sz(&self) -> f32 { self.amount }
-   fn aug(&self) -> f32 {
-      let days: i64 = self.date.into();
-      days as f32
-   }
-}
-
-pub type Opens = HashMap<usize, WeightedDate>;
-
 pub fn mk_pivot(header: Header, from: Asset, to: Asset) -> Pivot {
    Pivot { header, from, to }
 }
@@ -76,7 +56,6 @@ impl Pivot {
    pub fn active(&self) -> bool { !self.closed() }
    pub fn is_updated(&self) -> bool { self.header.is_updated() }
    pub fn index(&self) -> usize { self.header.ix() }
-   pub fn opened(&self) -> NaiveDate { self.header.opened() }
    pub fn trade(&self, qts: &Quotes) -> ErrStr<Option<(PropAsset, PropAsset)>> {
       trade(qts, &self.from, &self.to)
    }
@@ -225,7 +204,7 @@ mod functional_tests {
 mod tests {
    use super::*;
    use super::test_data::{ btc_eth, btc_eth_pivots };
-   use crate::types::assets::{ assets::test_utils::assert_price_k };
+   use crate::types::assets::{ assets::functional_tests::assert_price_k };
 
    #[test] fn test_partition_on_btc() -> ErrStr<()> {
       let pivs = btc_eth_pivots()?;
