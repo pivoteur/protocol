@@ -9,7 +9,7 @@ use book::{
 };
 
 use libs::{
-   processors::pivots::{
+   processors::pivots::closes::{
       process_open_pivots,
       process_old_close_pivots,
       new_close_pivots

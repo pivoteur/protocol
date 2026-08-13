@@ -66,6 +66,7 @@ impl Pivot {
    pub fn update_header(&self, dt: &NaiveDate) -> Header {
       self.header.update_to(dt)
    }
+   pub fn opened(&self) -> NaiveDate { self.header.opened() }
 }
 
 impl CsvWriter for Pivot {

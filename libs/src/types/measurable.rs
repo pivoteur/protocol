@@ -14,6 +14,11 @@ impl Measurable for () {
    fn aug(&self) -> f32 { 0.0 }
 }
 
+impl Measurable for f32 {
+   fn sz(&self) -> f32 { *self }
+   fn aug(&self) -> f32 { 1.0 }
+}
+
 pub fn size<T: Measurable>(v: &[T]) -> f32 {
    v.iter().map(Measurable::sz).sum()
 }
