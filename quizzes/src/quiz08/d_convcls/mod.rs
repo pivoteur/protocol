@@ -9,11 +9,12 @@ use book::{
 };
 
 use libs::{
+   fetchers::pivots::read_pivots,
    processors::pivots::closes::{
-      process_open_pivots,
       process_old_close_pivots,
       new_close_pivots
-   }
+   },
+   types::{ aliases::aliases, pivots::opens::Pivot }
 };
 
 /// Converts the old close-pivot format to the current close pivot format,
@@ -27,21 +28,26 @@ struct Args {
    opens: String,
 
    /// Path to the close pivots table
-   closes: String
+   closes: String,
+
+   /// Print debugging information
+   #[arg(short, long)]
+   debug: bool
 }
 
 pub fn runoff_with_args() -> ErrStr<()> {
    let args = parse_args_add_banner!(Args);
-   let opens = &args.opens;
-   let open_file = 
-      err_or(File::open(opens),
-             &format!("Cannot open open pivot table: {opens}"))?;
-   let open_map = process_open_pivots(&open_file)?;
+   let a = aliases();
+   let (opens, _mx_dt) = read_pivots(&args.opens, &a, args.debug)?;
    let closes = &args.closes;
+   with_open_pivots(&opens, closes)
+}
+
+fn with_open_pivots(opens: &[Pivot], closes: &str) -> ErrStr<()> {
    let close_file = err_or(File::open(closes),
               &format!("Cannot open old close pivot table: {closes}"))?;
    let mut close_rdr = process_old_close_pivots(&close_file)?;
-   let closes = new_close_pivots(&open_map, &mut close_rdr)?;
+   let closes = new_close_pivots(&opens, &mut close_rdr)?;
    let table = as_tsv(&closes, true)?;
    println!("{table}");
    Ok(())
@@ -51,46 +57,22 @@ pub fn runoff_with_args() -> ErrStr<()> {
 
 #[cfg(test)]
 #[cfg(not(tarpaulin_include))]
-mod sample_data {
-   use book::string_utils::s;
-   pub fn sample_open_pivots() -> String {
-      s("\
-open\tclose\ttx_id\t10% gain
-1\t0\txx1\t12.0\n2\t1\txx2\t22.6\n4\t2\tyyy\t1939.31\n13\t1\txx3\t26.9\n")
-   }
-
-   pub fn sample_old_close_pivots() -> String {
-       s("\
-date\tpivot\tclose\ttx_id\tfrom\tfrom quote\tto\tto quote\ttrade\tvol\tnew to-actual\tgain\tgain, total $\tROI\tAPR
-2025-08-03\t2,13\t1\thttp...\tUNDEAD\t$0.002538\tBTC\t$113,828\t483,094\t$1,226.09\t0.009426\t0.000986\t$112.27\t11.69%\t355.46%
-2025-08-04\t4\t2\thttp...\tUNDEAD\t$0.008462\tBTC\t$114,529\t229179\t$1,939.31\t0.015258\t0.011058\t$1,266.48\t263.29%\t5652.99%
-")
-   }
-}
-
-#[cfg(test)]
-#[cfg(not(tarpaulin_include))]
 mod functional_tests {
    use super::*;
-   use super::sample_data::{sample_open_pivots,sample_old_close_pivots};
    use paste::paste;
-   use book::create_testing;
+   use book::{ create_testing, file_utils::read_file };
+   use libs::fetchers::pivots::sample_reader::read_sample_open_pivots;
 
    create_testing!("quizzes::quiz08::d_convcls");
 
-   run!("process_open_pivots", {
-      let open_tsv = sample_open_pivots();
-      println!("Converting\n{open_tsv}");
-      let open_pivots = process_open_pivots(open_tsv.as_bytes())?;
-      println!("to hash\n{open_pivots:?}");
-   });
-
    run!("new_close_pivot_table", {
-      let open_tsv = sample_open_pivots();
-      println!("Using\n{open_tsv}");
-      let open_pivots = process_open_pivots(open_tsv.as_bytes())?;
-      let old_closes = sample_old_close_pivots();
-      println!("Converting\n{old_closes}");
+      let open_pivots =
+         read_sample_open_pivots("data/sample_avax_undead_open_pivots.tsv",
+                                 "avax-undead")?;
+      println!("Using AVAX+UNDEAD open pivots");
+      let old_closes =
+        read_file("data/sample_old_close_avax_undead_pivot.tsv")?;
+      println!("Converting AVAX+UNDEAD (old) close pivots");
       let mut basis = process_old_close_pivots(old_closes.as_bytes())?;
       let new_closes = new_close_pivots(&open_pivots, &mut basis)?;
       let table = as_tsv(&new_closes, true)?;
@@ -102,41 +84,43 @@ mod functional_tests {
 #[cfg(not(tarpaulin_include))]
 mod tests {
    use super::*;
-   use super::sample_data::{ sample_open_pivots, sample_old_close_pivots };
-   use libs::types::{ gains::Gains, pivots::closes::OldClosePivotRow };
+   use libs::{
+      fetchers::pivots::sample_reader::read_sample_open_pivots,
+      types::{ gains::Gains, pivots::closes::OldClosePivotRow }
+   };
+   use book::{ file_utils::read_file, num::estimate::mk_estimate };
 
-   #[test] fn test_open_pivots() -> ErrStr<()> {
-      let opens = process_open_pivots(sample_open_pivots().as_bytes())?;
-      assert_eq!(4, opens.len(), "Need 2 parsed open pivots");
-      assert_eq!(Some(&1939.31), opens.get(&4));
+   #[test] fn test_old_close_pivots_ok() -> ErrStr<()> {
+      let old_closes =
+        read_file("data/sample_old_close_avax_undead_pivot.tsv")?;
+      let closes = process_old_close_pivots(old_closes.as_bytes());
+      assert!(closes.is_ok(), "Cannot parse old close pivots");
       Ok(())
    }
 
-   #[test] fn test_old_close_pivots_ok() {
-      let input = sample_old_close_pivots();
-      let closes = process_old_close_pivots(input.as_bytes());
-      assert!(closes.is_ok(), "Cannot parse old close pivots");
-   }
-
    #[test] fn test_old_close_pivots_deserialize() -> ErrStr<()> {
-      let input = sample_old_close_pivots();
-      let mut closes = process_old_close_pivots(input.as_bytes())?;
+      let old_closes =
+         read_file("data/sample_old_close_avax_undead_pivot.tsv")?;
+      let mut closes = process_old_close_pivots(old_closes.as_bytes())?;
       let mut x = 0;
       for close in closes.deserialize::<OldClosePivotRow>() {
          x += 1;
          assert!(close.is_ok(), "Old close pivot {x} parse failed");
       }
-      assert_eq!(2, x, "Should have 2 old close pivots");
+      assert_eq!(4, x, "Should have 2 old close pivots");
       Ok(())
    }
 
    #[test] fn test_new_close_pivots() -> ErrStr<()> {
-      let opens = process_open_pivots(sample_open_pivots().as_bytes())?;
-      let input = sample_old_close_pivots();
-      let mut closes = process_old_close_pivots(input.as_bytes())?;
+      let opens =
+         read_sample_open_pivots("data/sample_avax_undead_open_pivots.tsv",
+                                 "avax-undead")?;
+      let old_closes =
+         read_file("data/sample_old_close_avax_undead_pivot.tsv")?;
+      let mut closes = process_old_close_pivots(old_closes.as_bytes())?;
       let new_closes = new_close_pivots(&opens, &mut closes)?;
-      assert_eq!(2, new_closes.len(), "There should be 2 new close pivots");
-      assert_eq!(0.000986, new_closes[0].gain(), "composite gain 10%");
-      Ok(())
+      assert_eq!(4, new_closes.len(), "There should be 2 new close pivots");
+      let gain_est = mk_estimate(3.85);
+      gain_est.is(new_closes[0].gain())
    }
 }

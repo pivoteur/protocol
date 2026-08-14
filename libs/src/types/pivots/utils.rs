@@ -4,7 +4,9 @@ use chrono::{ NaiveDate, Days };
 
 use book::{ err_utils::ErrStr, string_utils::s };
 
-use crate::types::measurable::{ Measurable, size };
+use crate::types::{ measurable::{ Measurable, size }, pivots::opens::Pivot };
+
+pub type DurDate = (f32, NaiveDate);
 
 /// Computes both 
 /// * the weighted_day, which is the opening date of several open pivots
@@ -12,7 +14,7 @@ use crate::types::measurable::{ Measurable, size };
 /// * the duration from that `weighted_day` to now, the `close_date`.
 
 pub fn weighted_days<M: Measurable>(dates: &[NaiveDate], principal: &[M],
-                     close_date: &NaiveDate) -> ErrStr<(f32, NaiveDate)> {
+                     close_date: &NaiveDate) -> ErrStr<DurDate> {
    let sunshine = durations_on_dates(dates)?;
    let (start_date, days) = &sunshine;
    let weights: Vec<f32> =
@@ -26,6 +28,15 @@ pub fn weighted_days<M: Measurable>(dates: &[NaiveDate], principal: &[M],
    let dur = *close_date - ave_dt;
    let duration = dur.num_days() as f32;
    Ok((duration, ave_dt))
+}
+
+pub fn weighted_date(pivots: &[Pivot], close_date: &NaiveDate)
+      -> ErrStr<DurDate> {
+   let (dates, gains): (Vec<NaiveDate>, Vec<f32>) =
+      pivots.into_iter()
+            .map(|p| (p.opened(), p.sz() * 1.1))
+            .unzip();
+   weighted_days(&dates, &gains, close_date)
 }
 
 type Rays<T> = (T, Vec<f32>);

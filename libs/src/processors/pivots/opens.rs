@@ -12,7 +12,7 @@ pub fn extract_dates_amounts(open_pivots: &[Pivot])
    ans
 }
 
-pub fn filter_open_pivots(opens: &[Pivot], ids: &[Id]) -> Vec<Pivot> {
+pub fn filter_pivots(opens: &[Pivot], ids: &[Id]) -> Vec<Pivot> {
    let id_set: HashSet<Id> = ids.into_iter().cloned().collect();
    opens.iter().filter(|piv| id_set.contains(&piv.index())).cloned().collect()
 }

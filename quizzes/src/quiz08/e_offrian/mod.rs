@@ -19,7 +19,7 @@ use libs::{
 /// Makes a counter-offer to a proposed close pivot
 #[derive(Debug, Parser)]
 #[command(name = "offrian")]
-#[command(version = "1.05")]
+#[command(version = "2.00")]
 struct Args {
    /// protocol to make the counter-offer, e.g.: PIVOT
    protocol: UppercaseString,

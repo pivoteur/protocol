@@ -8,7 +8,7 @@ viable? This determination is `offrian`'s job.
 ![`offrian` usage](../../quizzes/src/quiz08/e_offrian/imgs/01a-usage.png)
 
 ```
-offrian, version 1.01
+offrian, version 2.00
 
 Usage:
 
@@ -42,6 +42,8 @@ depending on the call will get the following output:
 
 ## Revisions
 
+* 2.00, 2026-08-14: complete overhaul of offrian-calculation, abandoning leeway
+in favor of testing against required amount.
 * 1.05, 2026-07-29: library-upgrades
 * 1.04, 2026-07-08: Move virtual pivot functions to libs::processors:virtuals
 * 1.03, 2026-07-06: use CLAP to parse arguments and for usage-documentation

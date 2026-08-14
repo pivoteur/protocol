@@ -3,6 +3,7 @@ use chrono::NaiveDate;
 use book::{
    date_utils::datef,
    err_utils::ErrStr,
+   file_utils::lines_from_file,
    table_utils::{Table,cols},
    tuple_utils::{Partition,fst}
 };
@@ -10,7 +11,7 @@ use book::{
 use super::utils::fetch_lines;
 
 use crate::{
-   paths::open_pivot_path,
+   paths::{ open_pivot_path, pivot_pool_from_file },
    tables::index_table,
    types::{ aliases::Aliases, pivots::opens::{Pivot,parse_pivot}, pools::Pool }
 };
@@ -63,25 +64,60 @@ fn max_diem<T>(table: &Table<T, String, String>, ix: usize, pool: &Pool,
    Ok(max_date)
 }
 
+pub type OpenPivotData = (Vec<Pivot>, NaiveDate);
+
 /// Filter to only the open pivots for pivot pool A+B
 pub async fn fetch_open_pivots(root_url: &str, pool: &Pool, a: &Aliases,
-                               debug: bool)
-      -> ErrStr<(Vec<Pivot>, NaiveDate)> {
+                               debug: bool) -> ErrStr<OpenPivotData> {
    let (part, max_date) = fetch_pivots(root_url, pool, a, debug).await?;
    Ok((fst(part), max_date))
 }
 
+pub fn read_pivots(file: &str, a: &Aliases, debug: bool)
+      -> ErrStr<OpenPivotData> {
+   let pool = pivot_pool_from_file(file)?;
+   read_pivots1(file, &pool, a, debug)
+}
+
+fn read_pivots1(file: &str, pool: &Pool, a: &Aliases, debug: bool)
+      -> ErrStr<OpenPivotData> {
+   let lines = lines_from_file(file)?;
+   let ((opn, cls), max_date) = parse_pivots(pool, lines, a, debug)?;
+   let pivs: Vec<Pivot> = opn.into_iter().chain(cls).collect();
+   Ok((pivs, max_date))
+}
+
 // ----- TESTS -------------------------------------------------------
+
+#[cfg(not(tarpaulin_include))]
+pub mod sample_reader {
+   use super::*;
+   use crate::types::{ aliases::aliases, pools::pool_from_str };
+
+   pub fn read_sample_open_pivots(file: &str, pool: &str)
+         -> ErrStr<Vec<Pivot>> {
+      let p = pool_from_str(pool)?;
+      let a = aliases();
+      let (pivots, _dt) = read_pivots1(file, &p, &a, true)?;
+      Ok(pivots)
+   }
+}
 
 #[cfg(test)]
 #[cfg(not(tarpaulin_include))]
-pub mod functional_tests {
+mod functional_tests {
    use super::*;
    use paste::paste;
-   use book::{ create_testing, list_utils::take, utils::now };
+   use book::{
+      create_testing,
+      list_utils::take,
+      string_utils::plural,
+      utils::now
+   };
    use crate::{
       fetchers::test_helpers::test_functions::btc_eth_pivots,
-      reports::print_tsv_table_d
+      reports::print_tsv_table_d,
+      types::{ aliases::aliases, pools::mk_pool }
    };
 
    create_testing!("fetchers::pivots");
@@ -91,6 +127,16 @@ pub mod functional_tests {
       print_tsv_table_d("Open pivots", &take(3, &opn), true);
       print_tsv_table_d("Close pivots", &take(3, &cls), true);
       println!("\nmax_date is {mx}\n");
+   });
+
+   run!("read_pivots", {
+      let a = aliases();
+      let samp = "data/sample_avax_undead_open_pivots.tsv";
+      let path = format!("../quizzes/{samp}");
+      let pool = mk_pool("avax", "undead");
+      let (opens, max_dt) = read_pivots1(&path, &pool, &a, true)?;
+      println!("I read {} from {samp}", plural(opens.len(), "sample pivot"));
+      println!("max_date: {max_dt}");
    });
 }
 
