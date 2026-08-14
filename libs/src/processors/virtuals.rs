@@ -1,12 +1,12 @@
 use crate::types::{
-   calls::Call,
+   calls::{ Call, CallData },
    pivots::opens::{ Pivot, mk_pivot },
    quotes::Quotes
 };
 
 use book::{
    csv_utils::{ CsvHeader, CsvWriter },
-   currency::usd::{ USD, mk_usd },
+   currency::usd::USD,
    err_utils::ErrStr,
    string_utils::s
 };
@@ -48,20 +48,22 @@ fn recompute1(quotes: &Quotes, p: Pivot, debug: bool) -> ErrStr<Pivot> {
 mod counter_offerer {
    use std::collections::HashSet;
    use book::{
-      currency::usd::{ USD, mk_usd, no_monay },
+      debug,
+      currency::usd::{ USD, mk_usd },
       err_utils::ErrStr,
-      num::percentage::mk_percentage
+      num::percentage::mk_percentage,
+      string_utils::is_are
    };
 
    use crate::types::{
-      calls::Call,
+      calls::{ Call, CallData },
       measurable::Measurable,
       pivots::opens::Pivot,
       pools::Pool
    };
 
-   pub fn compute_virtual_pivot_amount((call, opens): &(Call, Vec<Pivot>),
-                                        debug: bool) -> f32 {
+   fn compute_virtual_pivot_amount(call_data: &CallData, debug: bool) -> f32 {
+      let (call, opens) = call_data;
       let mut amount = 0.0;
       let virtuals = filter_virtuals(&call.pool, &opens, &call.ids, debug);
       for v in virtuals { amount += v.sz(); }
@@ -70,55 +72,69 @@ mod counter_offerer {
 
    fn filter_virtuals(pool: &Pool, all_pivots: &[Pivot],
                       opens: &[usize], debug: bool) -> Vec<Pivot> {
+      debug!("filter_virtuals", debug);
       let pivs_set: HashSet<usize> = opens.iter().copied().collect();
       let mut virtuals = all_pivots.to_vec();
       // filter down to virtual pivots in the call
       virtuals.retain(|p| p.is_virtual() && pivs_set.contains(&p.index()));
-      if debug {
-         println!("There are {} virtual pivots for {pool} call",
-                  virtuals.len());
-      }
+      log!("There {} for {} call",
+           is_are(virtuals.len(), "virtual pivot"), pool);
+            
       virtuals
    }
 
+   type AmtMin = (f32, USD);
+
    pub fn compute_offrian(call: &Call, target: &USD,
-                          leeway_vol: USD, debug: bool) -> ErrStr<Call> {
-      let new_pivot_amt = compute_new_pivot_amt(call, target, debug);
-      let give_up = call.pivot_amount - new_pivot_amt;
-      let give_up_vol = mk_usd(give_up * call.pivot_close_price.amount());
-      let gap_vol = leeway_vol - give_up_vol;
-      if gap_vol < no_monay() {
-         Err(format!("Unable to change call {} to {target}; {} derth",
-                     call.ix, gap_vol))
+                          debug: bool) -> ErrStr<Call> {
+      let (new_pivot_amt, floor) = compute_new_pivot_amt(call, target, debug);
+      let vol = mk_usd(new_pivot_amt * call.pivot_close_price.amount());
+      if vol < floor {
+         let gap = mk_usd(vol.amount() - floor.amount());
+         Err(format!("Unable to change call {} to {target}; {gap} derth",
+                     call.ix))
       } else {
          Ok(compute_new_call(&call, new_pivot_amt))
       }
    }
 
-   fn compute_new_pivot_amt(call: &Call, target: &USD, debug: bool) -> f32 {
-      let new_principal = compute_new_start(call, target, debug);
-      let vol = new_principal * call.quote1.amount();
-      if debug { println!("New volume: {}", mk_usd(vol)); }
-      let new_pivot = vol / call.pivot_close_price.amount();
-      if debug {
-         println!("New pivot amount: {new_pivot} {}", call.pivot_token);
-      }
-      new_pivot
+   fn tv_computer(quote: &USD) -> impl Fn(f32) -> USD {
+      move | amt: f32 | mk_usd(amt * quote.amount())
    }
 
-   fn compute_new_start(call: &Call, target: &USD, debug: bool) -> f32 {
+   fn token_info(token: &str, quote: &USD) -> impl Fn(&str, f32) -> String {
+      let compute_tv = tv_computer(quote);
+      move | label: &str, amt: f32 | {
+         format!("{label}: {amt} {token} ({})", compute_tv(amt))
+      }
+   }
+
+   fn compute_new_pivot_amt(call: &Call, target: &USD, debug: bool) -> AmtMin {
+      debug!("compute_new_pivot_amt", debug);
+      let (new_principal, floor) = compute_new_start(call, target, debug);
+      let vol = new_principal * call.quote1.amount();
+      let pivot_qt = &call.pivot_close_price;
+      let new_pivot = vol / pivot_qt.amount();
+      let tok_inf = token_info(&call.pivot_token, pivot_qt);
+      log!("New volume: {}", mk_usd(vol));
+      log!("{}", tok_inf("New pivot amount", new_pivot));
+      (new_pivot, floor)
+   }
+
+   fn compute_new_start(call: &Call, target: &USD, debug: bool) -> AmtMin {
+      debug!("compute_new_start", debug);
       // from the call we get the committed amount and open pivots
       // from the open pivots we get the virtual amount committed;
       // that's our play or leeway.
       let principal_amt = call.gain_10_percent / 1.1; // total pivoted
-      if debug {
-         println!("principal_amt: {principal_amt} {}", call.from_token);
-      }
-      let new_start = target.amount() / call.quote1.amount();
-      if debug {
-         println!("new_start: {new_start} {} ({target})", call.from_token);
-      }
-      new_start
+      let ratio = call.val1.amount() / target.amount();
+      let new_start = principal_amt / ratio;
+      let tok_info = token_info(&call.from_token, &call.proposed_close_price);
+      log!("{}", tok_info("principal_amt", principal_amt));
+      log!("{}", tok_info("Required amount to commit to pivot", call.amount1));
+      log!("ratio: {}", ratio);
+      log!("{}", tok_info("new starting principal", new_start));
+      (new_start, mk_usd(call.amount1 * call.proposed_close_price.amount()))
    }
 
    fn compute_new_call(call: &Call, target_amt: f32) -> Call {
@@ -149,44 +165,62 @@ mod counter_offerer {
       new_call
    }
 
+   pub fn compute_leeway(call_data: &CallData, debug: bool) {
+      debug!("compute_leeway", debug);
+      let leeway = compute_virtual_pivot_amount(call_data, debug);
+      let (call, _opens) = call_data;
+      let leeway_info = token_info(&call.from_token, &call.quote1);
+      log!("{} leeway", leeway_info("The virtual pivots provide", leeway));
+   }
+
    #[cfg(not(tarpaulin_include))]
    #[cfg(test)]
    mod tests {
       use super::*;
-      use crate::types::calls::test_data::{ sample_call, target };
-      use book::num::estimate::mk_estimate;
+      use crate::types::calls::test_data::{
+         sample_undead_usdc_offrian,
+         sample_call,
+         target
+      };
+      use book::{
+         csv_utils::as_csv,
+         num::estimate::mk_estimate,
+         string_utils::s
+      };
 
       #[test] fn test_compute_new_pivot() -> ErrStr<()> {
-         let call = sample_call(1)?;
-         let new_pivot = compute_new_pivot_amt(&call, &target(), true);
-         assert_eq!(2500.0, new_pivot);
-               // only works on USDC pools which this call happens to be on.
-         Ok(())
+         let call = sample_call(4)?;
+         let (new_pivot_amt, _) = compute_new_pivot_amt(&call, &target(), true);
+         let undead_est = mk_estimate(6.61e5);
+         undead_est.is(new_pivot_amt)
       }
 
       #[test] fn test_compute_new_start() -> ErrStr<()> {
-         let call = sample_call(1)?;
-         let btc = compute_new_start(&call, &target(), true);
-         mk_estimate(0.03).is(btc)
+         let call = sample_call(4)?;
+         let (btc, _) = compute_new_start(&call, &target(), true);
+         mk_estimate(0.016).is(btc)
       }
 
+      #[test] fn test_compute_virtual_pivot_amount_offrian() -> ErrStr<()> {
+         let call_data = sample_undead_usdc_offrian("../quizzes")?;
+         let (call, _) = &call_data;
+         let tok = s(&call.from_token);
+         let virtual_amt = compute_virtual_pivot_amount(&call_data, true);
+         println!("For call:\n\n{}\nvirtual amount: {virtual_amt} {}",
+                  as_csv(&[call], true)?, tok);
+         assert!(virtual_amt > 0.0);
+         Ok(())
+      }
    }
 // xxx TODO: moar testos herer
 }
 
-use counter_offerer::{ compute_virtual_pivot_amount, compute_offrian };
+use counter_offerer::{ compute_leeway, compute_offrian };
 
-pub fn compute_counter_offer(call_data: &(Call, Vec<Pivot>),
-                             target: &USD, debug: bool)
+pub fn compute_counter_offer(call_data: &CallData, target: &USD, debug: bool)
       -> ErrStr<Call> {
-   let leeway = compute_virtual_pivot_amount(call_data, debug);
-   let (call, _opens) = call_data;
-   let leeway_vol = mk_usd(leeway * call.proposed_close_price.amount());
-   if debug {
-      println!("The virtual pivots provide {leeway} {} leeway ({})",
-               call.from_token, leeway_vol);
-   }
-   compute_offrian(&call, target, leeway_vol, debug)
+   compute_leeway(call_data, debug);
+   compute_offrian(&call_data.0, target, debug)
 }
 
 // ----- TESTS -----------------------------------------------------------
@@ -196,18 +230,12 @@ pub fn compute_counter_offer(call_data: &(Call, Vec<Pivot>),
 pub mod functional_tests {
    use super::*;
    use paste::paste;
-   use book::{ create_testing, csv_utils::as_csv, utils::now };
+   use book::create_testing;
 
-   use crate::{
-      fetchers::{
-         calls::fetch_call_data,
-         test_helpers::test_functions::marshall
-      },
-      types::{
-         assets::amounts::mk_amt,
-         pivots::opens::test_data::mk_btc_usdc_piv,
-         quotes::sample_data::sample_quotes_maker
-      }
+   use crate::types::{
+      assets::amounts::mk_amt,
+      pivots::opens::test_data::mk_btc_usdc_piv,
+      quotes::sample_data::sample_quotes_maker
    };
 
    create_testing!("processors::virtuals");
@@ -217,16 +245,6 @@ pub mod functional_tests {
       let quotes = sample_quotes_maker(&[("BTC", 80000.0)]);
       let _new_piv = recompute_pivot(&quotes, true)(piv)?;
    });
-
-   run!("compute_virtual_pivot_amount", " (offrian)", {
-      let (root_url, _) = marshall()?;
-      let call_data = now(fetch_call_data(&root_url, 1, true))?;
-      let (call, _) = &call_data;
-      let tok = s(&call.from_token);
-      let virtual_amt = compute_virtual_pivot_amount(&call_data, true);
-      println!("For call:\n\n{}\nvirtual amount: {virtual_amt} {}",
-               as_csv(&[call], true)?, tok);
-   });
 }
 
 #[cfg(test)]
@@ -235,12 +253,20 @@ mod tests {
    use super::*;
    use crate::types::{
       assets::amounts::mk_amt,
-      calls::test_data::{ sample_avax_undead_offrian, tenk },
+      calls::test_data::{
+         sample_btc_undead_offrian,
+         sample_undead_usdc_offrian,
+         tenk
+      },
       pivots::opens::test_data::mk_btc_usdc_piv,
       quotes::sample_data::sample_quotes_maker
    };
 
-   use book::{ num::estimate::mk_estimate, types::values::Value };
+   use book::{
+      currency::usd::mk_usd,
+      num::estimate::mk_estimate,
+      types::values::Value
+   };
 
    // ----- virtsz tests ------------------------------------------------------
 
@@ -297,40 +323,36 @@ mod tests {
    // ----- offrian tests -----------------------------------------------------
 
    #[test] fn fail_compute_counter_offer() -> ErrStr<()> {
-      let call_data = sample_avax_undead_offrian("../quizzes")?;
+      let call_data = sample_undead_usdc_offrian("../quizzes")?;
       let truthiness = compute_counter_offer(&call_data, &mk_usd(1000.0), true);
       assert!(truthiness.is_err());
       Ok(())
    }
 
    #[test] fn test_compute_counter_offer_ok() -> ErrStr<()> {
-      let call_data = sample_avax_undead_offrian("../quizzes")?;
+      let call_data = sample_undead_usdc_offrian("../quizzes")?;
       let truthiness =
-         compute_counter_offer(&call_data, &mk_usd(1700.0), true);
+         compute_counter_offer(&call_data, &mk_usd(8e4), true);
       assert!(truthiness.is_ok(), "Err is {truthiness:?}");
       Ok(())
    }
 
    #[test] fn test_compute_offrian() -> ErrStr<()> {
-      let call_data = sample_avax_undead_offrian("../quizzes")?;
-      let leeway = compute_virtual_pivot_amount(&call_data, true);
+      let call_data = sample_undead_usdc_offrian("../quizzes")?;
+      compute_leeway(&call_data, true);
       let (call, _opens) = call_data;
-      let leeway_vol = mk_usd(leeway * call.proposed_close_price.amount());
-      let new_call = compute_offrian(&call, &tenk(), leeway_vol, true)?;
-      let roi_est = mk_estimate(0.037);
+      let new_call = compute_offrian(&call, &tenk(), true)?;
+      let roi_est = mk_estimate(0.46);
       roi_est.is(new_call.roi.value())?;
-      let apr_est = mk_estimate(0.17);
+      let apr_est = mk_estimate(6.23);
       apr_est.is(new_call.apr.value())?;
-      let avax = new_call.amount1;
-      assert_eq!(0.0, avax, "AVAX: principal asset (actual, not virtual)");
-      let avax = new_call.virtual_amount;
-      let avax_est = mk_estimate(1458.0);
-      avax_est.is(avax)
+      let undead_est = mk_estimate(1.55e7);
+      undead_est.is(new_call.amount1)
    }
 
    #[test] fn test_compute_counter_offer_positive_virtual_amount()
          -> ErrStr<()> {
-      let call_data = sample_avax_undead_offrian("../quizzes")?;
+      let call_data = sample_btc_undead_offrian("../quizzes")?;
       let target = mk_usd(1700.00);
       let call = compute_counter_offer(&call_data, &target, true)?;
       let virt = call.virtual_amount;

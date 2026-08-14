@@ -14,6 +14,7 @@ the new pivot table.
 
 ## Revision History
 
+* 1.04, 2026-08-14: now calculates `opened` field value if not provided
 * 1.03, 2026-08-10: added `opened`-column to close pivot
 * 1.02, 2026-07-29: library-upgrades
 * 1.01, 2026-07-05: use CLAP to process arguments and for usage-documentation

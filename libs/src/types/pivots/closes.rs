@@ -84,10 +84,11 @@ impl Gains for ClosePivot {
    fn gain_usd(&self) -> USD { self.gain_total_usd.clone() }
 }
 
-pub fn transform(old_row: &OldClosePivotRow, gain_10: f32) -> ClosePivot {
+pub fn transform(old_row: &OldClosePivotRow, opened: &NaiveDate, gain_10: f32)
+      -> ClosePivot {
    let o = &old_row;
    let tr: f32 = o.trade.into();
-   mk_close_pivot(&o.date, None, &o.pivot, o.close, &o.tx_id, &o.from,
+   mk_close_pivot(&o.date, Some(opened), &o.pivot, o.close, &o.tx_id, &o.from,
                   &o.from_quote, &o.to, &o.to_quote, tr, &o.vol, gain_10,
                   o.new_to_actual, o.gain, &o.gain_total_usd, &o.roi, &o.apr)
 }
@@ -132,5 +133,6 @@ pub struct OldClosePivotRow {
 
 impl OldClosePivotRow {
    pub fn open_pivots_ix(&self) -> Vec<Id> { self.pivot.clone() } 
+   pub fn closed(&self) -> NaiveDate { self.date.clone() }
 }
 

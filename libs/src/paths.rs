@@ -47,7 +47,7 @@ pub fn pivot_pool_from_file(path: &str) -> ErrStr<Pool> {
       let name = split1.first().unwrap();
       pool_from_str(&name)
    } else {
-      Err(format!("Cannot parse pool from {file}"))
+      Err(format!("Cannot parse pool-name from {file}"))
    }
 }
 

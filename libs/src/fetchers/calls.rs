@@ -10,6 +10,7 @@ use super::{ pivots::fetch_open_pivots, utils::fetch_lines };
 
 use crate::{
    paths::pivots_dir,
+   processors::pivots::opens::filter_pivots,
    tables::IxTable,
    types::{ aliases::aliases, calls::{ Call, CallData, parse_calls } }
 };
@@ -37,11 +38,12 @@ pub async fn fetch_call_data(root_url: &str, ix: usize, debug: bool)
    let pool = &call.pool;
    let a = aliases();
    let (all_pivs, dt) = fetch_open_pivots(root_url, pool, &a, debug).await?;
+   let pivots_for_call = filter_pivots(&all_pivs, &call.ids);
    if debug {
       println!("Fetched {} open pivots for {pool} pool; max_date: {dt}",
-               all_pivs.len());
+               pivots_for_call.len());
    }
-   Ok((call, all_pivs))
+   Ok((call, pivots_for_call))
 }
 
 async fn grab_call(root_url: &str, ix: usize, debug: bool) -> ErrStr<Call> {
