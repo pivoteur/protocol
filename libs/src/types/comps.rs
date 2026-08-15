@@ -1,6 +1,7 @@
 use chrono::NaiveDate;
 
 use book::{
+   debug,
    currency::usd::{USD,mk_usd},
    csv_utils::{CsvHeader,CsvWriter},
    err_utils::ErrStr,
@@ -11,7 +12,7 @@ use crate::collections::assets::{Assets,mk_assets};
 
 use super::{
    measurable::{Measurable,size,tvl},
-   pools::mk_pool,
+   pools::pool_names::mk_pool,
    tokens::coins::{Coin,PivotCoin}
 };
 
@@ -80,7 +81,10 @@ mod asset_ordering {
    #[cfg(test)]
    mod tests {
       use super::*;
-      use crate::types::{ comps::test_data::*, pools::{ Pool, pool_from_str } };
+      use crate::types::{
+         comps::test_data::*,
+         pools::pool_names::{ Pool, pool_from_str }
+      };
       use book::err_utils::ErrStr;
 
       fn assert_pool_tokens<'a>(pool: Pool) -> impl Fn(&'a Coin, &'a Coin) {
@@ -132,9 +136,8 @@ pub fn mk_composition(primary: &Coin, pivot: &Coin) -> Composition {
 }
 
 pub fn from_assets(assets: &[Coin], debug: bool) -> ErrStr<Composition> {
-   if debug {
-      println!("types::comps::from_assets received {} assets", assets.len());
-   }
+   debug!("from_assets", debug);
+   log!("{} assets", assets.len());
    match assets {
       [a, b] => Ok(arrange_assets(&a, &b)),
       _ => Err(format!("Cannot make a composition from {}",

@@ -14,7 +14,7 @@ use libs::{
    fetchers::{ pivots::fetch_pivots, quotes::fetch_quotes},
    types::{
       pivots::opens::{ Pivot, next_close_id },
-      pools::{Pool,mk_pool},
+      pools::pool_names::{Pool,mk_pool},
       proposals::proposes::{propose,Propose}
    }
 };
@@ -143,7 +143,7 @@ mod tests {
 
    use super::*;
    use book::{ date_utils::{ parse_date, yesterday }, utils::get_env };
-   use libs::types::pools::pool_from_str;
+   use libs::types::pools::pool_names::pool_from_str;
 
    async fn compute_test_closes() -> ErrStr<Report> {
       let pivot_url = get_env("PIVOT_URL")?;

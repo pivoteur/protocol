@@ -3,7 +3,7 @@ use chrono::NaiveDate;
 use serde::{ Serialize,Serializer, ser::SerializeStruct };
 
 use super::pool_assets::PoolAssets;
-use crate::types::pools::Pool;
+use crate::types::pools::pool_names::Pool;
 use book::utils::{ composer, deref };
 
 #[derive(Debug,Clone)]

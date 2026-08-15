@@ -14,7 +14,7 @@ use libs::{
    fetchers::{ pivots::fetch_pivots, quotes::fetch_quotes },
    types::{ 
       pivots::opens::{ partition_on, next_close_id },
-      pools::{Pool,mk_pool},
+      pools::pool_names::{Pool,mk_pool},
       proposals::proposes::propose
    }
 };

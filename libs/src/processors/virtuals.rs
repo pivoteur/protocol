@@ -59,7 +59,7 @@ mod counter_offerer {
       calls::{ Call, CallData },
       measurable::Measurable,
       pivots::opens::Pivot,
-      pools::Pool
+      pools::pool_names::Pool
    };
 
    fn compute_virtual_pivot_amount(call_data: &CallData, debug: bool) -> f32 {

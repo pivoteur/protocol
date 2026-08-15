@@ -24,7 +24,7 @@ use crate::types::{
       opens::{Pivot,headers,froms},
       utils::weighted_days
    },
-   pools::{Pool,mk_pool},
+   pools::pool_names::{Pool,mk_pool},
    quotes::Quotes,
    util::{Blockchain,Id}
 };

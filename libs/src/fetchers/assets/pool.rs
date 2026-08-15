@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use chrono::NaiveDate;
 
 use book::{
+   debug,
    csv_utils::CsvWriter,
    currency::usd::USD,
    date_utils::parse_date,
@@ -21,7 +22,7 @@ use crate::{
       tokens::coins::{Coin,mk_coin},
       comps::{Composition,mk_composition},
       pivots::opens::{Pivot,pivot_assets},
-      pools::Pool,
+      pools::pool_names::Pool,
       quotes::Quotes,
       util::{Token,Blockchain}
    }
@@ -33,13 +34,11 @@ use crate::{
 
 pub async fn fetch_assets(root_url: &str, pool: &Pool, aliases: &Aliases,
                           debug: bool) -> ErrStr<Composition> {
+   debug!("fetch_assets", debug);
    let url = pool_assets_url(root_url, pool);
    let lines = fetch_lines(&url).await?;
    let table = ingest(parse_date, parse_str, parse_str, &lines, "\t")?;
-   if debug {
-      println!("fetchers::assets::pool::fetch_assets:
-	for {pool}, assets table size: {}", table.data.len());
-   }
+   log!("for {}, assets table size: {}", pool, table.data.len());
    let hdrs = aliases.enum_headers(cols(&table));
    let max_date = rows(&table).iter().max().cloned()
                               .ok_or(format!("No max_date for {pool}"))?;
@@ -70,10 +69,11 @@ fn buidl_asset<'a>(asset_type: &str, amount: &str,
                    q: impl Fn(&'a Token) -> ErrStr<USD>, 
                    blk: &Blockchain, t: &'a Token, dt: &NaiveDate, debug: bool)
       -> ErrStr<Coin> {
+   debug!("buidl_asset", debug);
    let amt = parse_commaless(amount)?;
    let quote = q(t)?;
    let asset = mk_coin(&(blk.clone(), t.clone()), amt, &quote, dt);
-   if debug { println!("\t{asset_type} asset is {}", asset.as_csv()); }
+   log!("{} asset is {}", asset_type, asset.as_csv());
    Ok(asset)
 }
 
@@ -126,7 +126,7 @@ pub mod functional_tests {
    };
    use crate::{
       fetchers::{quotes::fetch_quotes,test_helpers::test_functions::marshall},
-      types::pools::pool_from_str
+      types::pools::pool_names::pool_from_str
    };
 
    create_testing!("fetchers::assets::pool");
@@ -160,7 +160,7 @@ mod tests {
    };
    use crate::{
       fetchers::{quotes::fetch_quotes,test_helpers::test_functions::marshall},
-      types::{ measurable::tvl, pools::pool_from_str }
+      types::{ measurable::tvl, pools::pool_names::pool_from_str }
    };
 
    // ----- ALL POOL ASSETS ------------------------------------------

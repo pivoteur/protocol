@@ -18,7 +18,7 @@ use book::{
 use libs::{
    paths::open_pivot_path,
    tables::IxTable,
-   types::{ util::Id, pools::pool_from_str }
+   types::{ util::Id, pools::pool_names::pool_from_str }
 };
 
 trait CsvHeader {

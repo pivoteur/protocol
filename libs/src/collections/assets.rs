@@ -11,7 +11,7 @@ use crate::types::{
    comps::{ Composition, mk_composition },
    tokens::coins::{ Coin, mk_coin },
    measurable::{Measurable,sort_by_tvl,sort_by_weight},
-   pools::Pool,
+   pools::pool_names::Pool,
    quotes::Quotes,
    util::{Token,Blockchain}
 };
@@ -173,7 +173,7 @@ mod tests {
    use super::*;
    use super::test_data::{ test_btc_coin, test_eth_coin, test_btc_eth_assets };
    use crate::types::{
-      pools::pool_from_str,
+      pools::pool_names::pool_from_str,
       quotes::sample_data::sample_btc_eth_quotes,
       tokens::coins::test_data::coin
    };

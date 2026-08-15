@@ -10,7 +10,7 @@ use book::{
 use libs::{
    fetchers::assets::pool::fetch_assets,
    reports::print_table,
-   types::{aliases::aliases,pools::{Pool,mk_pool}}
+   types::{aliases::aliases,pools::pool_names::{Pool,mk_pool}}
 };
 
 // as this function only calls a library function, it's not testable:

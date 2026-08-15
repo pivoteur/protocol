@@ -4,13 +4,13 @@ use serde_with::{serde_as, DisplayFromStr};
 
 use book::{
    currency::usd::USD,
-   err_utils::{ErrStr,err_or},
+   err_utils::ErrStr,
    num::percentage::Percentage
 };
 
 use super::{
    blockchains::Blockchain,
-   pools::Pool,
+   pools::pool_names::Pool,
    util::Id,
    pivots::opens::Pivot
 };
@@ -68,19 +68,6 @@ pub struct Call {
     pub apr: Percentage
 }
 
-pub fn parse_calls(csv_data: &str) -> ErrStr<Vec<Call>> {
-   let mut reader = csv::Reader::from_reader(csv_data.as_bytes());
-   let mut records = Vec::new();
-   let mut ix = 0;
-   for result in reader.deserialize() {
-      ix += 1;
-      let record: Call = err_or(result, &format!("Cannot parse row {ix}"))?;
-      records.push(record);
-   }
-
-   Ok(records)
-}
-
 // ----- TESTS -------------------------------------------------------
 
 #[cfg(test)]
@@ -89,13 +76,13 @@ mod functional_tests {
    use super::*;
    use crate::fetchers::test_helpers::test_functions::fetch_local_data;
    use paste::paste;
-   use book::{ create_testing, csv_utils::as_csv };
+   use book::{ create_testing, csv_utils::{ as_csv, parse_items } };
 
    create_testing!("types::calls");
 
    run!("parse_calls", {
       let sample_calls = fetch_local_data("../quizzes", "sample_calls.csv")?;
-      let calls = parse_calls(&sample_calls)?;
+      let calls = parse_items::<Call>(&sample_calls)?;
       println!("Calls from csv-data:\n{}", as_csv(&calls, true)?);
    });
 }
@@ -103,7 +90,7 @@ mod functional_tests {
 #[cfg(not(tarpaulin_include))] 
 pub mod test_data {
    use super::*;
-   use book::currency::usd::mk_usd;
+   use book::{ csv_utils::parse_items, currency::usd::mk_usd };
    use crate::fetchers::test_helpers::test_functions::{
       parse_test_pivots_from_file,
       fetch_local_data
@@ -114,7 +101,7 @@ pub mod test_data {
          
    pub fn sample_call(ix: usize) -> ErrStr<Call> {
       let raw_csv_data = fetch_local_data("../quizzes", "sample_calls.csv")?;
-      let calls = parse_calls(&raw_csv_data)?;
+      let calls = parse_items::<Call>(&raw_csv_data)?;
       Ok(calls[ix-1].clone()) // ix - 1 because 1 is 0 sometimes. *sigh*
    }     
 

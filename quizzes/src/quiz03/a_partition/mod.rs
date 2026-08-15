@@ -14,7 +14,7 @@ use libs::{
    types::{
       aliases::aliases,
       pivots::opens::{Pivot,partition_on},
-      pools::{Pool,mk_pool}
+      pools::pool_names::{Pool,mk_pool}
    }
 };
 
@@ -82,7 +82,7 @@ pub mod functional_tests {
    use super::*;
    use paste::paste;
    use book::{ create_testing, err_utils::ErrStr, utils:: { get_env, now } };
-   use libs::types::pools::pool_from_str;
+   use libs::types::pools::pool_names::pool_from_str;
 
    create_testing!("quiz03::a_partition");
 

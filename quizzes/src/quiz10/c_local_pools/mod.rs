@@ -42,7 +42,7 @@ mod pools_impl {
       string_utils::str2strf,
       utils::get_env
    };
-   use libs::{ paths::pivot_pool_from_file, types::pools::Pool };
+   use libs::{ paths::pivot_pool_from_file, types::pools::pool_names::Pool };
 
    pub async fn print_pools_as_js(auth: &str, date: &NaiveDate) -> ErrStr<()> {
       let a = pools(auth).await?;
@@ -85,7 +85,7 @@ mod tests {
    use super::*;
    use std::collections::HashSet;
    use book::date_utils::yesterday;
-   use libs::types::pools::{ mk_pool, Pool };
+   use libs::types::pools::pool_names::{ mk_pool, Pool };
    use pools_impl::pools;
 
    #[tokio::test] async fn fail_print_pools_as_js() {

@@ -13,7 +13,7 @@ use super::{
    types::{
       gains::Gains,
       measurable::Measurable,
-      pools::Pool,
+      pools::pool_names::Pool,
       proposals::proposes::Propose
    }
 };

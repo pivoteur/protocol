@@ -2,6 +2,7 @@ use chrono::NaiveDate;
 use clap::Parser;
 
 use book::{
+   debug,
    parse_args_add_banner,
    cli_utils::generate_banner,
    err_utils::ErrStr,
@@ -23,15 +24,16 @@ use libs::{
 async fn health_computer(f: impl Fn(&mut Assets, &Coin),
                          root_url: &str, date: &NaiveDate, debug: bool) 
       -> ErrStr<Vec<Composition>> {
-   if debug { println!("Computing pivot pool health\n"); }
+   debug!("health_computer", debug);
+   log!("Computing pivot pool health");
    let pools = fetch_pool_names(&root_url).await?;
    let quotes = fetch_quotes(date).await?;
    let mut ans = Vec::new();
    for pool in pools {
-      if debug { println!("Computing health for pool {pool}..."); }
+      log!("Computing health for pool {}...", pool);
       let comp =
          available_assets_fetcher(&f, &root_url, &quotes, &pool, debug).await?;
-      if debug { println!("...done."); }
+      log!("...done.");
       ans.push(comp);
    }
    ans.sort_by_key(|c| mk_safe_float(&c.tvl().amount()));
@@ -120,7 +122,7 @@ mod tests {
    use book::date_utils::yesterday;
    use libs::{
       fetchers::test_helpers::test_functions::marshall,
-      types::pools::Pool
+      types::pools::pool_names::Pool
    };
 
    #[tokio::test]

@@ -8,7 +8,7 @@ use book::{
 use crate::types::{
    assets::asset_types::{AssetType,AssetType::*},
    measurable::{Measurable,weight,size},
-   pools::Pool,
+   pools::pool_names::Pool,
    tokens::coins::{Coin,mk_coin},
    util::{Token,Blockchain}
 };

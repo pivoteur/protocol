@@ -1,5 +1,6 @@
 use book::{
-   csv_utils::as_csv,
+   debug,
+   csv_utils::{ as_csv, parse_items },
    err_utils::ErrStr,
    parse_utils::{parse_id,parse_str},
    rest_utils::read_rest,
@@ -12,7 +13,7 @@ use crate::{
    paths::pivots_dir,
    processors::pivots::opens::filter_pivots,
    tables::IxTable,
-   types::{ aliases::aliases, calls::{ Call, CallData, parse_calls } }
+   types::{ aliases::aliases, calls::{ Call, CallData } }
 };
 
 // ----- CALLS -------------------------------------------------------
@@ -26,29 +27,27 @@ pub async fn fetch_calls_table(root_url: &str) -> ErrStr<IxTable> {
 pub async fn fetch_calls(root_url: &str) -> ErrStr<Vec<Call>> {
    let url = format!("{}/calls.csv", pivots_dir(root_url));
    let csv_data = read_rest(&url).await?;
-   parse_calls(&csv_data)
+   parse_items::<Call>(&csv_data)
 }
 
 pub async fn fetch_call_data(root_url: &str, ix: usize, debug: bool)
       -> ErrStr<CallData> {
+   debug!("fetch_call_data", debug);
    let call = grab_call(&root_url, ix, debug).await?;
-   if debug {
-      println!("Examining call\n{}", as_csv(&[call.clone()], true)?);
-   }
+   log!("Examining call\n{}", as_csv(&[call.clone()], true)?);
    let pool = &call.pool;
    let a = aliases();
    let (all_pivs, dt) = fetch_open_pivots(root_url, pool, &a, debug).await?;
    let pivots_for_call = filter_pivots(&all_pivs, &call.ids);
-   if debug {
-      println!("Fetched {} open pivots for {pool} pool; max_date: {dt}",
-               pivots_for_call.len());
-   }
+   log!("Fetched {} open pivots for {} pool; max_date: {}",
+               pivots_for_call.len(), pool, dt);
    Ok((call, pivots_for_call))
 }
 
 async fn grab_call(root_url: &str, ix: usize, debug: bool) -> ErrStr<Call> {
+   debug!("grab_call", debug);
    let calls = fetch_calls(root_url).await?;
-   if debug { println!("Fetched {} calls", calls.len()); }
+   log!("Fetched {} calls", calls.len());
    let call = calls.get(ix - 1).ok_or("No call found at index {ix}")?;
    Ok(call.clone())
 }

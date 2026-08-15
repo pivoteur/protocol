@@ -1,6 +1,7 @@
 use chrono::NaiveDate;
 
 use book::{
+   debug,
    date_utils::datef,
    err_utils::ErrStr,
    file_utils::lines_from_file,
@@ -13,7 +14,11 @@ use super::utils::fetch_lines;
 use crate::{
    paths::{ open_pivot_path, pivot_pool_from_file },
    tables::index_table,
-   types::{ aliases::Aliases, pivots::opens::{Pivot,parse_pivot}, pools::Pool }
+   types::{
+      aliases::Aliases,
+      pivots::opens::{Pivot,parse_pivot},
+      pools::pool_names::Pool
+   }
 };
 
 // ----- PIVOTS -------------------------------------------------------
@@ -28,11 +33,9 @@ pub async fn fetch_pivots(root_url: &str, pool: &Pool, a: &Aliases, debug: bool)
 
 pub fn parse_pivots(pool: &Pool, lines: Vec<String>, a: &Aliases, debug: bool)
       -> ErrStr<(Partition<Pivot>, NaiveDate)> {
+   debug!("parse_pivots", debug);
    let table = index_table(lines)?;
-   if debug {
-      println!("For the {pool} pivot table:
-	total pivots fetched: {}", table.data.len());
-   }
+   log!("fetched {} pivots for {} pivot table", table.data.len(), pool);
    let hdrs = a.enum_headers(cols(&table));
 
    let max_date = max_diem(&table, hdrs["opened"], &pool, debug)?;
@@ -47,20 +50,19 @@ pub fn parse_pivots(pool: &Pool, lines: Vec<String>, a: &Aliases, debug: bool)
          pass.push(piv);
       }
    }
-   if debug {
-      println!("\t{} open pivots; {} closed pivots", acts.len(), pass.len());
-   }
+   log!("{} open pivots; {} closed pivots", acts.len(), pass.len());
    Ok(((acts, pass), max_date.clone()))
 }
 
 fn max_diem<T>(table: &Table<T, String, String>, ix: usize, pool: &Pool,
                debug: bool) -> ErrStr<NaiveDate> {
+   debug!("max_diem", debug);
    let max_date = table.data
                        .iter()
                        .map(|row| datef(&row[ix]))
                        .max()
                        .ok_or(format!("No max date for {pool} pivot pool"))?;
-   if debug { println!("\tmax_date: {max_date}"); }
+   log!("max_date: {}", max_date);
    Ok(max_date)
 }
 
@@ -92,7 +94,7 @@ fn read_pivots1(file: &str, pool: &Pool, a: &Aliases, debug: bool)
 #[cfg(not(tarpaulin_include))]
 pub mod sample_reader {
    use super::*;
-   use crate::types::{ aliases::aliases, pools::pool_from_str };
+   use crate::types::{ aliases::aliases, pools::pool_names::pool_from_str };
 
    pub fn read_sample_open_pivots(file: &str, pool: &str)
          -> ErrStr<Vec<Pivot>> {
@@ -117,7 +119,7 @@ mod functional_tests {
    use crate::{
       fetchers::test_helpers::test_functions::btc_eth_pivots,
       reports::print_tsv_table_d,
-      types::{ aliases::aliases, pools::mk_pool }
+      types::{ aliases::aliases, pools::pool_names::mk_pool }
    };
 
    create_testing!("fetchers::pivots");
@@ -148,7 +150,7 @@ mod tests {
    use crate::{
       fetchers::test_helpers::test_functions::btc_eth_pivots,
       tables::{c2t,csv2tsv},
-      types::{aliases::aliases,pools::pool_from_str}
+      types::{aliases::aliases,pools::pool_names::pool_from_str}
    };
    use book::{ csv_utils::CsvHeader, date_utils::tomorrow };
 

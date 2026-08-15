@@ -13,7 +13,7 @@ pub mod test_functions {
       types::{
          aliases::{ Aliases, aliases },
          pivots::opens::Pivot,
-         pools::pool_from_str
+         pools::pool_names::pool_from_str
       }
    };
 

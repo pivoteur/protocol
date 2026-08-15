@@ -4,7 +4,7 @@ use book::{
    string_utils::{str2strf,s}
 };
 use super::utils::fetch_lines;
-use crate::types::pools::{Pool,mk_pool};
+use crate::types::pools::pool_names::{Pool,mk_pool};
 
 // ----- POOL NAMES --------------------------------------------------
 

@@ -2,7 +2,7 @@ use serde::Serialize;
 
 use super::allocations::Allocation;
 
-use crate::types::pools::{ Pool, mk_pool };
+use crate::types::pools::pool_names::{ Pool, mk_pool };
 
 #[derive(Debug, Clone, Serialize)]
 pub struct PoolAssets {

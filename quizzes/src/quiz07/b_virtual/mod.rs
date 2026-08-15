@@ -22,7 +22,7 @@ use libs::{
       comps::Composition,
       measurable::{Measurable,tvl},
       pivots::opens::Pivot,
-      pools::Pool,
+      pools::pool_names::Pool,
       quotes::Quotes
    }
 };
@@ -142,7 +142,7 @@ mod functional_tests {
    use paste::paste;
    use libs::{
       paths::paths_test_helpers::path_to_btc_eth_pivot_pool,
-      types::pools::mk_pool
+      types::pools::pool_names::mk_pool
    };
    use book::{
       create_testing,

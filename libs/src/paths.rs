@@ -1,5 +1,5 @@
 use book::{ err_utils::ErrStr, file_utils::dir_file };
-use super::types::pools::{Pool,pool_from_str};
+use super::types::pools::pool_names::{Pool,pool_from_str};
 
 // ----- location of the pivot-files ----------------------------------------
 
