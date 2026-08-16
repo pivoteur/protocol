@@ -15,7 +15,7 @@ use crate::{
    types::{
       measurable::sort_descending,
       pivots::opens::{Pivot,next_close_id,partition_on},
-      pools::pool_names::Pool,
+      pools::pool_names::PoolName,
       proposals::proposes::{Propose,propose as propose_f},
       util::Token
    }
@@ -24,16 +24,16 @@ use crate::{
 // ---- Proposals -------------------------------------------------------
 
 pub async fn process_pools(auth_name: &str, date: &NaiveDate, debug: bool)
-      -> ErrStr<(Vec<Proposal>, Vec<Pool>)> {
+      -> ErrStr<(Vec<Proposal>, Vec<PoolName>)> {
    let auth = auth_name.to_uppercase();
    let root_url = get_env(&format!("{auth}_URL"))?;
    let pools = fetch_pool_names(&root_url).await?;
    process_pools0(&root_url, &pools, date, debug).await
 }
 
-async fn process_pools0(root_url: &str, pools: &Vec<Pool>,
+async fn process_pools0(root_url: &str, pools: &Vec<PoolName>,
                         date: &NaiveDate, debug: bool)
-      -> ErrStr<(Vec<Proposal>, Vec<Pool>)> {
+      -> ErrStr<(Vec<Proposal>, Vec<PoolName>)> {
    let quotes = fetch_quotes(&date).await?;
    let a = &quotes.aliases;
    let proposer = propose_f(&quotes);
@@ -60,7 +60,7 @@ type Ixs<A> = (Vec<A>, usize);
 type Ix<A> = (A, usize);
 
 fn propose(proposer: impl Fn(Ixs<Pivot>, bool) -> ErrStr<Option<Ix<Propose>>>,
-           pool: &Pool, prim: &Token, opens: Vec<Pivot>, closes: Vec<Pivot>,
+           pool: &PoolName, prim: &Token, opens: Vec<Pivot>, closes: Vec<Pivot>,
            max_date: &NaiveDate, debug: bool) -> ErrStr<Vec<Proposal>> {
    let next_close = next_close_id(&closes);
    let len = &opens.len();
@@ -96,7 +96,7 @@ pub mod functional_tests {
       let (calls,nixen) = now(process_pools("pivot", &yday, true))?;
       let hdr = format!("Calls for {}:\n", yday);
       print_table(&hdr, &calls);
-      let ps: Vec<String> = nixen.iter().map(Pool::pool_name).collect();
+      let ps: Vec<String> = nixen.iter().map(PoolName::pool_name).collect();
       println!("Pools with no calls:\n\n{}", ps.join("\t"));
    });
 }

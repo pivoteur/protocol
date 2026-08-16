@@ -11,7 +11,7 @@ use crate::types::{
    comps::{ Composition, mk_composition },
    tokens::coins::{ Coin, mk_coin },
    measurable::{Measurable,sort_by_tvl,sort_by_weight},
-   pools::pool_names::Pool,
+   pools::pool_names::PoolName,
    quotes::Quotes,
    util::{Token,Blockchain}
 };
@@ -63,7 +63,7 @@ from assets {}
    }
    pub fn is_empty(&self) -> bool { self.map.is_empty() }
    pub fn assets(&self) -> Vec<Coin> { self.map.values().cloned().collect() }
-   pub fn as_composition(&mut self, pool: &Pool, quotes: &Quotes)
+   pub fn as_composition(&mut self, pool: &PoolName, quotes: &Quotes)
          -> ErrStr<Composition> {
 /* 4 scenarii:
 
@@ -173,7 +173,7 @@ mod tests {
    use super::*;
    use super::test_data::{ test_btc_coin, test_eth_coin, test_btc_eth_assets };
    use crate::types::{
-      pools::pool_names::pool_from_str,
+      pools::pool_names::pool_name_from_str,
       quotes::sample_data::sample_btc_eth_quotes,
       tokens::coins::test_data::coin
    };
@@ -181,7 +181,7 @@ mod tests {
    fn mk_sample_btc_eth_composition(assets: &mut Assets)
          -> ErrStr<Composition> {
       let quotes = sample_btc_eth_quotes();
-      let pool = pool_from_str("btc-eth")?;
+      let pool = pool_name_from_str("btc-eth")?;
       assets.as_composition(&pool, &quotes)
    }
 

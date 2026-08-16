@@ -14,20 +14,20 @@ use libs::{
    fetchers::{ pivots::fetch_pivots, quotes::fetch_quotes},
    types::{
       pivots::opens::{ Pivot, next_close_id },
-      pools::pool_names::{Pool,mk_pool},
+      pools::pool_names::{PoolName,mk_pool_name},
       proposals::proposes::{propose,Propose}
    }
 };
 
 struct Report {
-   pool: Pool,
+   pool: PoolName,
    opens: usize,
    date: NaiveDate,
    props: Vec<Propose>,
    max_date: NaiveDate
 }
-fn mk_report(pool: &Pool, opns: &[Pivot], date: &NaiveDate, props: &[Propose],
-             max_date: &NaiveDate) -> ErrStr<Report> {
+fn mk_report(pool: &PoolName, opns: &[Pivot], date: &NaiveDate,
+             props: &[Propose], max_date: &NaiveDate) -> ErrStr<Report> {
    Ok(Report { pool: pool.clone(),
                opens: opns.len(),
                date: date.clone(),
@@ -35,7 +35,7 @@ fn mk_report(pool: &Pool, opns: &[Pivot], date: &NaiveDate, props: &[Propose],
                max_date: max_date.clone() })
 }
 
-async fn compute_closes(root_url: &str, pool: &Pool, date: &NaiveDate,
+async fn compute_closes(root_url: &str, pool: &PoolName, date: &NaiveDate,
                         debug: bool) -> ErrStr<Report> {
    let quotes = fetch_quotes(&date).await?;
    let a = &quotes.aliases;
@@ -109,11 +109,11 @@ struct Args {
 
 pub async fn runoff_get_args() -> ErrStr<()> {
    let args = parse_args_print_banner!(Args);
-   let pool = mk_pool(&args.primary, &args.pivot);
+   let pool = mk_pool_name(&args.primary, &args.pivot);
    report_calls(&args.protocol, &pool, &args.date, args.debug).await
 }
 
-async fn report_calls(protocol: &str, pool: &Pool, date: &NaiveDate,
+async fn report_calls(protocol: &str, pool: &PoolName, date: &NaiveDate,
                       debug: bool) -> ErrStr<()> {
    let root_url = get_env(&format!("{}_URL", protocol))?;
    let report = compute_closes(&root_url, pool, date, debug).await?;
@@ -132,7 +132,7 @@ mod functional_tests {
    create_testing!("quiz02::b_compute_close");
 
    run!("report_calls", {
-      let pool = mk_pool("avax", "undead");
+      let pool = mk_pool_name("avax", "undead");
       now(report_calls("PIVOT", &pool, &yesterday(), true))?;
    });
 }
@@ -143,11 +143,11 @@ mod tests {
 
    use super::*;
    use book::{ date_utils::{ parse_date, yesterday }, utils::get_env };
-   use libs::types::pools::pool_names::pool_from_str;
+   use libs::types::pools::pool_names::pool_name_from_str;
 
    async fn compute_test_closes() -> ErrStr<Report> {
       let pivot_url = get_env("PIVOT_URL")?;
-      let pool = pool_from_str("avax-undead")?;
+      let pool = pool_name_from_str("avax-undead")?;
       compute_closes(&pivot_url, &pool, &yesterday(), true).await
    }
 

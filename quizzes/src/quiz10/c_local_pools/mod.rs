@@ -42,7 +42,10 @@ mod pools_impl {
       string_utils::str2strf,
       utils::get_env
    };
-   use libs::{ paths::pivot_pool_from_file, types::pools::pool_names::Pool };
+   use libs::{
+      paths::pivot_pool_from_file,
+      types::pools::pool_names::PoolName
+   };
 
    pub async fn print_pools_as_js(auth: &str, date: &NaiveDate) -> ErrStr<()> {
       let a = pools(auth).await?;
@@ -51,7 +54,7 @@ mod pools_impl {
       Ok(())
    }
    
-   pub async fn pools(auth: &str) -> ErrStr<Vec<Pool>> {
+   pub async fn pools(auth: &str) -> ErrStr<Vec<PoolName>> {
       let aut = auth.to_uppercase();
       let path = get_env(&format!("{aut}_DATA_DIR"))?;
       let open_dir = format!("{path}/pivots/open/raw");
@@ -60,8 +63,8 @@ mod pools_impl {
       filter_map_or(str2strf(&pivot_pool_from_file), opens)
    }
    
-   fn to_js(dt: &NaiveDate, pools: Vec<Pool>) -> String {
-      fn pool2pool(p: Pool) -> String {
+   fn to_js(dt: &NaiveDate, pools: Vec<PoolName>) -> String {
+      fn pool2pool(p: PoolName) -> String {
          let (a, b) = p.as_tuple();
          format!("[ '{a}', '{b}' ]")
       }
@@ -85,7 +88,7 @@ mod tests {
    use super::*;
    use std::collections::HashSet;
    use book::date_utils::yesterday;
-   use libs::types::pools::pool_names::{ mk_pool, Pool };
+   use libs::types::pools::pool_names::{ mk_pool_name, PoolName };
    use pools_impl::pools;
 
    #[tokio::test] async fn fail_print_pools_as_js() {
@@ -98,8 +101,8 @@ mod tests {
 
    #[tokio::test] async fn test_pools_has_btc_eth() -> ErrStr<()> {
       let pivot_pools = pools("pivot").await?;
-      let pp: HashSet<Pool> = pivot_pools.into_iter().collect();
-      assert!(pp.contains(&mk_pool("btc", "eth")));
+      let pp: HashSet<PoolName> = pivot_pools.into_iter().collect();
+      assert!(pp.contains(&mk_pool_name("btc", "eth")));
       Ok(())
    }
 }

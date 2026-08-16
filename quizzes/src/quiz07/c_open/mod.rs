@@ -12,7 +12,10 @@ use book::{
 
 use libs::{
    fetchers::{assets::pool::fetch_available_assets,quotes::fetch_quotes},
-   types::{ comps::Composition, pools::pool_names::{ Pool, pool_from_str } }
+   types::{
+      comps::Composition,
+      pools::pool_names::{ PoolName, pool_name_from_str }
+   }
 };
 
 /// Creates virtual pivots based upon available assets.
@@ -44,13 +47,13 @@ async fn generate_available_assets_report(auth: &str, date: &NaiveDate,
       -> ErrStr<()> {
    let root_url = get_env(&format!("{}_URL", auth.to_uppercase()))?;
    let quotes = fetch_quotes(&date).await?;
-   let pool = pool_from_str(pool_str)?;
+   let pool = pool_name_from_str(pool_str)?;
    let assets =
       fetch_available_assets(&root_url, &quotes, &pool, debug).await?;
    report_assets_available(&pool, &assets)
 }
 
-fn report_assets_available(pool: &Pool, comp: &Composition)-> ErrStr<()> {
+fn report_assets_available(pool: &PoolName, comp: &Composition)-> ErrStr<()> {
    println!("Available assets for {pool} pivot pool are:
 {}", comp.as_csv());
    Ok(())

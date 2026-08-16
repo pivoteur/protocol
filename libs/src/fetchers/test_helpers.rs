@@ -13,7 +13,7 @@ pub mod test_functions {
       types::{
          aliases::{ Aliases, aliases },
          pivots::opens::Pivot,
-         pools::pool_names::pool_from_str
+         pools::pool_names::pool_name_from_str
       }
    };
 
@@ -25,13 +25,13 @@ pub mod test_functions {
 
    pub async fn btc_eth_pivots() -> ErrStr<(Partition<Pivot>, NaiveDate)> {
       let (root_url, a) = marshall()?;
-      let pool = pool_from_str("btc-eth")?;
+      let pool = pool_name_from_str("btc-eth")?;
       fetch_pivots(&root_url, &pool, &a, true).await
    }
 
    pub fn parse_test_pivots_from_file(pool: &str, file_name: &str)
          -> ErrStr<Partition<Pivot>> {
-      let pool = pool_from_str(pool)?;
+      let pool = pool_name_from_str(pool)?;
       let pool_data = lines_from_file(file_name)?;
       let a = aliases();
       let (pools, _dt) = parse_pivots(&pool, pool_data, &a, true)?;

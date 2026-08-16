@@ -4,11 +4,11 @@ use book::{
    string_utils::{str2strf,s}
 };
 use super::utils::fetch_lines;
-use crate::types::pools::pool_names::{Pool,mk_pool};
+use crate::types::pools::pool_names::{ PoolName, mk_pool_name };
 
 // ----- POOL NAMES --------------------------------------------------
 
-pub async fn fetch_pool_names(root_url: &str) -> ErrStr<Vec<Pool>> {
+pub async fn fetch_pool_names(root_url: &str) -> ErrStr<Vec<PoolName>> {
    let url = format!("{root_url}/refs/heads/main/libs/pool-assets.js");
    let lines = fetch_lines(&url).await?;
    filter_map_or(str2strf(&pool), raw_pools(&lines))
@@ -22,10 +22,10 @@ fn raw_pools(lines: &[String]) -> Vec<String> {
         .collect()
 }
 
-fn pool(line: &str) -> ErrStr<Pool> {
+fn pool(line: &str) -> ErrStr<PoolName> {
    let v: Vec<&str> = line.split(",").collect();
    if v.len() == 2 || (v.len() == 3 && v[2].is_empty()) {
-      Ok(mk_pool(&alphanum(v[0]), &alphanum(v[1])))
+      Ok(mk_pool_name(&alphanum(v[0]), &alphanum(v[1])))
    } else {
       Err(format!("Unable to derive pool from {line}"))
    }
@@ -51,7 +51,7 @@ pub mod functional_tests {
       let (root_url, _aliases) = marshall()?;
       let pool_names = now(fetch_pool_names(&root_url))?;
       let pn: Vec<String> =
-         pool_names.into_iter().map(deref(Pool::pool_name)).collect();
+         pool_names.into_iter().map(deref(PoolName::pool_name)).collect();
       println!("\tpool names:\n\n\t{pn:?}");
    });
 }

@@ -22,7 +22,7 @@ use crate::{
       tokens::coins::{Coin,mk_coin},
       comps::{Composition,mk_composition},
       pivots::opens::{Pivot,pivot_assets},
-      pools::pool_names::Pool,
+      pools::pool_names::PoolName,
       quotes::Quotes,
       util::{Token,Blockchain}
    }
@@ -32,7 +32,7 @@ use crate::{
 
 // this one fetches all the assets of the pool
 
-pub async fn fetch_assets(root_url: &str, pool: &Pool, aliases: &Aliases,
+pub async fn fetch_assets(root_url: &str, pool: &PoolName, aliases: &Aliases,
                           debug: bool) -> ErrStr<Composition> {
    debug!("fetch_assets", debug);
    let url = pool_assets_url(root_url, pool);
@@ -82,7 +82,7 @@ fn buidl_asset<'a>(asset_type: &str, amount: &str,
 // this gets the assets and the open pivots (so we compute available assets)
 
 pub async fn fetch_assets_and_open_pivots
-      (root_url: &str, quotes: &Quotes, pool: &Pool, debug: bool)
+      (root_url: &str, quotes: &Quotes, pool: &PoolName, debug: bool)
       -> ErrStr<(Composition, Vec<Pivot>)> {
    let aliases = &quotes.aliases;
    let pool_assets = fetch_assets(&root_url, pool, aliases, debug).await?;
@@ -93,7 +93,7 @@ pub async fn fetch_assets_and_open_pivots
 
 pub async fn available_assets_fetcher
       (subtractor: impl Fn(&mut Assets, &Coin), root_url: &str,
-       quotes: &Quotes, pool: &Pool, debug: bool) -> ErrStr<Composition> {
+       quotes: &Quotes, pool: &PoolName, debug: bool) -> ErrStr<Composition> {
    let (pool_assets, opens) =
       fetch_assets_and_open_pivots(root_url, &quotes, pool, debug).await?;
    let mut available = pool_assets.as_assets();
@@ -106,7 +106,7 @@ pub async fn available_assets_fetcher
 
 pub fn subtractor(assets: &mut Assets, coin: &Coin) { assets.subtract(coin); }
 
-pub async fn fetch_available_assets(root_url: &str, q: &Quotes, p: &Pool,
+pub async fn fetch_available_assets(root_url: &str, q: &Quotes, p: &PoolName,
                                     debug: bool) -> ErrStr<Composition> {
    available_assets_fetcher(subtractor, root_url, q, p, debug).await
 }
@@ -126,14 +126,14 @@ pub mod functional_tests {
    };
    use crate::{
       fetchers::{quotes::fetch_quotes,test_helpers::test_functions::marshall},
-      types::pools::pool_names::pool_from_str
+      types::pools::pool_names::pool_name_from_str
    };
 
    create_testing!("fetchers::assets::pool");
 
    run!("fetch_pool_assets", {
       let (root_url, a) = marshall()?;
-      let btc_eth = pool_from_str("btc-eth")?;
+      let btc_eth = pool_name_from_str("btc-eth")?;
       let pa = now(fetch_assets(&root_url, &btc_eth, &a, true))?;
       println!("BTC+ETH pivot pool assets are:\n{}", pa.as_csv());
    });
@@ -142,7 +142,7 @@ pub mod functional_tests {
       let yday = yesterday();
       let (url, _) = marshall()?;
       let quotes = now(fetch_quotes(&yday))?;
-      let pool = pool_from_str("btc-eth")?;
+      let pool = pool_name_from_str("btc-eth")?;
       let comp = now(fetch_available_assets(&url, &quotes, &pool, true))?;
       println!("\nAvailable BTC+ETH assets\n{}", comp.as_csv());
    });
@@ -160,7 +160,7 @@ mod tests {
    };
    use crate::{
       fetchers::{quotes::fetch_quotes,test_helpers::test_functions::marshall},
-      types::{ measurable::tvl, pools::pool_names::pool_from_str }
+      types::{ measurable::tvl, pools::pool_names::pool_name_from_str }
    };
 
    // ----- ALL POOL ASSETS ------------------------------------------
@@ -168,7 +168,7 @@ mod tests {
    #[tokio::test]
    async fn test_fetch_assets_ok() -> ErrStr<()> {
       let (root_url, a) = marshall()?;
-      let btc_eth = pool_from_str("btc-eth")?;
+      let btc_eth = pool_name_from_str("btc-eth")?;
       let mb_assets = fetch_assets(&root_url, &btc_eth, &a, true).await;
       assert!(mb_assets.is_ok());
       Ok(())
@@ -177,7 +177,7 @@ mod tests {
    #[tokio::test]
    async fn test_fetch_assets() -> ErrStr<()> {
       let (root_url, a) = marshall()?;
-      let btc_eth = pool_from_str("btc-eth")?;
+      let btc_eth = pool_name_from_str("btc-eth")?;
       let assets = fetch_assets(&root_url, &btc_eth, &a, true).await?;
       assert!(assets.tvl().amount() > 0.0);
       assert_eq!("BTC+ETH", assets.pool_name());
@@ -190,7 +190,7 @@ mod tests {
       let yday = yesterday();
       let (url, _) = marshall()?;
       let quotes = fetch_quotes(&yday).await?;
-      let pool = pool_from_str("btc-eth")?;
+      let pool = pool_name_from_str("btc-eth")?;
       fetch_available_assets(&url, &quotes, &pool, true).await
    }
 
@@ -207,7 +207,7 @@ mod tests {
    async fn enfetchme() -> ErrStr<(Composition, Vec<Pivot>)> {
       let yday = yesterday();
       let (url, _) = marshall()?;
-      let pool = pool_from_str("btc-eth")?;
+      let pool = pool_name_from_str("btc-eth")?;
       let quotes = fetch_quotes(&yday).await?;
       fetch_assets_and_open_pivots(&url, &quotes, &pool, true).await
    }

@@ -24,7 +24,7 @@ use crate::types::{
       opens::{Pivot,headers,froms},
       utils::weighted_days
    },
-   pools::pool_names::{Pool,mk_pool},
+   pools::pool_names::{ PoolName, mk_pool_name },
    quotes::Quotes,
    util::{Blockchain,Id}
 };
@@ -76,13 +76,13 @@ impl Propose {
       }
    }
 
-   pub fn pool(&self) -> Pool {
+   pub fn pool(&self) -> PoolName {
       if let Some(pool) = self.principal
           .first()
           .and_then(|q| 
              self.pivot
               .first()
-              .and_then(|r| Some(mk_pool(&q.token(), &r.token())))) {
+              .and_then(|r| Some(mk_pool_name(&q.token(), &r.token())))) {
          pool
       } else {
          panic!("Missing principal or pivot (or both) asset from proposal")

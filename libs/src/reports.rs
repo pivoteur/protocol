@@ -13,7 +13,7 @@ use super::{
    types::{
       gains::Gains,
       measurable::Measurable,
-      pools::pool_names::Pool,
+      pools::pool_names::PoolName,
       proposals::proposes::Propose
    }
 };
@@ -53,7 +53,7 @@ impl Proposal {
    fn gain_usd(&self) -> USD { self.proposal.gain_usd() }
 }
 
-pub fn mk_proposal(pool: &Pool, dt: &NaiveDate, opens: usize, p: Propose)
+pub fn mk_proposal(pool: &PoolName, dt: &NaiveDate, opens: usize, p: Propose)
        -> Proposal {
    Proposal { pool: pool.pool_name(), opens, max_date: dt.clone(), proposal: p }
 }
@@ -99,7 +99,8 @@ pub fn print_tsv_table_d<T: CsvHeader + CsvWriter>(header: &str, v: &[T],
    for row in v { print_tsv_row(printer, &mut first_time, row); }
 }
 
-pub fn report_proposes(proposes: Vec<Proposal>, no_closes: &[Pool], min: bool) {
+pub fn report_proposes(proposes: Vec<Proposal>,
+                       no_closes: &[PoolName], min: bool) {
    let (pools, len) = if proposes.is_empty() {
       if !min { println!("\nNo close pivots."); }
       ("analyzed", 12)
@@ -115,7 +116,8 @@ pub fn report_proposes(proposes: Vec<Proposal>, no_closes: &[Pool], min: bool) {
            no_closes, len, min);
 }
 
-pub fn compact(hdr: &str, nada: &str, nocloses: &[Pool], ln: usize, min: bool) {
+pub fn compact(hdr: &str, nada: &str, nocloses: &[PoolName],
+               ln: usize, min: bool) {
    if nocloses.is_empty() {
       if !min { println!("\n{nada}\n"); }
    } else {
@@ -123,14 +125,14 @@ pub fn compact(hdr: &str, nada: &str, nocloses: &[Pool], ln: usize, min: bool) {
    }
 }
 
-fn print_compact(hdr: &str, no_closers: &[Pool], ncols: usize) {
+fn print_compact(hdr: &str, no_closers: &[PoolName], ncols: usize) {
    let len = no_closers.len();
    let nrows: usize = len * 2 / ncols + 1; // each entry takes two columns
    let entries_per_row: usize = len / nrows;
    println!("\n{hdr}\n");
    no_closers.chunks(entries_per_row).for_each(|val| {
       println!("{}", val.iter()
-                        .map(Pool::to_string)
+                        .map(PoolName::to_string)
                         .collect::<Vec<_>>()
                         .join(", ,"));
    });

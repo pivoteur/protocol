@@ -10,12 +10,12 @@ use book::{
 use libs::{
    fetchers::assets::pool::fetch_assets,
    reports::print_table,
-   types::{aliases::aliases,pools::pool_names::{Pool,mk_pool}}
+   types::{aliases::aliases,pools::pool_names::{ PoolName, mk_pool_name }}
 };
 
 // as this function only calls a library function, it's not testable:
 // it's infrastructure.
-async fn fetch_pool_assets(auth: &str, pool: &Pool, debug: bool)
+async fn fetch_pool_assets(auth: &str, pool: &PoolName, debug: bool)
       -> ErrStr<()> {
    let aliases = aliases();
    let root = get_env(&format!("{auth}_URL"))?;
@@ -43,7 +43,7 @@ struct Args {
 
 pub async fn runoff_get_args() -> ErrStr<()> {
    let args = parse_args_add_banner!(Args);
-   let pool = mk_pool(&args.primary, &args.pivot);
+   let pool = mk_pool_name(&args.primary, &args.pivot);
    fetch_pool_assets(&args.protocol, &pool, args.debug).await
 }
 
@@ -60,6 +60,6 @@ pub mod functional_tests {
    create_testing!("quiz06::a_pool_table");
 
    run!("fetch_pool_assets",
-        now(fetch_pool_assets("pivot", &mk_pool("btc", "eth"), true)));
+        now(fetch_pool_assets("pivot", &mk_pool_name("btc", "eth"), true)));
 }
 

@@ -17,21 +17,23 @@ use crate::{
    types::{
       aliases::Aliases,
       pivots::opens::{Pivot,parse_pivot},
-      pools::pool_names::Pool
+      pools::pool_names::PoolName
    }
 };
 
 // ----- PIVOTS -------------------------------------------------------
 
 /// Fetch the pivots for pivot pool A+B; open pivots are reposed in git
-pub async fn fetch_pivots(root_url: &str, pool: &Pool, a: &Aliases, debug: bool)
+pub async fn fetch_pivots(root_url: &str, pool: &PoolName,
+                          a: &Aliases, debug: bool)
       -> ErrStr<(Partition<Pivot>, NaiveDate)> {
    let url = open_pivot_path(root_url, pool);
    let lines = fetch_lines(&url).await?;
    parse_pivots(pool, lines, a, debug)
 }
 
-pub fn parse_pivots(pool: &Pool, lines: Vec<String>, a: &Aliases, debug: bool)
+pub fn parse_pivots(pool: &PoolName, lines: Vec<String>,
+                    a: &Aliases, debug: bool)
       -> ErrStr<(Partition<Pivot>, NaiveDate)> {
    debug!("parse_pivots", debug);
    let table = index_table(lines)?;
@@ -54,7 +56,7 @@ pub fn parse_pivots(pool: &Pool, lines: Vec<String>, a: &Aliases, debug: bool)
    Ok(((acts, pass), max_date.clone()))
 }
 
-fn max_diem<T>(table: &Table<T, String, String>, ix: usize, pool: &Pool,
+fn max_diem<T>(table: &Table<T, String, String>, ix: usize, pool: &PoolName,
                debug: bool) -> ErrStr<NaiveDate> {
    debug!("max_diem", debug);
    let max_date = table.data
@@ -69,7 +71,7 @@ fn max_diem<T>(table: &Table<T, String, String>, ix: usize, pool: &Pool,
 pub type OpenPivotData = (Vec<Pivot>, NaiveDate);
 
 /// Filter to only the open pivots for pivot pool A+B
-pub async fn fetch_open_pivots(root_url: &str, pool: &Pool, a: &Aliases,
+pub async fn fetch_open_pivots(root_url: &str, pool: &PoolName, a: &Aliases,
                                debug: bool) -> ErrStr<OpenPivotData> {
    let (part, max_date) = fetch_pivots(root_url, pool, a, debug).await?;
    Ok((fst(part), max_date))
@@ -81,7 +83,7 @@ pub fn read_pivots(file: &str, a: &Aliases, debug: bool)
    read_pivots1(file, &pool, a, debug)
 }
 
-fn read_pivots1(file: &str, pool: &Pool, a: &Aliases, debug: bool)
+fn read_pivots1(file: &str, pool: &PoolName, a: &Aliases, debug: bool)
       -> ErrStr<OpenPivotData> {
    let lines = lines_from_file(file)?;
    let ((opn, cls), max_date) = parse_pivots(pool, lines, a, debug)?;
@@ -94,11 +96,14 @@ fn read_pivots1(file: &str, pool: &Pool, a: &Aliases, debug: bool)
 #[cfg(not(tarpaulin_include))]
 pub mod sample_reader {
    use super::*;
-   use crate::types::{ aliases::aliases, pools::pool_names::pool_from_str };
+   use crate::types::{
+      aliases::aliases,
+      pools::pool_names::pool_name_from_str
+   };
 
    pub fn read_sample_open_pivots(file: &str, pool: &str)
          -> ErrStr<Vec<Pivot>> {
-      let p = pool_from_str(pool)?;
+      let p = pool_name_from_str(pool)?;
       let a = aliases();
       let (pivots, _dt) = read_pivots1(file, &p, &a, true)?;
       Ok(pivots)
@@ -119,7 +124,7 @@ mod functional_tests {
    use crate::{
       fetchers::test_helpers::test_functions::btc_eth_pivots,
       reports::print_tsv_table_d,
-      types::{ aliases::aliases, pools::pool_names::mk_pool }
+      types::{ aliases::aliases, pools::pool_names::mk_pool_name }
    };
 
    create_testing!("fetchers::pivots");
@@ -135,7 +140,7 @@ mod functional_tests {
       let a = aliases();
       let samp = "data/sample_avax_undead_open_pivots.tsv";
       let path = format!("../quizzes/{samp}");
-      let pool = mk_pool("avax", "undead");
+      let pool = mk_pool_name("avax", "undead");
       let (opens, max_dt) = read_pivots1(&path, &pool, &a, true)?;
       println!("I read {} from {samp}", plural(opens.len(), "sample pivot"));
       println!("max_date: {max_dt}");
@@ -150,7 +155,7 @@ mod tests {
    use crate::{
       fetchers::test_helpers::test_functions::btc_eth_pivots,
       tables::{c2t,csv2tsv},
-      types::{aliases::aliases,pools::pool_names::pool_from_str}
+      types::{aliases::aliases,pools::pool_names::pool_name_from_str}
    };
    use book::{ csv_utils::CsvHeader, date_utils::tomorrow };
 
@@ -193,7 +198,7 @@ mod tests {
    async fn test_reparse_pivots_ok() -> ErrStr<()> {
       let tsv = btc_eth_pool_as_tsv().await?;
       let a = aliases();
-      let pool = pool_from_str("BTC+ETH")?;
+      let pool = pool_name_from_str("BTC+ETH")?;
       let ans = parse_pivots(&pool, tsv, &a, true);
       assert!(ans.is_ok());
       Ok(())
@@ -203,7 +208,7 @@ mod tests {
    async fn test_reparse_pivots() -> ErrStr<()> {
       let tsv = btc_eth_pool_as_tsv().await?;
       let a = aliases();
-      let pool = pool_from_str("btc-eth")?;
+      let pool = pool_name_from_str("btc-eth")?;
       let ((o,c),m) = parse_pivots(&pool, tsv, &a, true)?;
       let ((opns, cls), mx) = btc_eth_pivots().await?;
       assert_eq!(opns.len(), o.len());

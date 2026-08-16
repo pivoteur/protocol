@@ -10,7 +10,7 @@ use book::{
 
 use super::{
    blockchains::Blockchain,
-   pools::pool_names::Pool,
+   pools::pool_names::PoolName,
    util::Id,
    pivots::opens::Pivot
 };
@@ -26,7 +26,7 @@ pub type CallData = (Call, Vec<Pivot>);
 pub struct Call {
     pub ix: Id,
     #[serde_as(as = "DisplayFromStr")]
-    pub pool: Pool,
+    pub pool: PoolName,
     pub open_pivots: usize,
     #[serde_as(as = "DisplayFromStr")]
     pub last_pivot_on_dt: NaiveDate,

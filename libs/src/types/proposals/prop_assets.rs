@@ -8,7 +8,7 @@ use book::{
 use crate::types::{
    assets::asset_types::{AssetType,AssetType::*},
    measurable::{Measurable,weight,size},
-   pools::pool_names::Pool,
+   pools::pool_names::PoolName,
    tokens::coins::{Coin,mk_coin},
    util::{Token,Blockchain}
 };
@@ -65,7 +65,7 @@ pub fn mk_prop_asset(t: &str, b: &str, c: &USD, amount: f32, kind: AssetType)
                close_price: c.clone(), amount, kind }
 }
 
-pub fn pivot_amount0(blockchain: Blockchain, pool: Pool,
+pub fn pivot_amount0(blockchain: Blockchain, pool: PoolName,
                  date: &NaiveDate, assets: &Vec<PropAsset>) -> Coin {
    let (_, piv) = pool.as_tuple();
    mk_coin(&(blockchain, piv), size(&assets), &mk_usd(weight(&assets)), &date)

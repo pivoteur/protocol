@@ -2,7 +2,7 @@ use serde::Serialize;
 
 use super::allocations::Allocation;
 
-use crate::types::pools::pool_names::{ Pool, mk_pool };
+use crate::types::pools::pool_names::{ PoolName, mk_pool_name };
 
 #[derive(Debug, Clone, Serialize)]
 pub struct PoolAssets {
@@ -15,8 +15,8 @@ pub fn mk_pool_assets(primary: Allocation, pivot: Allocation) -> PoolAssets {
 }
 
 impl PoolAssets {
-   pub fn as_pool(&self) -> Pool {
-      mk_pool(&self.primary.key(), &self.pivot.key())
+   pub fn as_pool(&self) -> PoolName {
+      mk_pool_name(&self.primary.key(), &self.pivot.key())
    }
 }
 

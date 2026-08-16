@@ -59,7 +59,7 @@ mod counter_offerer {
       calls::{ Call, CallData },
       measurable::Measurable,
       pivots::opens::Pivot,
-      pools::pool_names::Pool
+      pools::pool_names::PoolName
    };
 
    fn compute_virtual_pivot_amount(call_data: &CallData, debug: bool) -> f32 {
@@ -70,7 +70,7 @@ mod counter_offerer {
       amount
    }
 
-   fn filter_virtuals(pool: &Pool, all_pivots: &[Pivot],
+   fn filter_virtuals(pool: &PoolName, all_pivots: &[Pivot],
                       opens: &[usize], debug: bool) -> Vec<Pivot> {
       debug!("filter_virtuals", debug);
       let pivs_set: HashSet<usize> = opens.iter().copied().collect();

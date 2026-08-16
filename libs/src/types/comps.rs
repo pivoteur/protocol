@@ -12,7 +12,7 @@ use crate::collections::assets::{Assets,mk_assets};
 
 use super::{
    measurable::{Measurable,size,tvl},
-   pools::pool_names::mk_pool,
+   pools::pool_names::mk_pool_name,
    tokens::coins::{Coin,PivotCoin}
 };
 
@@ -83,11 +83,11 @@ mod asset_ordering {
       use super::*;
       use crate::types::{
          comps::test_data::*,
-         pools::pool_names::{ Pool, pool_from_str }
+         pools::pool_names::{ PoolName, pool_name_from_str }
       };
       use book::err_utils::ErrStr;
 
-      fn assert_pool_tokens<'a>(pool: Pool) -> impl Fn(&'a Coin, &'a Coin) {
+      fn assert_pool_tokens<'a>(pool: PoolName) -> impl Fn(&'a Coin, &'a Coin) {
          move |a: &'a Coin, b: &'a Coin| {
             let (x, y) = pool.as_tuple();
             assert_eq!(x, snd(a.key()));
@@ -99,7 +99,7 @@ mod asset_ordering {
          let uu = mk_undead_usdc()?;
          let piv = &uu.pivot.coin();
          let (a, b) = sort_asset_pair(&uu.primary, piv);
-         assert_pool_tokens(pool_from_str("undead-usdc")?)(b, a);
+         assert_pool_tokens(pool_name_from_str("undead-usdc")?)(b, a);
          Ok(())
       }
 
@@ -108,7 +108,7 @@ mod asset_ordering {
          let piv = &uu.pivot.coin();
          let comp = arrange_assets(&uu.primary, piv);
          let piv_coin = comp.pivot.coin();
-         assert_pool_tokens(pool_from_str("undead-usdc")?)
+         assert_pool_tokens(pool_name_from_str("undead-usdc")?)
                            (&comp.primary, &piv_coin);
          Ok(())
       }
@@ -120,7 +120,8 @@ mod asset_ordering {
          let (b, e) = sort_asset_pair(&eth, &btc);
          let comp = arrange_assets(&eth, &btc);
          let piv = comp.pivot.coin();
-         let assert_btc_eth = assert_pool_tokens(pool_from_str("btc-eth")?);
+         let assert_btc_eth =
+            assert_pool_tokens(pool_name_from_str("btc-eth")?);
          assert_btc_eth(&btc, &eth);
          assert_btc_eth(b, e);
          assert_btc_eth(&comp.primary, &piv);
@@ -149,7 +150,7 @@ impl Composition {
    pub fn pool_name(&self) -> String { 
       let (_, pri) = self.primary.key();
       let piv = self.pivot.key();
-      mk_pool(&pri, &piv).to_string()
+      mk_pool_name(&pri, &piv).to_string()
    }
 
    pub fn tvl(&self) -> USD { tvl(&self.primary) + tvl(&self.pivot) }

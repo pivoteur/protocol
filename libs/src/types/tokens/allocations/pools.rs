@@ -3,7 +3,7 @@ use chrono::NaiveDate;
 use serde::{ Serialize,Serializer, ser::SerializeStruct };
 
 use super::pool_assets::PoolAssets;
-use crate::types::pools::pool_names::Pool;
+use crate::types::pools::pool_names::PoolName;
 use book::utils::{ composer, deref };
 
 #[derive(Debug,Clone)]
@@ -26,7 +26,7 @@ impl Serialize for Pools {
 
       let assets: Vec<Vec<String>> =
          self.pools.iter()
-                   .map(composer(deref(Pool::as_vec), PoolAssets::as_pool))
+                   .map(composer(deref(PoolName::as_vec), PoolAssets::as_pool))
                    .collect();
       state.serialize_field("assets", &assets)?;
 

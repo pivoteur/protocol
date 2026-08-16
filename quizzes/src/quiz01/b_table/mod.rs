@@ -18,7 +18,7 @@ use book::{
 use libs::{
    paths::open_pivot_path,
    tables::IxTable,
-   types::{ util::Id, pools::pool_names::pool_from_str }
+   types::{ util::Id, pools::pool_names::pool_name_from_str }
 };
 
 trait CsvHeader {
@@ -230,7 +230,7 @@ impl<T: Eq + std::hash::Hash> Bag<T> {
 
 pub async fn ingest_table() -> ErrStr<IxTable> {
    let piv_url = get_env("PIVOT_URL")?;
-   let btc_eth = pool_from_str("btc-eth")?;
+   let btc_eth = pool_name_from_str("btc-eth")?;
    let url = open_pivot_path(&piv_url, &btc_eth);
    let daters = read_rest(&url).await?;
    let lines: Vec<String> =

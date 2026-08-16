@@ -14,7 +14,7 @@ use libs::{
    types::{
       aliases::aliases,
       pivots::opens::{Pivot,partition_on},
-      pools::pool_names::{Pool,mk_pool}
+      pools::pool_names::{ PoolName, mk_pool_name}
    }
 };
 
@@ -57,13 +57,13 @@ struct Args {
 
 pub async fn runoff_get_args() -> ErrStr<()> {
    let args = parse_args_add_banner!(Args);
-   let pool = mk_pool(&args.primary, &args.pivot);
+   let pool = mk_pool_name(&args.primary, &args.pivot);
    let root_url = get_env(&format!("{}_URL", args.protocol))?;
    fetch_and_list_open_pivots(&root_url, &pool, args.debug).await
 }
 
-async fn fetch_and_list_open_pivots(root_url: &str, pool: &Pool, debug: bool)
-      -> ErrStr<()> {
+async fn fetch_and_list_open_pivots(root_url: &str, pool: &PoolName,
+                                    debug: bool) -> ErrStr<()> {
    let a = aliases();
    let ((opens, _closes), _max_date) =
       fetch_pivots(root_url, pool, &a, debug).await?;
@@ -82,13 +82,13 @@ pub mod functional_tests {
    use super::*;
    use paste::paste;
    use book::{ create_testing, err_utils::ErrStr, utils:: { get_env, now } };
-   use libs::types::pools::pool_names::pool_from_str;
+   use libs::types::pools::pool_names::pool_name_from_str;
 
    create_testing!("quiz03::a_partition");
 
    run!("partition", {
       let root_url = get_env("PIVOT_URL")?;
-      let pool = pool_from_str("btc-eth")?;
+      let pool = pool_name_from_str("btc-eth")?;
       let _ = now(fetch_and_list_open_pivots(&root_url, &pool, true));
    });
 }

@@ -122,7 +122,7 @@ mod tests {
    use book::date_utils::yesterday;
    use libs::{
       fetchers::test_helpers::test_functions::marshall,
-      types::pools::pool_names::Pool
+      types::pools::pool_names::PoolName
    };
 
    #[tokio::test]
@@ -139,7 +139,7 @@ mod tests {
       let yday = yesterday();
       let npools = fetch_pool_names(&root_url).await?;
       let pool_names: HashSet<String> =
-         npools.iter().map(Pool::pool_name).collect();
+         npools.iter().map(PoolName::pool_name).collect();
       let assets = health_computer(s, &root_url, &yday, true).await?;
       let al = &assets.len();
       let pl = &pool_names.len();

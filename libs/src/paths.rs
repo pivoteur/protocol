@@ -1,5 +1,5 @@
 use book::{ err_utils::ErrStr, file_utils::dir_file };
-use super::types::pools::pool_names::{Pool,pool_from_str};
+use super::types::pools::pool_names::{ PoolName, pool_name_from_str };
 
 // ----- location of the pivot-files ----------------------------------------
 
@@ -25,27 +25,27 @@ fn open_pivots_url(root_url: &str) -> String {
    format!("{}/open/raw", pivots_dir(root_url))
 }
 
-fn pool_file(pool: &Pool) -> String {
+fn pool_file(pool: &PoolName) -> String {
    format!("{}.tsv", pool.file_name())
 }
 
-pub fn pool_assets_url(root_url: &str, pool: &Pool) -> String {
+pub fn pool_assets_url(root_url: &str, pool: &PoolName) -> String {
    format!("{}/pools/{}", data_dir(root_url), pool_file(pool))
 }
 
 /// Resolves the pivot-assets to the open pivot pool URL
-pub fn open_pivot_path(root_url: &str, pool: &Pool) -> String {
+pub fn open_pivot_path(root_url: &str, pool: &PoolName) -> String {
    format!("{}/{}", open_pivots_url(root_url), pool_file(pool))
 }
 
 /// Constructing a pivot pool from a path
-pub fn pivot_pool_from_file(path: &str) -> ErrStr<Pool> {
+pub fn pivot_pool_from_file(path: &str) -> ErrStr<PoolName> {
    let (_dir, file) = dir_file(&path)
          .ok_or_else(|| format!("Cannot dir_file({path})"))?;
    if file.ends_with(".tsv") && file.contains("-") {
       let split1: Vec<&str> = file.split(".").collect();
       let name = split1.first().unwrap();
-      pool_from_str(&name)
+      pool_name_from_str(&name)
    } else {
       Err(format!("Cannot parse pool-name from {file}"))
    }

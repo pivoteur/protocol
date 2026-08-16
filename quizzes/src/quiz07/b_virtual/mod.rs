@@ -22,7 +22,7 @@ use libs::{
       comps::Composition,
       measurable::{Measurable,tvl},
       pivots::opens::Pivot,
-      pools::pool_names::Pool,
+      pools::pool_names::PoolName,
       quotes::Quotes
    }
 };
@@ -31,7 +31,7 @@ fn partition_virtual_pivots(all_opns: Vec<Pivot>) -> Partition<Pivot> {
    all_opns.into_iter().partition(Pivot::is_virtual)
 }
 
-fn aggregate_virtual_pivots(virts: &[Pivot], quotes: &Quotes, pool: &Pool)
+fn aggregate_virtual_pivots(virts: &[Pivot], quotes: &Quotes, pool: &PoolName)
       -> ErrStr<Composition> {
    let mut asts = mk_assets();
    virts.iter().for_each(|v| {
@@ -142,7 +142,7 @@ mod functional_tests {
    use paste::paste;
    use libs::{
       paths::paths_test_helpers::path_to_btc_eth_pivot_pool,
-      types::pools::pool_names::mk_pool
+      types::pools::pool_names::mk_pool_name
    };
    use book::{
       create_testing,
@@ -162,7 +162,7 @@ mod functional_tests {
       assert!(!virts.is_empty());
       let yday = yesterday();
       let qt = now(fetch_quotes(&yday))?;
-      let pool = mk_pool("BTC", "ETH");
+      let pool = mk_pool_name("BTC", "ETH");
       let comp = aggregate_virtual_pivots(&virts, &qt, &pool)?;
       println!("The virtual assets for {pool} are:
 {}", comp.as_csv());

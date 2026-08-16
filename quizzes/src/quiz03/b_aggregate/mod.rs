@@ -14,13 +14,13 @@ use libs::{
    fetchers::{ pivots::fetch_pivots, quotes::fetch_quotes },
    types::{ 
       pivots::opens::{ partition_on, next_close_id },
-      pools::pool_names::{Pool,mk_pool},
+      pools::pool_names::{ PoolName, mk_pool_name },
       proposals::proposes::propose
    }
 };
 
-async fn aggregate(root_url: &str, pool: &Pool, date: NaiveDate, debug: bool)
-      -> ErrStr<()> {
+async fn aggregate(root_url: &str, pool: &PoolName, date: NaiveDate,
+                   debug: bool) -> ErrStr<()> {
    let quotes = fetch_quotes(&date).await?;
    let a = &quotes.aliases;
    let ((opns, cls), max_date) = fetch_pivots(root_url, pool, a, debug).await?;
@@ -44,7 +44,8 @@ async fn aggregate(root_url: &str, pool: &Pool, date: NaiveDate, debug: bool)
    Ok(())
 }
 
-fn preamble(pool: &Pool, len: usize, max_date: &NaiveDate, date: &NaiveDate) {
+fn preamble(pool: &PoolName, len: usize, max_date: &NaiveDate,
+            date: &NaiveDate) {
    let header = pool.pool_name();
    let pool = format!("{header} pivot pool");
 
@@ -79,7 +80,7 @@ struct Args {
 
 pub async fn runoff_get_args() -> ErrStr<()> {
    let args = parse_args_add_banner!(Args);
-   let pool = mk_pool(&args.primary, &args.pivot);
+   let pool = mk_pool_name(&args.primary, &args.pivot);
    let root_url = get_env(&format!("{}_URL", args.protocol))?;
    aggregate(&root_url, &pool, args.date, args.debug).await
 }
@@ -97,7 +98,7 @@ mod functional_tests {
 
    run!("aggregate", {
       let piv = get_env("PIVOT_URL")?;
-      let pool = mk_pool("btc", "eth");
+      let pool = mk_pool_name("btc", "eth");
       let _ = now(aggregate(&piv, &pool, yesterday(), true));
    });
 }
