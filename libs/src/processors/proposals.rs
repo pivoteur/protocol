@@ -9,7 +9,7 @@ use crate::{
    fetchers::{
       pivots::fetch_pivots,
       quotes::fetch_quotes,
-      pool_names::fetch_pool_names
+      pools::pool_names::fetch_pool_names
    },
    reports::{Proposal,mk_proposal},
    types::{

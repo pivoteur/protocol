@@ -15,7 +15,7 @@ use libs::{
    collections::assets::Assets,
    fetchers::{
       assets::pool::{available_assets_fetcher,subtractor},
-      pool_names::fetch_pool_names,
+      pools::pool_names::fetch_pool_names,
       quotes::fetch_quotes
    },
    types::{ tokens::coins::Coin, comps::Composition }

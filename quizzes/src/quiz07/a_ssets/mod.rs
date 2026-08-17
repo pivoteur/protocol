@@ -13,7 +13,7 @@ use libs::{
    fetchers::{
       quotes::fetch_quotes,
       assets::pool::fetch_assets,
-      pool_names::fetch_pool_names,
+      pools::pool_names::fetch_pool_names,
       pivots::fetch_open_pivots
    },
    reports::print_table,
@@ -68,18 +68,13 @@ async fn list_quotes_and_assets(protocol: &str, date: NaiveDate,
 pub mod functional_tests {
    use super::*;
    use paste::paste;
-   use book::{
-      create_testing,
-      date_utils::yesterday,
-      utils::now
-   };
+   use book::{ create_testing, date_utils::yesterday, utils::now };
 
    create_testing!("quiz07::a_ssets");
 
    run!("list_quotes_and_assets", {
       let yday = yesterday();
-      let _ =
-         now(list_quotes_and_assets("PIVOT", yday, 0.0, true));
+      let _ = now(list_quotes_and_assets("PIVOT", yday, 0.0, true));
    });
 }
 

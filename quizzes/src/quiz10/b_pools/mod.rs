@@ -1,7 +1,7 @@
 use chrono::NaiveDate;
 use clap::{ Parser, CommandFactory };
 
-use libs::fetchers::pool_names::fetch_pool_names;
+use libs::fetchers::pools::pool_names::fetch_pool_names;
 
 use book::{
    parse_args_add_banner,

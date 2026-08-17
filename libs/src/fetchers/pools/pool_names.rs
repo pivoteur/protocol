@@ -3,8 +3,10 @@ use book::{
    list_utils::filter_map_or,
    string_utils::{str2strf,s}
 };
-use super::utils::fetch_lines;
-use crate::types::pools::pool_names::{ PoolName, mk_pool_name };
+use crate::{
+   fetchers::utils::fetch_lines,
+   types::pools::pool_names::{ PoolName, mk_pool_name }
+};
 
 // ----- POOL NAMES --------------------------------------------------
 
