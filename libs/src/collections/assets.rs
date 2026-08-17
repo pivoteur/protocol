@@ -8,10 +8,9 @@ use book::{
 };
 
 use crate::types::{
-   comps::{ Composition, mk_composition },
    tokens::coins::{ Coin, mk_coin },
    measurable::{Measurable,sort_by_tvl,sort_by_weight},
-   pools::pool_names::PoolName,
+   pools::{ comps::{ Composition, mk_composition }, pool_names::PoolName },
    quotes::Quotes,
    util::{Token,Blockchain}
 };

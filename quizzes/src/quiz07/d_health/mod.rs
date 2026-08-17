@@ -18,7 +18,7 @@ use libs::{
       pools::pool_names::fetch_pool_names,
       quotes::fetch_quotes
    },
-   types::{ tokens::coins::Coin, comps::Composition }
+   types::{ tokens::coins::Coin, pools::comps::Composition }
 };
 
 async fn health_computer(f: impl Fn(&mut Assets, &Coin),

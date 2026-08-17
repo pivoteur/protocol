@@ -10,9 +10,6 @@ pub mod blockchains;
 /// A proposed call
 pub mod calls;
 
-/// A composition of two assets: a pivot pool
-pub mod comps;
-
 /// trait to define gains (ROI and APR)
 pub mod gains;
 

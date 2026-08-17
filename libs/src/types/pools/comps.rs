@@ -8,12 +8,13 @@ use book::{
    string_utils::plural,
 };
 
-use crate::collections::assets::{Assets,mk_assets};
-
-use super::{
-   measurable::{Measurable,size,tvl},
-   pools::pool_names::mk_pool_name,
-   tokens::coins::{Coin,PivotCoin}
+use crate::{
+   collections::assets::{Assets,mk_assets},
+   types::{
+      measurable::{Measurable,size,tvl},
+      pools::pool_names::mk_pool_name,
+      tokens::coins::{Coin,PivotCoin}
+   }
 };
 
 #[derive(Debug,Clone)]
@@ -81,9 +82,9 @@ mod asset_ordering {
    #[cfg(test)]
    mod tests {
       use super::*;
-      use crate::types::{
+      use crate::types::pools::{
          comps::test_data::*,
-         pools::pool_names::{ PoolName, pool_name_from_str }
+         pool_names::{ PoolName, pool_name_from_str }
       };
       use book::err_utils::ErrStr;
 

@@ -19,7 +19,7 @@ use libs::{
    reports::{print_table,total_line},
    types::{
       aliases::aliases,
-      comps::{Composition,total,last_updated},
+      pools::comps::{Composition,total,last_updated},
       measurable::sort_by_size
   }
 };

@@ -19,10 +19,9 @@ use libs::{
    processors::virtuals::recompute_pivot,
    reports::{total_line,print_tsv_table_d},
    types::{
-      comps::Composition,
       measurable::{Measurable,tvl},
       pivots::opens::Pivot,
-      pools::pool_names::PoolName,
+      pools::{ comps::Composition, pool_names::PoolName },
       quotes::Quotes
    }
 };

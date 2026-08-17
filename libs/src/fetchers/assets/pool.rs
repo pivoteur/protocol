@@ -20,9 +20,8 @@ use crate::{
    types::{
       aliases::Aliases,
       tokens::coins::{Coin,mk_coin},
-      comps::{Composition,mk_composition},
       pivots::opens::{Pivot,pivot_assets},
-      pools::pool_names::PoolName,
+      pools::{  comps::{Composition,mk_composition}, pool_names::PoolName },
       quotes::Quotes,
       util::{Token,Blockchain}
    }

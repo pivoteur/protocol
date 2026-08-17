@@ -12,10 +12,7 @@ use book::{
 
 use libs::{
    fetchers::{assets::pool::fetch_available_assets,quotes::fetch_quotes},
-   types::{
-      comps::Composition,
-      pools::pool_names::{ PoolName, pool_name_from_str }
-   }
+   types::pools::{comps::Composition,pool_names::{PoolName,pool_name_from_str}}
 };
 
 /// Creates virtual pivots based upon available assets.
