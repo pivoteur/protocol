@@ -12,8 +12,7 @@ use book::{
 use libs::{
    fetchers::{
       quotes::fetch_quotes,
-      assets::pool::fetch_assets,
-      pools::pool_names::fetch_pool_names,
+      pools::{ assets::fetch_assets, pool_names::fetch_pool_names },
       pivots::fetch_open_pivots
    },
    reports::print_table,

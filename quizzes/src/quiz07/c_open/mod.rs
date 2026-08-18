@@ -11,7 +11,7 @@ use book::{
 };
 
 use libs::{
-   fetchers::{assets::pool::fetch_available_assets,quotes::fetch_quotes},
+   fetchers::{ pools::assets::fetch_available_assets, quotes::fetch_quotes},
    types::pools::{comps::Composition,pool_names::{PoolName,pool_name_from_str}}
 };
 

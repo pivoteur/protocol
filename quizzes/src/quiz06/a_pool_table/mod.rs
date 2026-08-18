@@ -8,7 +8,7 @@ use book::{
    utils::get_env
 };
 use libs::{
-   fetchers::assets::pool::fetch_assets,
+   fetchers::pools::assets::fetch_assets,
    reports::print_table,
    types::{aliases::aliases,pools::pool_names::{ PoolName, mk_pool_name }}
 };

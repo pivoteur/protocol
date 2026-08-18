@@ -12,10 +12,7 @@ use book::{
 };
 
 use libs::{
-   fetchers::{
-      pools::pool_names::fetch_pool_names,
-      assets::pool::fetch_assets
-   },
+   fetchers::pools::{ assets::fetch_assets, pool_names::fetch_pool_names },
    reports::{print_table,total_line},
    types::{
       aliases::aliases,
