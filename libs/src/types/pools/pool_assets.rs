@@ -1,5 +1,5 @@
 use chrono::NaiveDate;
-use serde::Deserialize;
+use serde::{ Deserialize, Serialize };
 use serde_with::{serde_as, DisplayFromStr};
 
 use book::{ currency::usd::USD, num::percentage::Percentage };
@@ -7,7 +7,7 @@ use book::{ currency::usd::USD, num::percentage::Percentage };
 use crate::types::{ gains::Gains, measurable::Measurable };
 
 #[serde_as]
-#[derive(Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct PoolAssets {
     #[serde_as(as = "DisplayFromStr")]
     date: NaiveDate,
@@ -40,3 +40,52 @@ impl Measurable for PoolAssets {
 pub fn incept(pa: &[PoolAssets]) -> NaiveDate {
    pa.iter().map(|p| p.date).min().unwrap()
 }
+
+// ----- TEST -------------------------------------------------------
+
+pub mod sample_data {
+   use super::*;
+   use book::{
+      csv_utils::parse_items_delim,
+      err_utils::ErrStr,
+      file_utils::read_file
+   };
+
+   pub fn sample_btc_eth_pool_assets(offset: &str) -> ErrStr<Vec<PoolAssets>> {
+      let tsv = read_file(&format!("{offset}/data/sample_btc_eth_pool.tsv"))?;
+      parse_items_delim(&tsv, b'\t')
+   }
+}
+
+#[cfg(test)]
+#[cfg(not(tarpaulin_include))]
+mod functional_tests {
+   use paste::paste;
+   use super::sample_data::sample_btc_eth_pool_assets;
+   use book::{ create_testing, csv_utils::as_csv, err_utils::ErrStr };
+
+   create_testing!("types::pools::pool_assets");
+
+   run!("pool_assets", {
+      let assets = sample_btc_eth_pool_assets("../quizzes")?;
+      let top_asset = assets.first().unwrap();
+      println!("Pool assets:\n{}", as_csv(&[top_asset], true)?);
+   });
+}
+
+#[cfg(test)]
+#[cfg(not(tarpaulin_include))]
+mod tests {
+   use super::*;
+   use super::sample_data::sample_btc_eth_pool_assets;
+   use book::err_utils::ErrStr;
+
+   #[test] fn test_early_incept() -> ErrStr<()> {
+      let assets = sample_btc_eth_pool_assets("../quizzes")?;
+      let start = incept(&assets);
+      let current = assets.first().unwrap().date;
+      assert!(current >= start, "{start} should preceed {current}");
+      Ok(())
+   }
+}
+
