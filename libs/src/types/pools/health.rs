@@ -4,16 +4,19 @@ use serde::Serialize;
 use serde_with::{ serde_as, DisplayFromStr };
 
 use book::{
-   not_implemented,
    err_utils::ErrStr,
    json_utils::AsJSON,
    num::percentage::Percentage
 };
 use crate::types::{
+   gains::Gains,
    pivots::opens::Pivot,
    quotes::Quotes
 };
-use super::{ pool_assets::PoolAssets, pool_names::PoolName };
+use super::{
+   pool_assets::{ PoolAssets, incept, prototype },
+   pool_names::PoolName
+};
 
 #[derive(Debug, Clone)]
 pub struct PoolHealth {
@@ -23,8 +26,16 @@ pub struct PoolHealth {
 }
 
 impl PoolHealth {
-   fn transform(&self) -> Health1 {
-      not_implemented!("PoolHealth::transform", self)
+   fn transform(&self) -> Option<Health1> {
+      prototype(&self.assets).and_then(|pa|
+         Some(Health1 {
+            pool: self.name.clone(),
+            incept: incept(&self.assets),
+            // tvl: not_implemented!("tvl_calculation"),
+            roi: pa.roi(),
+            apr: pa.apr()
+         })
+      )
    }
 }
 
@@ -53,9 +64,14 @@ struct Health1 {
    apr: Percentage
 }
    
-pub fn mk_pool_health(q: &Quotes, n: &PoolName, a: &[PoolAssets], v: &[Pivot])
+pub fn mk_pool_health(_q: &Quotes, n: &PoolName, a: &[PoolAssets], v: &[Pivot])
       -> ErrStr<PoolHealth> {
-   not_implemented!("pool_health", q, n, a, v)
+   let ph = PoolHealth {
+      name: n.clone(),
+      assets: a.to_vec(),
+      open_pivots: v.to_vec()
+   };
+   Ok(ph)
 }
 
 // ----- TESTS -------------------------------------------------------

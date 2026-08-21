@@ -35,6 +35,12 @@ impl Measurable for PoolAssets {
    fn aug(&self) -> f32 { 1.0 }
 }
 
+pub fn prototype(v: &[PoolAssets]) -> Option<PoolAssets> {
+   let mut assets = v.to_vec();
+   assets.sort_by_key(|pa| pa.date);
+   assets.last().cloned()
+}
+
 // I equate 'incept' with first pool activity, because if the funds are just
 // sitting there, it's not a pivot pool, it's a puddle.
 pub fn incept(pa: &[PoolAssets]) -> NaiveDate {
@@ -61,6 +67,7 @@ pub mod sample_data {
 #[cfg(not(tarpaulin_include))]
 mod functional_tests {
    use paste::paste;
+   use super::*;
    use super::sample_data::sample_btc_eth_pool_assets;
    use book::{ create_testing, csv_utils::as_csv, err_utils::ErrStr };
 
@@ -68,7 +75,7 @@ mod functional_tests {
 
    run!("pool_assets", {
       let assets = sample_btc_eth_pool_assets("../quizzes")?;
-      let top_asset = assets.first().unwrap();
+      let top_asset = prototype(&assets).unwrap();
       println!("Pool assets:\n{}", as_csv(&[top_asset], true)?);
    });
 }
