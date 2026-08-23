@@ -12,7 +12,7 @@ use book::{
 
 use libs::{
    fetchers::calls::fetch_call_data,
-   processors::virtuals::compute_counter_offer,
+   processors::pivots::virtuals::compute_counter_offer,
    types::calls::Call
 };
 

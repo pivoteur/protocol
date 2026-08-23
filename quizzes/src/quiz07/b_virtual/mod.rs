@@ -16,7 +16,7 @@ use libs::{
    collections::assets::mk_assets,
    fetchers::{ quotes::fetch_quotes, pivots::fetch_pivots},
    paths::pivot_pool_from_file,
-   processors::virtuals::recompute_pivot,
+   processors::pivots::virtuals::recompute_pivot,
    reports::{total_line,print_tsv_table_d},
    types::{
       measurable::{Measurable,tvl},
