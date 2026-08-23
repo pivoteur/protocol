@@ -34,6 +34,9 @@ pub mod proposals;
 /// Representation of tokens, blockchains, and their amounts
 pub mod tokens;
 
+/// TVL is TVL, siempre!
+pub mod tvl;
+
 /// types used across the systems, like Id, Token, Blochcain
 pub mod util;
 
