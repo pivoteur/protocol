@@ -4,45 +4,47 @@ use serde::Serialize;
 use serde_with::{ serde_as, DisplayFromStr };
 
 use book::{
-   err_utils::ErrStr,
    json_utils::AsJSON,
    num::percentage::Percentage
 };
-use crate::types::{
-   gains::Gains,
-   pivots::opens::Pivot,
-   quotes::Quotes
-};
+use crate::types::gains::Gains;
 use super::{
    pool_assets::{ PoolAssets, incept, prototype },
-   pool_names::PoolName
+   pool_names::PoolName,
+   tvl::TVL
 };
 
 #[derive(Debug, Clone)]
 pub struct PoolHealth {
    name: PoolName,
    assets: Vec<PoolAssets>,
-   open_pivots: Vec<Pivot>
+   tvl: TVL
+}
+
+pub fn mk_pool_health(n: &PoolName, a: &[PoolAssets], t: &TVL) -> PoolHealth {
+   PoolHealth {
+      name: n.clone(),
+      assets: a.to_vec(),
+      tvl: t.clone()
+   }
 }
 
 impl PoolHealth {
    fn transform(&self) -> Option<Health1> {
-      prototype(&self.assets).and_then(|pa|
-         Some(Health1 {
-            pool: self.name.clone(),
-            incept: incept(&self.assets),
-            // tvl: not_implemented!("tvl_calculation"),
-            roi: pa.roi(),
-            apr: pa.apr()
-         })
-      )
+      prototype(&self.assets).and_then(|pa| {
+         let pool = self.name.clone();
+         let incept = incept(&self.assets);
+         let roi = pa.roi();
+         let apr = pa.apr();
+         Some(Health1 { pool, incept, roi, apr, tvl: self.tvl.clone() })
+      })
    }
 }
 
 impl AsJSON for PoolHealth {
    fn as_json(&self) -> String {
       let h1 = &self.transform();
-      match serde_json::to_string(&h1) {
+      match serde_json::to_string_pretty(&h1) {
          Ok(json_string) => format!("{}", json_string),
          Err(e) => panic!("Failed to serialize: {}", e),
       }
@@ -56,22 +58,11 @@ struct Health1 {
    pool: PoolName,
    #[serde_as(as = "DisplayFromStr")]
    incept: NaiveDate,
-   // #[serde_as(as = "DisplayFromStr")]
-   // tvl: TVL,
+   tvl: TVL,
    #[serde_as(as = "DisplayFromStr")]
    roi: Percentage,
    #[serde_as(as = "DisplayFromStr")]
    apr: Percentage
-}
-   
-pub fn mk_pool_health(_q: &Quotes, n: &PoolName, a: &[PoolAssets], v: &[Pivot])
-      -> ErrStr<PoolHealth> {
-   let ph = PoolHealth {
-      name: n.clone(),
-      assets: a.to_vec(),
-      open_pivots: v.to_vec()
-   };
-   Ok(ph)
 }
 
 // ----- TESTS -------------------------------------------------------
@@ -81,15 +72,14 @@ pub fn mk_pool_health(_q: &Quotes, n: &PoolName, a: &[PoolAssets], v: &[Pivot])
 mod functional_tests {
    use super::*;
    use paste::paste;
-   use book::create_testing;
+   use book::{ create_testing, err_utils::ErrStr };
    use crate::{
-      fetchers::pivots::sample_reader::read_sample_open_pivots,
       types::{
          pools::{
             pool_assets::sample_data::sample_btc_eth_pool_assets,
-            pool_names::pool_name_from_str
-         },
-         quotes::sample_data::sample_btc_eth_quotes
+            pool_names::pool_name_from_str,
+            tvl::sample_data::sample_btc_eth_tvl
+         }
       }
    };
 
@@ -97,13 +87,11 @@ mod functional_tests {
 
    run!("mk_pool_health", {
       let pool = "btc-eth";
-      let quiz = "../quizzes";
-      let q = sample_btc_eth_quotes();
+      let offset = "../quizzes";
       let name = pool_name_from_str(pool)?;
-      let assets = sample_btc_eth_pool_assets(quiz)?;
-      let filename = format!("{quiz}/data/sample_btc_eth_open_pivots.tsv");
-      let open_pivots = read_sample_open_pivots(&filename, pool)?;
-      let health = mk_pool_health(&q, &name, &assets, &open_pivots)?;
+      let assets = sample_btc_eth_pool_assets(offset)?;
+      let tvl = sample_btc_eth_tvl();
+      let health = mk_pool_health(&name, &assets, &tvl);
       println!("Pool health is:\n{}", health.as_json());
    });
 }
