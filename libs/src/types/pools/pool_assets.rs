@@ -2,9 +2,12 @@ use chrono::NaiveDate;
 use serde::{ Deserialize, Serialize };
 use serde_with::{serde_as, DisplayFromStr};
 
-use book::{ currency::usd::USD, num::percentage::Percentage };
+use book::{
+   currency::usd::{ USD, mk_usd },
+   num::{ floats::comma_floats::CommaFloat, percentage::Percentage }
+};
 
-use crate::types::{ gains::Gains, measurable::Measurable };
+use crate::types::{ gains::Gains, measurable::Measurable, quotes::Quotes };
 
 #[serde_as]
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -20,7 +23,10 @@ pub struct PoolAssets {
     #[serde_as(as = "DisplayFromStr")]
     roi: Percentage,
     #[serde_as(as = "DisplayFromStr")]
-    apr: Percentage
+    apr: Percentage,
+    #[serde_as(as = "Option<DisplayFromStr>")]
+    #[serde(default)]
+    reserve: Option<CommaFloat>
 }
 
 impl Gains for PoolAssets {
@@ -43,8 +49,20 @@ pub fn prototype(v: &[PoolAssets]) -> Option<PoolAssets> {
 
 // I equate 'incept' with first pool activity, because if the funds are just
 // sitting there, it's not a pivot pool, it's a puddle.
-pub fn incept(pa: &[PoolAssets]) -> NaiveDate {
-   pa.iter().map(|p| p.date).min().unwrap()
+pub fn incept(pa: &[PoolAssets]) -> Option<NaiveDate> {
+   prototype(pa).and_then(|p| Some(p.date.clone()))
+}
+
+impl PoolAssets {
+   pub fn reserve(&self, q: &Quotes) -> USD {
+      mk_usd(self.reserve.and_then(|r| {
+         let res: f32 = r.into();
+         match q.lookup("UNDEAD") {
+            Ok(qt) => Some(qt * res),
+            Err(e) => panic!("No UNDEAD quote; err: {e}")
+         }
+      }).unwrap_or(0.0))
+   }
 }
 
 // ----- TEST -------------------------------------------------------
@@ -89,7 +107,7 @@ mod tests {
 
    #[test] fn test_early_incept() -> ErrStr<()> {
       let assets = sample_btc_eth_pool_assets("../quizzes")?;
-      let start = incept(&assets);
+      let start = incept(&assets).unwrap();
       let current = assets.first().unwrap().date;
       assert!(current >= start, "{start} should preceed {current}");
       Ok(())

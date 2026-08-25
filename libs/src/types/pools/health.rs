@@ -31,13 +31,14 @@ pub fn mk_pool_health(n: &PoolName, a: &[PoolAssets], t: &TVL) -> PoolHealth {
 
 impl PoolHealth {
    fn transform(&self) -> Option<Health1> {
-      prototype(&self.assets).and_then(|pa| {
-         let pool = self.name.clone();
-         let incept = incept(&self.assets);
-         let roi = pa.roi();
-         let apr = pa.apr();
-         Some(Health1 { pool, incept, roi, apr, tvl: self.tvl.clone() })
-      })
+      prototype(&self.assets).and_then(|pa|
+         incept(&self.assets).and_then(| incept | {
+            let pool = self.name.clone();
+            let roi = pa.roi();
+            let apr = pa.apr();
+            Some(Health1 { pool, incept, roi, apr, tvl: self.tvl.clone() })
+         })
+      )
    }
 }
 
