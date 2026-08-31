@@ -15,8 +15,9 @@ type Alias = HashMap<Token, Token>;
 pub struct Aliases { aliaz: Alias }
 
 pub fn aliases() -> Aliases {
+   let alias_pairs = "WBTC BTC WETH ETH STABLE USDC USDT USDC";
    let mut aliaz: HashMap<String, String> = 
-     words("WBTC BTC IBTC BTC WETH ETH IETH ETH IUSD USDC ISOL SOL STABLE USDC")
+     words(alias_pairs)
          .chunks_exact(2)
          .filter_map(composer(Result::ok, fst_snd))
          .collect();
