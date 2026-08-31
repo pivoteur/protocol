@@ -17,6 +17,7 @@ where:
 
 ## Revision history
 
+* 1.08, 2026-08-31: aliasing tokens when interacting with Assets-collection
 * 1.07, 2026-07-29: library-upgrade
 * 1.06, 2026-07-14: `pools = [` becomes `pools: [` to conform to Javascript 
 syntax

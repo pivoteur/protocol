@@ -8,6 +8,7 @@ use book::{
 };
 
 use crate::types::{
+   aliases::{ Aliases, aliases },
    comps::{ Composition, mk_composition },
    tokens::coins::{ Coin, mk_coin },
    measurable::{Measurable,sort_by_tvl,sort_by_weight},
@@ -20,9 +21,15 @@ use crate::types::{
 /// where the size is the amount of the asset
 
 #[derive(Debug)]
-pub struct Assets { map: HashMap<(Blockchain,Token), Coin> }
+pub struct Assets {
+   map: HashMap<(Blockchain,Token), Coin>,
+   aliases: Aliases
+}
 
-pub fn mk_assets() -> Assets { Assets { map: HashMap::new() } }
+pub fn mk_assets() -> Assets {
+   Assets { map: HashMap::new(), aliases: aliases() }
+}
+
 
 impl Assets {
    pub fn brief(&self) -> String {
@@ -31,13 +38,19 @@ impl Assets {
           .collect::<Vec<_>>()
           .join(", ")
    }
+   fn alias_key(&self, key: &(Blockchain, Token)) -> (Blockchain, Token) {
+      let (b, tok0) = key;
+      let tok = self.aliases.alias(tok0);
+      (b.clone(), tok)
+   }
    pub fn add(&mut self, asset: Coin) {
-      self.map.entry(asset.key())
+      let key = self.alias_key(&asset.key());
+      self.map.entry(key)
               .and_modify(|a| { *a += asset.sz(); })
               .or_insert(asset);
    }
    pub fn subtract(&mut self, asset: &Coin) {
-      let k = asset.key();
+      let k = self.alias_key(&asset.key());
       let (_, tok) = &k;
       if let Some(a) = self.map.get_mut(&k) {
          let sub = asset.sz();
@@ -52,7 +65,8 @@ from assets {}
          }
          if amt == 0.0 { self.map.remove(&k); } else { *a += -sub; }
       } else {
-         panic!("No asset {:?} to remove!", asset)
+         panic!("No asset {:?} to remove! Assets are:\n{}",
+                asset, self.as_csv())
       }
    }
    pub fn update_prices(&mut self, qs: &Quotes) -> ErrStr<()> {
