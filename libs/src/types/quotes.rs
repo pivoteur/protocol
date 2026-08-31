@@ -125,7 +125,7 @@ mod tests {
    use super::sample_data::sample_quotes_maker;
 
    fn looking(token: &str) -> ErrStr<f32> {
-      sample_quotes_maker(&[("BTC", 68732.0)]).lookup(token)
+      sample_quotes_maker(&[("BTC", 68732.0), ("USDT", 1.0)]).lookup(token)
    }
 
    #[test]

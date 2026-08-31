@@ -11,13 +11,14 @@ use book::{
 
 type Alias = HashMap<Token, Token>;
 
+const ALIAS_PAIRS: &'static str = "WBTC BTC WETH ETH STABLE USDC";
+
 #[derive(Debug, Clone)]
 pub struct Aliases { aliaz: Alias }
 
 pub fn aliases() -> Aliases {
-   let alias_pairs = "WBTC BTC WETH ETH STABLE USDC USDT USDC";
    let mut aliaz: HashMap<String, String> = 
-     words(alias_pairs)
+     words(ALIAS_PAIRS)
          .chunks_exact(2)
          .filter_map(composer(Result::ok, fst_snd))
          .collect();
@@ -99,7 +100,7 @@ mod tests {
 
    #[test] fn test_usdt_alias() {
       let a = aliases();
-      assert_eq!("USDC", &a.alias("USDt"));
+      assert_eq!("USDT", &a.alias("USDt"));
    }
 }
 
