@@ -2,6 +2,7 @@ use chrono::NaiveDate;
 use clap::Parser;
 
 use book::{
+   debug,
    parse_args_add_banner,
    cli_utils::generate_banner,
    err_utils::ErrStr,
@@ -23,15 +24,14 @@ use libs::{
 async fn health_computer(f: impl Fn(&mut Assets, &Coin),
                          root_url: &str, date: &NaiveDate, debug: bool) 
       -> ErrStr<Vec<Composition>> {
-   if debug { println!("Computing pivot pool health\n"); }
+   debug!("health_computer", debug);
+   log!("Computing pivot pool health");
    let pools = fetch_pool_names(&root_url).await?;
    let quotes = fetch_quotes(date).await?;
    let mut ans = Vec::new();
    for pool in pools {
-      if debug { println!("Computing health for pool {pool}..."); }
       let comp =
          available_assets_fetcher(&f, &root_url, &quotes, &pool, debug).await?;
-      if debug { println!("...done."); }
       ans.push(comp);
    }
    ans.sort_by_key(|c| mk_safe_float(&c.tvl().amount()));
@@ -63,7 +63,7 @@ fn report_health(dt: NaiveDate, v: Vec<Composition>) -> ErrStr<()> {
 /// prints the current available assets for all pivot pools: a health-check.
 #[derive(Debug, Parser)]
 #[command(name = "hwaet")]
-#[command(version = "1.07")]
+#[command(version = "1.08")]
 struct Args {
    /// protocol to run the health-check on, e.g.: PIVOT
    protocol: UppercaseString,

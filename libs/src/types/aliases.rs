@@ -11,12 +11,14 @@ use book::{
 
 type Alias = HashMap<Token, Token>;
 
+const ALIAS_PAIRS: &'static str = "WBTC BTC WETH ETH STABLE USDC";
+
 #[derive(Debug, Clone)]
 pub struct Aliases { aliaz: Alias }
 
 pub fn aliases() -> Aliases {
    let mut aliaz: HashMap<String, String> = 
-     words("WBTC BTC IBTC BTC WETH ETH IETH ETH IUSD USDC ISOL SOL STABLE USDC")
+     words(ALIAS_PAIRS)
          .chunks_exact(2)
          .filter_map(composer(Result::ok, fst_snd))
          .collect();
@@ -82,7 +84,7 @@ mod functional_tests {
    run_with!("aliases", &aliases(), CsvWriter::as_csv);
    run!("enum_headers", {
       let a = aliases();
-      let hdrs = "WBTC STABLE PAXG iSOL USDt";
+      let hdrs = "WBTC STABLE PAXG USDt";
       let headers = a.enum_headers(words(hdrs));
       println!("The headers for
 {hdrs}
@@ -96,9 +98,9 @@ are
 mod tests {
    use super::*;
 
-   #[test] fn test_sol_alias() {
+   #[test] fn test_usdt_alias() {
       let a = aliases();
-      assert_eq!("SOL", &a.alias("iSOL"));
+      assert_eq!("USDT", &a.alias("USDt"));
    }
 }
 
