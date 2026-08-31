@@ -136,10 +136,10 @@ mod tests {
 
    #[test]
    fn test_lookup_alias_ok() -> ErrStr<()> {
-      let mb_iusd = looking("iUSD");
-      assert!(mb_iusd.is_ok());
-      let iusd = mb_iusd?;
-      assert_eq!(1.0, iusd);
+      let mb_usdt = looking("USDt");
+      assert!(mb_usdt.is_ok());
+      let usdt = mb_usdt?;
+      assert_eq!(1.0, usdt);
       Ok(())
    }
 

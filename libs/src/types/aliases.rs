@@ -83,7 +83,7 @@ mod functional_tests {
    run_with!("aliases", &aliases(), CsvWriter::as_csv);
    run!("enum_headers", {
       let a = aliases();
-      let hdrs = "WBTC STABLE PAXG iSOL USDt";
+      let hdrs = "WBTC STABLE PAXG USDt";
       let headers = a.enum_headers(words(hdrs));
       println!("The headers for
 {hdrs}
@@ -97,9 +97,9 @@ are
 mod tests {
    use super::*;
 
-   #[test] fn test_sol_alias() {
+   #[test] fn test_usdt_alias() {
       let a = aliases();
-      assert_eq!("SOL", &a.alias("iSOL"));
+      assert_eq!("USDC", &a.alias("USDt"));
    }
 }
 
