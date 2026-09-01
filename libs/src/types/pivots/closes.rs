@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, DisplayFromStr};
 
 use book::{
-   currency::usd::USD,
+   currency::usd::{ USD, mk_usd },
    num::{ floats::comma_floats::CommaFloat, percentage::Percentage }
 };
 
@@ -88,8 +88,9 @@ pub fn transform(old_row: &OldClosePivotRow, opened: &NaiveDate, gain_10: f32)
       -> ClosePivot {
    let o = &old_row;
    let tr: f32 = o.trade.into();
+   let vol = mk_usd(&o.to_quote.amount() * tr);
    mk_close_pivot(&o.date, Some(opened), &o.pivot, o.close, &o.tx_id, &o.from,
-                  &o.from_quote, &o.to, &o.to_quote, tr, &o.vol, gain_10,
+                  &o.from_quote, &o.to, &o.to_quote, tr, &vol, gain_10,
                   o.new_to_actual, o.gain, &o.gain_total_usd, &o.roi, &o.apr)
 }
 
@@ -115,8 +116,6 @@ pub struct OldClosePivotRow {
     to_quote: USD,
     #[serde_as(as = "DisplayFromStr")]
     trade: CommaFloat,
-    #[serde_as(as = "DisplayFromStr")]
-    vol: USD,
     #[serde(alias = "new to-actual")]
     new_to_actual: f32,
     gain: f32,

@@ -45,7 +45,7 @@ pub fn runoff_with_args() -> ErrStr<()> { write_file_from_stdin() }
 mod sample_close_pivot {
    use book::string_utils::lines;
 
-   pub const FILE: &str = "data/sample_new_close_btc_avax_pivot.tsv";
+   pub const FILE: &str = "data/sample_new_close_btc_avax_pivots.tsv";
    pub fn close_pivot(file: &str) -> Vec<String> {
       lines(&format!("
 date,pivot,close,tx_id,from,from_quote,to,to_quote,trade,vol,gain_10_percent,new_to_actual,gain,gain_total_usd,roi,apr

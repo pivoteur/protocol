@@ -1,5 +1,5 @@
 [env]
-TEST_FILE = "data/sample_new_close_btc_avax_pivot.tsv"
+TEST_FILE = "data/sample_new_close_btc_avax_pivots.tsv"
 
 [tasks.tests]
 # Dependencies run sequentially in the exact order listed below

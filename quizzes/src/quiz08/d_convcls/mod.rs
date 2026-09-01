@@ -22,7 +22,7 @@ use libs::{
 /// convcls computes the 10% gains from the open pivot table.
 #[derive(Debug, Parser)]
 #[command(name = "convcls")]
-#[command(version = "1.04")]
+#[command(version = "1.05")]
 struct Args {
    /// Path to the open pivots table
    opens: String,
@@ -37,13 +37,13 @@ struct Args {
 
 pub fn runoff_with_args() -> ErrStr<()> {
    let args = parse_args_add_banner!(Args);
+   let closes = &args.closes;
    let a = aliases();
    let (opens, _mx_dt) = read_pivots(&args.opens, &a, args.debug)?;
-   let closes = &args.closes;
-   with_open_pivots(&opens, closes)
+   with_pivots(&opens, closes)
 }
 
-fn with_open_pivots(opens: &[Pivot], closes: &str) -> ErrStr<()> {
+fn with_pivots(opens: &[Pivot], closes: &str) -> ErrStr<()> {
    let close_file = err_or(File::open(closes),
               &format!("Cannot open old close pivot table: {closes}"))?;
    let mut close_rdr = process_old_close_pivots(&close_file)?;
@@ -60,23 +60,27 @@ fn with_open_pivots(opens: &[Pivot], closes: &str) -> ErrStr<()> {
 mod functional_tests {
    use super::*;
    use paste::paste;
-   use book::{ create_testing, file_utils::read_file };
+   use book::create_testing;
    use libs::fetchers::pivots::sample_reader::read_sample_open_pivots;
 
    create_testing!("quizzes::quiz08::d_convcls");
 
-   run!("new_close_pivot_table", {
-      let open_pivots =
-         read_sample_open_pivots("data/sample_avax_undead_open_pivots.tsv",
-                                 "avax-undead")?;
-      println!("Using AVAX+UNDEAD open pivots");
-      let old_closes =
-        read_file("data/sample_old_close_avax_undead_pivot.tsv")?;
-      println!("Converting AVAX+UNDEAD (old) close pivots");
-      let mut basis = process_old_close_pivots(old_closes.as_bytes())?;
-      let new_closes = new_close_pivots(&open_pivots, &mut basis)?;
-      let table = as_tsv(&new_closes, true)?;
-      println!("Result:\n{table}");
+   fn run_close_pivot_functional_test(opn: &str, name: &str, cls: &str)
+         -> ErrStr<()> {
+      fn file(f: &str) -> String { format!("data/sample_{f}_pivots.tsv") }
+      let open_pivots = read_sample_open_pivots(&file(opn), name)?;
+      with_pivots(&open_pivots, &file(cls))
+   }
+
+   run!("new_avax_undead_close_pivot_table", {
+      run_close_pivot_functional_test("avax_undead_open", "avax-undead",
+                                      "old_close_avax_undead")?;
+   });
+
+   run!("new_btc_usdc_close_pivot_table",
+        " (the old close pivot table has no `vol`-column)", {
+      run_close_pivot_functional_test("btc_usdc_open", "btc-usdc",
+                                      "old_close_btc_usdc")?;
    });
 }
 
@@ -92,7 +96,7 @@ mod tests {
 
    #[test] fn test_old_close_pivots_ok() -> ErrStr<()> {
       let old_closes =
-        read_file("data/sample_old_close_avax_undead_pivot.tsv")?;
+        read_file("data/sample_old_close_avax_undead_pivots.tsv")?;
       let closes = process_old_close_pivots(old_closes.as_bytes());
       assert!(closes.is_ok(), "Cannot parse old close pivots");
       Ok(())
@@ -100,7 +104,7 @@ mod tests {
 
    #[test] fn test_old_close_pivots_deserialize() -> ErrStr<()> {
       let old_closes =
-         read_file("data/sample_old_close_avax_undead_pivot.tsv")?;
+         read_file("data/sample_old_close_avax_undead_pivots.tsv")?;
       let mut closes = process_old_close_pivots(old_closes.as_bytes())?;
       let mut x = 0;
       for close in closes.deserialize::<OldClosePivotRow>() {
@@ -116,7 +120,7 @@ mod tests {
          read_sample_open_pivots("data/sample_avax_undead_open_pivots.tsv",
                                  "avax-undead")?;
       let old_closes =
-         read_file("data/sample_old_close_avax_undead_pivot.tsv")?;
+         read_file("data/sample_old_close_avax_undead_pivots.tsv")?;
       let mut closes = process_old_close_pivots(old_closes.as_bytes())?;
       let new_closes = new_close_pivots(&opens, &mut closes)?;
       assert_eq!(4, new_closes.len(), "There should be 2 new close pivots");
