@@ -88,7 +88,7 @@ pub fn transform(old_row: &OldClosePivotRow, opened: &NaiveDate, gain_10: f32)
       -> ClosePivot {
    let o = &old_row;
    let tr: f32 = o.trade.into();
-   let vol = mk_usd(&o.to_quote.amount() * tr);
+   let vol = mk_usd(&o.from_quote.amount() * tr);
    mk_close_pivot(&o.date, Some(opened), &o.pivot, o.close, &o.tx_id, &o.from,
                   &o.from_quote, &o.to, &o.to_quote, tr, &vol, gain_10,
                   o.new_to_actual, o.gain, &o.gain_total_usd, &o.roi, &o.apr)
