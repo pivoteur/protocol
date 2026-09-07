@@ -22,7 +22,7 @@ use libs::{
 /// convcls computes the 10% gains from the open pivot table.
 #[derive(Debug, Parser)]
 #[command(name = "convcls")]
-#[command(version = "1.07")]
+#[command(version = "1.08")]
 struct Args {
    /// Path to the open pivots table
    opens: String,

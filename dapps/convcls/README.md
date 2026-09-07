@@ -14,6 +14,7 @@ the new pivot table.
 
 ## Revision History
 
+* 1.08, 2026-09-07: Old close pivot table `gain` column is CommaFloat
 * 1.07, 2026-09-07: Old close pivot table `new_to_actual` column is CommaFloat
 * 1.06, 2026-09-01: corrected vol calculation
 * 1.05, 2026-08-31: computes `vol` from other columns, does not require presence
