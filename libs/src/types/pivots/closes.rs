@@ -91,7 +91,7 @@ pub fn transform(old_row: &OldClosePivotRow, opened: &NaiveDate, gain_10: f32)
    let vol = mk_usd(&o.from_quote.amount() * tr);
    mk_close_pivot(&o.date, Some(opened), &o.pivot, o.close, &o.tx_id, &o.from,
                   &o.from_quote, &o.to, &o.to_quote, tr, &vol, gain_10,
-                  o.new_to_actual.into(), o.gain, &o.gain_total_usd,
+                  o.new_to_actual.into(), o.gain.into(), &o.gain_total_usd,
                   &o.roi, &o.apr)
 }
 
@@ -120,7 +120,8 @@ pub struct OldClosePivotRow {
     #[serde_as(as = "DisplayFromStr")]
     #[serde(alias = "new to-actual")]
     new_to_actual: CommaFloat,
-    gain: f32,
+    #[serde_as(as = "DisplayFromStr")]
+    gain: CommaFloat,
     #[serde_as(as = "DisplayFromStr")]
     #[serde(alias = "gain, total $")]
     gain_total_usd: USD,
