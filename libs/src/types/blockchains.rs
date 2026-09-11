@@ -38,8 +38,13 @@ impl Blockchain {
       })
    }
    pub fn url(&self) -> String {
-      format!("https://site1.moralis-nodes.com/{}", self.blockchain())
-      // site2 is an alternative
+      s("https://api.avax.network/ext/bc/C/rpc") // works for everybody?
+   }
+   pub fn chain_id(&self) -> u64 { 
+      match self {
+         AVALANCHE => 43114,
+         x => panic!("No chain_id for {x}")
+      }
    }
 }
 
