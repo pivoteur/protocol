@@ -1,5 +1,3 @@
-#![crate_name = "libs"]
-
 /// Distillation of pivot pool-management
 
 /// Types used across the library
