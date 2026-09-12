@@ -1,7 +1,6 @@
 #!/bin/bash
 
-PROTOCOL=$1
-DIRECTORY="$2"
+DIRECTORY="$1"
 
 # Check if the directory argument was provided
 if [ -z "$DIRECTORY" ]; then
@@ -15,10 +14,23 @@ fi
 for file in "$DIRECTORY"/*; do
   # Check if the current item is a regular file
   if [ -f "$file" ]; then
-    # *** Replace the following line with your specific command ***
-    echo "processing file $file"
-    virtsz $PROTOCOL $LE_DATE $file > $file
-    # Example: run a data processing command on the file
-    # virtsz <protocol> <date> <path or "$file">
+
+    # 1. Create a safe temporary file
+    temp_file=$(mktemp)
+
+    # 2. Run your dapp/program and capture the output
+    echo "processing file $file; saving to $temp_file"
+    virtsz $LE_DATE $file > $temp_file
+
+    # 3. Check the exit status of 'your_dapp_command'
+    if [ $? -eq 0 ]; then
+       echo "Processing succeeded! Updating file..."
+       mv "$temp_file" "$file"
+    else
+       echo "Error: Dapp processing failed. Original file left untouched."
+
+       # Clean up the temporary file
+       rm -f "$temp_file"
+    fi
   fi
 done
