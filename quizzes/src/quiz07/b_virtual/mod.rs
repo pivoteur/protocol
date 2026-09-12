@@ -2,21 +2,20 @@ use chrono::NaiveDate;
 use clap::Parser;
 
 use book::{
+   debug,
    parse_args_add_banner,
    cli_utils::generate_banner,
    currency::usd::USD,
    csv_utils::{CsvWriter,CsvHeader},
    err_utils::ErrStr,
-   string_utils::UppercaseString,
-   tuple_utils::Partition,
-   utils::get_env
+   file_utils::lines_from_file
 };
 
 use libs::{
    collections::assets::mk_assets,
-   fetchers::{ quotes::fetch_quotes, pivots::fetch_pivots},
+   fetchers::{ quotes::fetch_quotes, pivots::parse_pivots},
    paths::pivot_pool_from_file,
-   processors::virtuals::recompute_pivot,
+   processors::virtuals::{ partition_virtual_pivots, recompute_pivot },
    reports::{total_line,print_tsv_table_d},
    types::{
       comps::Composition,
@@ -26,10 +25,6 @@ use libs::{
       quotes::Quotes
    }
 };
-
-fn partition_virtual_pivots(all_opns: Vec<Pivot>) -> Partition<Pivot> {
-   all_opns.into_iter().partition(Pivot::is_virtual)
-}
 
 fn aggregate_virtual_pivots(virts: &[Pivot], quotes: &Quotes, pool: &Pool)
       -> ErrStr<Composition> {
@@ -46,23 +41,23 @@ fn aggregate_virtual_pivots(virts: &[Pivot], quotes: &Quotes, pool: &Pool)
 
 fn tvls<T:Measurable>(rows: &[T]) -> USD { rows.iter().map(tvl).sum() }
 
-async fn update_virtual_pivots(protocol: &str, date: &NaiveDate, path: &str,
-                             debug: bool) -> ErrStr<()> {
+async fn update_virtual_pivots(date: &NaiveDate, path: &str, debug: bool)
+      -> ErrStr<()> {
+   debug!("update_virtual_pivots", debug);
    let pool = pivot_pool_from_file(path)?;
-   let root_url = get_env(&format!("{protocol}_URL"))?;
    let quotes = fetch_quotes(&date).await?;
    let truz = &quotes.aliases;
-   let (pivots, _mx) = fetch_pivots(&root_url, &pool, truz, debug).await?;
+   let rows = lines_from_file(path)?;
+   let (pivots, _mx) = parse_pivots(&pool, rows, truz, debug)?;
    let (all_opns, cls) = pivots;
    let (virts, opns) = partition_virtual_pivots(all_opns);
-   let pool_name = pool.pool_name();
 
    if debug {
       if !virts.is_empty() {
          let agg = aggregate_virtual_pivots(&virts, &quotes, &pool)?;
          report_on_assets(&[agg], &virts);
       } else {
-         println!("Pivot pool {pool_name} has no virtual pivots.");
+         log!("Pivot pool {} has no virtual pivots.", pool);
       }
    }
 
@@ -74,7 +69,7 @@ async fn update_virtual_pivots(protocol: &str, date: &NaiveDate, path: &str,
                       .chain(new_virts.into_iter()))
                       .collect();
    new_opens.sort_by(|a,b| a.index().cmp(&b.index()));
-   tabl(&format!("{pool_name} pivots"), &new_opens, 3, debug);
+   tabl(&format!("{pool} pivots"), &new_opens, 3, debug);
    Ok(())
 }
 
@@ -95,11 +90,8 @@ fn tabl<T:CsvWriter + CsvHeader + Measurable>
 /// Computes assets committed to virtual pivots.
 #[derive(Debug, Parser)]
 #[command(name = "virtsz")]
-#[command(version = "2.06")]
+#[command(version = "2.10")]
 struct Args {
-   /// Protocol to compute assets committed to virtual pivots, e.g.: PIVOT
-   protocol: UppercaseString,
-
    /// date on which to compute assets committed to virtual pivots
    date: NaiveDate,
 
@@ -113,8 +105,7 @@ struct Args {
 
 pub async fn runoff_with_args() -> ErrStr<()> {
    let args = parse_args_add_banner!(Args);
-   update_virtual_pivots(&args.protocol, &args.date, &args.path,
-                         args.debug).await
+   update_virtual_pivots(&args.date, &args.path, args.debug).await
 }
 
 // ----- TESTS -------------------------------------------------------
@@ -124,7 +115,7 @@ pub async fn runoff_with_args() -> ErrStr<()> {
 mod test_data {
    use super::*;
    use libs::fetchers::test_helpers::test_functions::btc_eth_pivots;
-   use book::tuple_utils::fst;
+   use book::tuple_utils::{ Partition, fst };
 
    pub async fn virts_n_opns() -> ErrStr<(Vec<Pivot>, Partition<Pivot>)> {
       let (pivots, _mx) = btc_eth_pivots().await?;
@@ -154,7 +145,7 @@ mod functional_tests {
 
    run!("update_virtual_pivots", {
       let path = path_to_btc_eth_pivot_pool();
-      let _ = now(update_virtual_pivots("pivot", &yesterday(), &path, true));
+      let _ = now(update_virtual_pivots(&yesterday(), &path, true));
    });
 
    run!("aggregate_virtual_pivots", {

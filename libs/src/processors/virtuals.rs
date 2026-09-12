@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use crate::types::{
    calls::{ Call, CallData },
    pivots::opens::{ Pivot, mk_pivot },
@@ -8,8 +10,23 @@ use book::{
    csv_utils::{ CsvHeader, CsvWriter },
    currency::usd::USD,
    err_utils::ErrStr,
-   string_utils::s
+   string_utils::s,
+   tuple_utils::Partition
 };
+
+pub fn partition_virtual_pivots(opens: Vec<Pivot>) -> Partition<Pivot> {
+   partition_virtual_pivots_on(opens, None)
+}
+
+pub fn partition_virtual_pivots_on(opens: Vec<Pivot>, mb_keys: Option<&[usize]>)
+      -> Partition<Pivot> {
+   let keys: Option<HashSet<usize>> =
+      mb_keys.and_then(|ks| Some(ks.into_iter().cloned().collect()));
+   let crit = move |p: &Pivot| {
+      keys.as_ref().map_or(true, |ks| ks.contains(&p.index()))
+   };
+   opens.into_iter().partition(|p| p.is_virtual() && crit(p))
+}
 
 // ----- RECOMPUTING VIRTUAL PIVOTS (virtsz) -------------------------------
 
@@ -46,13 +63,13 @@ fn recompute1(quotes: &Quotes, p: Pivot, debug: bool) -> ErrStr<Pivot> {
 // ----- RECOMPUTING VIRTUAL PIVOTS (offrian) -------------------------------
 
 mod counter_offerer {
-   use std::collections::HashSet;
    use book::{
       debug,
       currency::usd::{ USD, mk_usd },
       err_utils::ErrStr,
       num::percentage::mk_percentage,
-      string_utils::is_are
+      string_utils::is_are,
+      tuple_utils::fst
    };
 
    use crate::types::{
@@ -61,6 +78,8 @@ mod counter_offerer {
       pivots::opens::Pivot,
       pools::Pool
    };
+
+   use super::partition_virtual_pivots_on;
 
    fn compute_virtual_pivot_amount(call_data: &CallData, debug: bool) -> f32 {
       let (call, opens) = call_data;
@@ -73,13 +92,10 @@ mod counter_offerer {
    fn filter_virtuals(pool: &Pool, all_pivots: &[Pivot],
                       opens: &[usize], debug: bool) -> Vec<Pivot> {
       debug!("filter_virtuals", debug);
-      let pivs_set: HashSet<usize> = opens.iter().copied().collect();
-      let mut virtuals = all_pivots.to_vec();
-      // filter down to virtual pivots in the call
-      virtuals.retain(|p| p.is_virtual() && pivs_set.contains(&p.index()));
+      let virtuals =
+         fst(partition_virtual_pivots_on(all_pivots.to_vec(), Some(opens)));
       log!("There {} for {} call",
            is_are(virtuals.len(), "virtual pivot"), pool);
-            
       virtuals
    }
 

@@ -7,5 +7,5 @@ committed to virtual swaps.
 
 ![Virtual swap amounts in pivot pools](imgs/01-virtsz.png)
 
-[source](src/main.rs)
+[source](mod.rs)
 
