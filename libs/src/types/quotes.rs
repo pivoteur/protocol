@@ -65,11 +65,13 @@ impl Quotes {
    pub fn as_table(&self) -> Table<usize,Token,f32> {
       from_map(&1, &self.quotes)
    }
+   pub fn update_quote(&mut self, token: &str, qt: f32) {
+      self.quotes.insert(s(token), qt);
+   }
 }
 
 // ----- TESTS -------------------------------------------------------
 
-#[cfg(test)]
 #[cfg(not(tarpaulin_include))]
 pub mod sample_data {
 

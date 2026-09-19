@@ -3,15 +3,16 @@ use std::{ cmp::Reverse, fmt, hash::Hash, str::FromStr };
 use serde::{ Deserialize, Serialize };
 
 use book::{
+   debug,
    date_utils::today,
    err_utils::ErrStr,
    list_utils::fst_snd,
    num::floats::safe_floats::mk_safe_float,
-   string_utils::words,
+   string_utils::{ s, words },
    tuple_utils::fst
 };
 
-use super::{ quotes::mk_quotes, util::Token };
+use super::{ quotes::{ Quotes, mk_quotes }, util::Token };
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Hash)]
 pub struct Pool { primary: Token, pivot: Token }
@@ -34,16 +35,24 @@ pub fn mk_pool(a: &str, b: &str) -> Pool {
 }
 
 pub fn construct_pool(quotes: [(Token, f32);2], debug: bool) -> ErrStr<Pool> {
-   let mut v: Vec<(&str, f32)> =
+   let v: Vec<(&str, f32)> =
       quotes.iter().map(|(k,v)| (k.as_str(), *v)).collect();
-   v.push(("USDC", -1.0));
-   let dict = mk_quotes(&today(), &v);
-   let mut assets: Vec<_> =
-      quotes.iter()
-            .filter_map(|(t,_)| dict.lookup(&t).ok().and_then(|q| Some((t, q))))
-            .collect();
+   let mut dict = mk_quotes(&today(), &v);
+   let [prim, piv] = quotes;
+   compute_pool(&mut dict, &fst(prim), &fst(piv), debug)
+}
+
+pub fn compute_pool(quotes: &mut Quotes, prim: &str, piv: &str, debug: bool)
+      -> ErrStr<Pool> {
+   debug!("compute_pool", debug);
+   quotes.update_quote("USDC", -1.0);
+   fn build_quote(q: &Quotes) -> impl Fn(&str) -> Option<(String, f32)> {
+      move |k: &str| q.lookup(k).ok().and_then(|qt| Some((s(k), qt)))
+   }
+   let mut assets: Vec<(String, f32)> =
+      [prim, piv].into_iter().filter_map(build_quote(quotes)).collect();
    assets.sort_by_key(|(_, q)| Reverse(mk_safe_float(q)));
-   if debug { println!("construct_pool(), sorted assets: {assets:?}"); }
+   log!("sorted assets: {}", format!("{assets:?}"));
    let (a, b) = fst_snd(&assets.into_iter().map(fst).collect::<Vec<_>>())?;
    Ok(mk_pool(&a, &b))
 }
