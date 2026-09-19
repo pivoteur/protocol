@@ -37,20 +37,21 @@ pub fn mk_pool(a: &str, b: &str) -> Pool {
 pub fn construct_pool(quotes: [(Token, f32);2], debug: bool) -> ErrStr<Pool> {
    let v: Vec<(&str, f32)> =
       quotes.iter().map(|(k,v)| (k.as_str(), *v)).collect();
-   let mut dict = mk_quotes(&today(), &v);
+   let dict = mk_quotes(&today(), &v);
    let [prim, piv] = quotes;
-   compute_pool(&mut dict, &fst(prim), &fst(piv), debug)
+   compute_pool(&dict, &fst(prim), &fst(piv), debug)
 }
 
-pub fn compute_pool(quotes: &mut Quotes, prim: &str, piv: &str, debug: bool)
+pub fn compute_pool(quotes0: &Quotes, prim: &str, piv: &str, debug: bool)
       -> ErrStr<Pool> {
    debug!("compute_pool", debug);
+   let mut quotes = quotes0.clone();
    quotes.update_quote("USDC", -1.0);
    fn build_quote(q: &Quotes) -> impl Fn(&str) -> Option<(String, f32)> {
       move |k: &str| q.lookup(k).ok().and_then(|qt| Some((s(k), qt)))
    }
    let mut assets: Vec<(String, f32)> =
-      [prim, piv].into_iter().filter_map(build_quote(quotes)).collect();
+      [prim, piv].into_iter().filter_map(build_quote(&quotes)).collect();
    assets.sort_by_key(|(_, q)| Reverse(mk_safe_float(q)));
    log!("sorted assets: {}", format!("{assets:?}"));
    let (a, b) = fst_snd(&assets.into_iter().map(fst).collect::<Vec<_>>())?;
