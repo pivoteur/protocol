@@ -1,9 +1,11 @@
 use chrono::NaiveDate;
 
 use book::{
+   debug,
    date_utils::datef,
    err_utils::ErrStr,
    file_utils::lines_from_file,
+   string_utils::plural,
    table_utils::{Table,cols},
    tuple_utils::{Partition,fst}
 };
@@ -28,11 +30,10 @@ pub async fn fetch_pivots(root_url: &str, pool: &Pool, a: &Aliases, debug: bool)
 
 pub fn parse_pivots(pool: &Pool, lines: Vec<String>, a: &Aliases, debug: bool)
       -> ErrStr<(Partition<Pivot>, NaiveDate)> {
+   debug!("parse_pivots", debug);
    let table = index_table(lines)?;
-   if debug {
-      println!("For the {pool} pivot table:
-	total pivots fetched: {}", table.data.len());
-   }
+   log!("For the {} pivot table:
+	total pivots fetched {}", pool, plural(table.data.len(), "pivot"));
    let hdrs = a.enum_headers(cols(&table));
 
    let max_date = max_diem(&table, hdrs["opened"], &pool, debug)?;
@@ -47,20 +48,20 @@ pub fn parse_pivots(pool: &Pool, lines: Vec<String>, a: &Aliases, debug: bool)
          pass.push(piv);
       }
    }
-   if debug {
-      println!("\t{} open pivots; {} closed pivots", acts.len(), pass.len());
-   }
+   log!("\t{}; {}", plural(acts.len(), "open pivot"),
+        plural(pass.len(), "closed pivot"));
    Ok(((acts, pass), max_date.clone()))
 }
 
 fn max_diem<T>(table: &Table<T, String, String>, ix: usize, pool: &Pool,
                debug: bool) -> ErrStr<NaiveDate> {
+   debug!("max_diem", debug);
    let max_date = table.data
                        .iter()
                        .map(|row| datef(&row[ix]))
                        .max()
                        .ok_or(format!("No max date for {pool} pivot pool"))?;
-   if debug { println!("\tmax_date: {max_date}"); }
+   log!("\tmax_date: {}", max_date);
    Ok(max_date)
 }
 
