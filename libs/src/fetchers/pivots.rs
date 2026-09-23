@@ -32,8 +32,8 @@ pub fn parse_pivots(pool: &Pool, lines: Vec<String>, a: &Aliases, debug: bool)
       -> ErrStr<(Partition<Pivot>, NaiveDate)> {
    debug!("parse_pivots", debug);
    let table = index_table(lines)?;
-   log!("For the {} pivot table:
-	total pivots fetched {}", pool, plural(table.data.len(), "pivot"));
+   log!("{} pivot table", pool);
+   log!("total fetched {}", plural(table.data.len(), "pivot"));
    let hdrs = a.enum_headers(cols(&table));
 
    let max_date = max_diem(&table, hdrs["opened"], &pool, debug)?;

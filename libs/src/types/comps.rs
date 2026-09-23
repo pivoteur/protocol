@@ -1,6 +1,7 @@
 use chrono::NaiveDate;
 
 use book::{
+   debug,
    currency::usd::{USD,mk_usd},
    csv_utils::{CsvHeader,CsvWriter},
    err_utils::ErrStr,
@@ -132,13 +133,12 @@ pub fn mk_composition(primary: &Coin, pivot: &Coin) -> Composition {
 }
 
 pub fn from_assets(assets: &[Coin], debug: bool) -> ErrStr<Composition> {
-   if debug {
-      println!("types::comps::from_assets received {} assets", assets.len());
-   }
+   debug!("from_assets", debug);
+   let nassets = plural(assets.len(), "asset");
+   log!("types::comps::from_assets received {}", nassets);
    match assets {
       [a, b] => Ok(arrange_assets(&a, &b)),
-      _ => Err(format!("Cannot make a composition from {}",
-                       plural(assets.len(), "asset")))
+      _ => Err(format!("Cannot make a composition from {nassets}"))
    }
 }
 
@@ -146,7 +146,7 @@ impl Composition {
    pub fn pool_name(&self) -> String { 
       let (_, pri) = self.primary.key();
       let piv = self.pivot.key();
-      mk_pool(&pri, &piv).to_string()
+      mk_pool(&pri, &piv).pool_name()
    }
 
    pub fn tvl(&self) -> USD { tvl(&self.primary) + tvl(&self.pivot) }
