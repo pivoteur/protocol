@@ -16,12 +16,13 @@ use crate::{
          assets::recompute_assets as new_assets,
          asset_types::AssetType::{FROM,TO}
       },
+      blockchains::Blockchain,
       headers::{Header, next_close_id as closer, parse_header},
-      tokens::coins::Coin,
       measurable::Measurable,
       proposals::prop_assets::PropAsset,
       quotes::Quotes,
-      util::{Blockchain,Id}
+      tokens::coins::Coin,
+      util::Id
    }
 };
 
@@ -137,6 +138,7 @@ pub mod test_data {
       types::{
          aliases::aliases,
          assets::{ amounts::{ Amount, mk_amt }, assets::mk_asset },
+         blockchains::Blockchain::AVALANCHE,
          headers::mk_hdr
       }
    };
@@ -149,7 +151,7 @@ pub mod test_data {
 
    pub fn mk_btc_usdc_piv(q: f32, a: Amount, c: usize, tx: &str)
          -> ErrStr<Pivot> {
-      let ava = "Avalanche";
+      let ava = &AVALANCHE;
       let qt = mk_usd(q);
       let to = mk_asset("USDC", ava, mk_amt(7840.0, 0.0), mk_usd(1.0), &TO);
       let header = mk_hdr("2026-03-10", 1, c, tx.to_string(), None)?;

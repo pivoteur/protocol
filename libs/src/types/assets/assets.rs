@@ -5,7 +5,7 @@ use chrono::NaiveDate;
 use book::{
    csv_utils::{CsvHeader,CsvWriter},
    currency::usd::{USD,mk_usd},
-   err_utils::ErrStr,
+   err_utils::{ ErrStr, err_or },
    num_utils::parse_commaless,
    utils::pred
 };
@@ -16,11 +16,12 @@ use super::{
 };
 
 use crate::types::{
+   blockchains::Blockchain,
    measurable::{Measurable,weight},
-   tokens::coins::Coin,
-   quotes::Quotes,
    proposals::prop_assets::{PropAsset,mk_prop_asset},
-   util::{Token,Blockchain}
+   quotes::Quotes,
+   tokens::coins::Coin,
+   util::Token
 };
 
 // ----- ASSETS
@@ -66,10 +67,10 @@ impl CsvHeader for Asset {
    }
 }
 
-pub fn mk_asset(tkn: &str, blk: &str, amount: Amount, quote: USD, 
+pub fn mk_asset(tkn: &str, blk: &Blockchain, amount: Amount, quote: USD, 
                 knd: &AssetType) -> Asset {
    Asset { token: tkn.to_string(), 
-           blockchain: blk.to_string(),
+           blockchain: blk.clone(),
            amount, quote, kind: knd.clone() }
 }
 
@@ -78,14 +79,17 @@ pub fn parse_asset(a: AssetType, hdrs: &HashMap<String, usize>,
    let keys = a.keys();
    if let [tok, blk, amt, virt, qut] = keys.as_slice() {
       let token = &row[hdrs[tok]];
-      let block = &row[hdrs[blk]];
+      let block0 = &row[hdrs[blk]];
+      let block: Blockchain =
+         err_or(block0.parse(),
+                &format!("Blockchain '{block0}' not supported"))?;
       let amnt = parse_commaless(&row[hdrs[amt]])?;
       let vrt = if let Some(virt_key) = hdrs.get(virt) {
          parse_commaless(&row[*virt_key])
       } else { Ok( 0.0 ) }?;
       let quot: USD = row[hdrs[qut]].parse()?;
       let amount = mk_amt(amnt, vrt);
-      Ok(mk_asset(token, block, amount, quot, &a))
+      Ok(mk_asset(token, &block, amount, quot, &a))
    } else {
       Err("bad pattern match in AssetType enum for keys()".to_string())
    }
@@ -157,9 +161,11 @@ pub fn gain_10_percent(a: f32) -> f32 { a * 1.1 }
 #[cfg(not(tarpaulin_include))]
 pub mod sample_assets {
    use super::*;
+   use crate::types::blockchains::Blockchain::AVALANCHE;
+   const AVA: Blockchain = AVALANCHE;
 
    pub fn primary_asset(sym: &str, amt: f32, qt: f32) -> Asset {
-      mk_asset(sym, "Avalanche", mk_amt(0.0, amt), mk_usd(qt), &FROM)
+      mk_asset(sym, &AVA, mk_amt(0.0, amt), mk_usd(qt), &FROM)
    }
 
    pub fn btc_asset(amt: f32, qt: f32) -> Asset {
@@ -167,7 +173,7 @@ pub mod sample_assets {
    }
 
    pub fn pivot_asset(sym: &str, amt: f32, qt: f32) -> Asset {
-      mk_asset(sym, "Avalanche", mk_amt(amt, 0.0), mk_usd(qt), &TO)
+      mk_asset(sym, &AVA, mk_amt(amt, 0.0), mk_usd(qt), &TO)
    }
 }
 

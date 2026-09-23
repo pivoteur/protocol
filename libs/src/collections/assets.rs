@@ -3,24 +3,24 @@ use std::collections::HashMap;
 use book::{
    csv_utils::{CsvWriter,CsvHeader},
    currency::usd::mk_usd,
-   err_utils::ErrStr,
-   string_utils::s
+   err_utils::ErrStr
 };
 
 use crate::types::{
    aliases::{ Aliases, aliases },
+   blockchains::Blockchain,
    comps::{ Composition, mk_composition },
    tokens::coins::{ Coin, mk_coin },
    measurable::{Measurable,sort_by_tvl,sort_by_weight},
    pools::Pool,
    quotes::Quotes,
-   util::{Token,Blockchain}
+   util::Token
 };
 
 /// An Assets (a singular collection of a plurality of assets) is a bag
 /// where the size is the amount of the asset
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Assets {
    map: HashMap<(Blockchain,Token), Coin>,
    aliases: Aliases
@@ -77,8 +77,9 @@ from assets {}
    }
    pub fn is_empty(&self) -> bool { self.map.is_empty() }
    pub fn assets(&self) -> Vec<Coin> { self.map.values().cloned().collect() }
-   pub fn as_composition(&mut self, pool: &Pool, quotes: &Quotes)
-         -> ErrStr<Composition> {
+   pub fn as_composition(&self, blockchain: &Blockchain, pool: &Pool,
+                         quotes: &Quotes) -> ErrStr<Composition> {
+        
 /* 4 scenarii:
 
 1. no matches, no virtual pivots
@@ -89,14 +90,6 @@ from assets {}
 so, you know: handle those.
 */
 
-      let default_blockchain = s("Avalanche");
-      let blk =
-         self.map.keys()
-                 .next()
-                 .and_then(|(b,_)| Some(b))
-                 .or(Some(&default_blockchain))
-                 .unwrap()
-                 .clone();
       fn nonce<'a>(b: &'a Blockchain, q: &'a Quotes)
             -> impl Fn(&'a Token) -> ErrStr<Coin> {
          move |tok| {
@@ -105,29 +98,29 @@ so, you know: handle those.
          }
       }
       let (pri, piv) = pool.as_tuple();
+      let blk = blockchain;
       let zed = nonce(&blk, &quotes);
-      self.add(zed(&pri)?);
-      self.add(zed(&piv)?);
-      let abp = assets_by_price(&self);
+      let mut assets = self.clone();
+      assets.add(zed(&pri)?);
+      assets.add(zed(&piv)?);
+      let abp = assets_by_price(&assets);
       if let [pr, pv] = abp.as_slice() {
          Ok(mk_composition(pr, pv))
       } else {
-         Err(format!("Cannot create a composition from {}", self.as_csv()))
+         Err(format!("Cannot create a composition from {}", assets.as_csv()))
       }
    }
 }
 
 impl CsvHeader for Assets { 
    fn header(&self) -> String {
-      let proto = Coin::default();
-      proto.header()
+      self.map.values().next().expect("Assets map empty!").header()
    }
 }
 
 impl CsvWriter for Assets {
    fn ncols(&self) -> usize {
-      let proto = Coin::default();
-      proto.ncols()
+      self.map.values().next().expect("Assets map empty!").ncols()
    }
    fn as_csv(&self) -> String {
       let ans: Vec<String> =
@@ -187,16 +180,19 @@ mod tests {
    use super::*;
    use super::test_data::{ test_btc_coin, test_eth_coin, test_btc_eth_assets };
    use crate::types::{
+      blockchains::Blockchain::AVALANCHE,
       pools::pool_from_str,
       quotes::sample_data::sample_btc_eth_quotes,
       tokens::coins::test_data::coin
    };
 
+   const AVA: Blockchain = AVALANCHE;
+
    fn mk_sample_btc_eth_composition(assets: &mut Assets)
          -> ErrStr<Composition> {
       let quotes = sample_btc_eth_quotes();
       let pool = pool_from_str("btc-eth")?;
-      assets.as_composition(&pool, &quotes)
+      assets.as_composition(&AVA, &pool, &quotes)
    }
 
    fn comp_ok(assets: &mut Assets) -> ErrStr<()> {

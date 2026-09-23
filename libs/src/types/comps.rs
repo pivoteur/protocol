@@ -11,6 +11,7 @@ use book::{
 use crate::collections::assets::{Assets,mk_assets};
 
 use super::{
+   blockchains::Blockchain,
    measurable::{Measurable,size,tvl},
    pools::mk_pool,
    tokens::coins::{Coin,PivotCoin}
@@ -155,6 +156,11 @@ impl Composition {
       assets.add(self.primary.clone());
       assets.add(self.pivot.coin());
       assets
+   }
+
+   pub fn blockchain(&self) -> Blockchain {
+      let (blk, _) = self.primary.key();
+      blk
    }
 }
 

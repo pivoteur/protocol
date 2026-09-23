@@ -7,10 +7,11 @@ use book::{
 
 use crate::types::{
    assets::asset_types::{AssetType,AssetType::*},
+   blockchains::Blockchain,
    measurable::{Measurable,weight,size},
    pools::Pool,
    tokens::coins::{Coin,mk_coin},
-   util::{Token,Blockchain}
+   util::Token
 };
 
 #[derive(Debug, Clone)]
@@ -59,9 +60,9 @@ impl Measurable for PropAsset {
    fn aug(&self) -> f32 { self.close_price.amount() }
 }
 
-pub fn mk_prop_asset(t: &str, b: &str, c: &USD, amount: f32, kind: AssetType)
-      -> PropAsset {
-   PropAsset { token: t.to_string(), blockchain: b.to_string(),
+pub fn mk_prop_asset(t: &str, b: &Blockchain, c: &USD, amount: f32, 
+                     kind: AssetType) -> PropAsset {
+   PropAsset { token: t.to_string(), blockchain: b.clone(),
                close_price: c.clone(), amount, kind }
 }
 
