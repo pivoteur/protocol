@@ -34,7 +34,7 @@ pub mod pools;
 /// recommends proposals
 pub mod proposals;
 
-/// Representation of tokens, blockchains, and their amounts
+/// Representation of tokens and their amounts
 pub mod tokens;
 
 /// types used across the systems, like Id, Token, Blochcain

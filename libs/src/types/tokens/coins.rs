@@ -9,15 +9,16 @@ use book::{
 };
 
 use crate::types::{
+   blockchains::Blockchain,
    measurable::{Measurable,tvl},
    quotes::Quotes,
-   util::{Blockchain,Token}
+   util::Token
 };
 
 // ----- ASSETS ----------------------------------------------------------
 
 /// A Coin (an element of Assets) is a Token distinguished by Blockchain
-#[derive(Default, Debug, Clone)]
+#[derive(Debug, Clone)]
 pub struct Coin {
    blockchain: Blockchain,
    token: Token,
@@ -108,14 +109,17 @@ impl PivotCoin {
 pub mod test_data {
    use super::*;
    use book::{ date_utils::yesterday, string_utils::s, utils::now };
-   use crate::fetchers::quotes::fetch_quotes;
+   use crate::{
+      fetchers::quotes::fetch_quotes,
+      types::blockchains::Blockchain::AVALANCHE
+   };
 
    pub fn coin(tok: &str, amt: f32) -> ErrStr<Coin> {
       let t = s(tok);
       let yday = yesterday();
       let quotes = now(fetch_quotes(&yday))?;
       let qt = quotes.lookup(&t)?;
-      Ok(mk_coin(&(s("Avalanche"), t), amt, &mk_usd(qt), &yday))
+      Ok(mk_coin(&(AVALANCHE, t), amt, &mk_usd(qt), &yday))
    }
 }
 

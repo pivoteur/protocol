@@ -18,12 +18,13 @@ use crate::{
    paths::pool_assets_url,
    types::{
       aliases::Aliases,
-      tokens::coins::{Coin,mk_coin},
+      blockchains::Blockchain,
       comps::{Composition,mk_composition},
       pivots::opens::{Pivot,pivot_assets},
       pools::Pool,
       quotes::Quotes,
-      util::{Token,Blockchain}
+      tokens::coins::{Coin,mk_coin},
+      util::Token
    }
 };
 
@@ -45,7 +46,10 @@ pub async fn fetch_assets(root_url: &str, pool: &Pool, aliases: &Aliases,
                               .ok_or(format!("No max_date for {pool}"))?;
    let top = row(&table, &max_date)
                 .ok_or(format!("No row for date {max_date}"))?;
-   let blk = top[hdrs["blockchain"]].clone();
+   let blk_str = &top[hdrs["blockchain"]];
+   let blk: Blockchain =
+      err_or(blk_str.parse(),
+             &format!("Blockchain '{blk_str}' not supported"))?;
    let (p, s) = pool.as_tuple();
    let primary = buidl_asset("primary", &top[hdrs[&p]], qt_f(&top, &hdrs),
                              &blk, &p, &max_date, debug)?;
@@ -101,7 +105,7 @@ pub async fn available_assets_fetcher
    for a in all_opens.assets() {
       subtractor(&mut available, &a);
    }
-   available.as_composition(pool, quotes)
+   available.as_composition(&pool_assets.blockchain(), pool, quotes)
 }
 
 pub fn subtractor(assets: &mut Assets, coin: &Coin) { assets.subtract(coin); }

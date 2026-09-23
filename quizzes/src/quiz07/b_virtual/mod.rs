@@ -18,6 +18,7 @@ use libs::{
    processors::virtuals::{ partition_virtual_pivots, recompute_pivot },
    reports::{total_line,print_tsv_table_d},
    types::{
+      blockchains::Blockchain::AVALANCHE,
       comps::Composition,
       measurable::{Measurable,tvl},
       pivots::opens::Pivot,
@@ -28,15 +29,20 @@ use libs::{
 
 fn aggregate_virtual_pivots(virts: &[Pivot], quotes: &Quotes, pool: &Pool)
       -> ErrStr<Composition> {
-   let mut asts = mk_assets();
-   virts.iter().for_each(|v| {
-      let asset = v.committed()
-          .unwrap_or_else(|err|
-              panic!("unable to process pivot {}, err: {err:?}", v.as_csv()));
-      asts.add(asset);
-   });
 
-   asts.as_composition(pool, quotes)
+// this function is only called if virts is not empty, so we could use
+// dependent types here, but instead I leave this comment for the posterior
+// debugger.
+
+   let mut asts = mk_assets();
+   let mut blk = AVALANCHE;
+   for v in virts {
+      let asset = v.committed()?;
+      blk = v.blockchain();
+      asts.add(asset);
+   }
+
+   asts.as_composition(&blk, pool, quotes)
 }
 
 fn tvls<T:Measurable>(rows: &[T]) -> USD { rows.iter().map(tvl).sum() }
@@ -74,6 +80,9 @@ async fn update_virtual_pivots(date: &NaiveDate, path: &str, debug: bool)
 }
 
 fn report_on_assets(pools: &[Composition], virts: &[Pivot]) {
+
+// this function is only called when debug-flag set
+
    tabl("Virtual Pivot Assets", pools, 3, true);
    tabl("Virtual pivots", virts, 3, true);
 }
@@ -90,7 +99,7 @@ fn tabl<T:CsvWriter + CsvHeader + Measurable>
 /// Computes assets committed to virtual pivots.
 #[derive(Debug, Parser)]
 #[command(name = "virtsz")]
-#[command(version = "2.10")]
+#[command(version = "2.1.1")]
 struct Args {
    /// date on which to compute assets committed to virtual pivots
    date: NaiveDate,
