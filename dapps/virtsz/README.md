@@ -8,6 +8,7 @@ Show assets committed to virtual pivots.
 
 ## Revisions
 
+* 2.1.1, 2026-09-23: new revisioning-system; blockchain now enum, not String
 * 2.10, 2026-09-12: Made `virtz` protocol-independent
 
 * 2.06, 2026-07-29: library-upgrade
