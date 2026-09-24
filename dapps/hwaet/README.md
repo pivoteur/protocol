@@ -17,6 +17,8 @@ where:
 
 ## Revision history
 
+* 1.0.9, 2026-09-24: revised revision numbering; improved asset-management
+error-handling
 * 1.08, 2026-08-31: aliasing tokens when interacting with Assets-collection
 * 1.07, 2026-07-29: library-upgrade
 * 1.06, 2026-07-14: `pools = [` becomes `pools: [` to conform to Javascript 
@@ -27,4 +29,3 @@ syntax
 * 1.02, 2026-06-27: Clarified which pool is over-committed on error.
 * 1.01, 2026-05-26: Added debugging-flow to pool-processing.
 * 1.00, 2026-05-17: release
-

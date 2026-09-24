@@ -21,7 +21,7 @@ use libs::{
    types::{ tokens::coins::Coin, comps::Composition }
 };
 
-async fn health_computer(f: impl Fn(&mut Assets, &Coin),
+async fn health_computer(f: impl Fn(&mut Assets, &Coin) -> ErrStr<()>,
                          root_url: &str, date: &NaiveDate, debug: bool) 
       -> ErrStr<Vec<Composition>> {
    debug!("health_computer", debug);
@@ -63,7 +63,7 @@ fn report_health(dt: NaiveDate, v: Vec<Composition>) -> ErrStr<()> {
 /// prints the current available assets for all pivot pools: a health-check.
 #[derive(Debug, Parser)]
 #[command(name = "hwaet")]
-#[command(version = "1.08")]
+#[command(version = "1.0.9")]
 struct Args {
    /// protocol to run the health-check on, e.g.: PIVOT
    protocol: UppercaseString,
@@ -89,7 +89,7 @@ pub async fn runoff_with_args() -> ErrStr<()> {
 #[cfg(not(tarpaulin_include))]
 mod test_functions {
    use super::*;
-   pub fn mock_subtractor(_a: &mut Assets, _c: &Coin) { }
+   pub fn mock_subtractor(_a: &mut Assets, _c: &Coin) -> ErrStr<()> { Ok(()) }
 }
 
 #[cfg(test)]

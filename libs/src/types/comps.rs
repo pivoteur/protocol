@@ -13,7 +13,8 @@ use crate::collections::assets::{Assets,mk_assets};
 use super::{
    blockchains::Blockchain,
    measurable::{Measurable,size,tvl},
-   pools::mk_pool,
+   pools::{ Pool, mk_pool },
+   quotes::Quotes,
    tokens::coins::{Coin,PivotCoin}
 };
 
@@ -162,6 +163,15 @@ impl Composition {
       let (blk, _) = self.primary.key();
       blk
    }
+
+   pub fn compute_available_assets(&self, quotes: &Quotes,
+                                   blockchain: &Blockchain, pool: &Pool,
+                                   committed: &Assets) -> ErrStr<Composition> {
+      let mut available = self.as_assets();
+      for asset in committed.assets() { available.subtract(&asset)?; }
+      available.update_prices(quotes)?;
+      available.as_composition(blockchain, pool, quotes)
+   }
 }
 
 impl Measurable for Composition {
@@ -245,6 +255,14 @@ pub mod functional_tests {
    mod tests {
       use super::*;
       use book::tuple_utils::snd;
+      use crate::{
+         collections::assets::test_data::tailor_btc_eth_assets,
+         types::{
+            blockchains::Blockchain::AVALANCHE,
+            pools::mk_pool,
+            quotes::sample_data::sample_btc_eth_quotes
+         }
+      };
 
       #[test] fn fail_from_0_assets() {
          let ans = from_assets(&mk_assets().assets(), true);
@@ -270,6 +288,36 @@ pub mod functional_tests {
          assert_eq!("BTC", &snd(btc_eth.primary.key()));
          assert_eq!("ETH", btc_eth.pivot.key());
          Ok(())
+      }
+
+      fn setup_available_test_scenario(btc: f32, eth: f32)
+            -> ErrStr<Composition> {
+         let btc_eth = mk_btc_eth()?;
+         let qts = sample_btc_eth_quotes();
+         let ava = &AVALANCHE;
+         let pool = mk_pool("BTC", "ETH");
+         let assets = tailor_btc_eth_assets(btc, eth)?;
+         btc_eth.compute_available_assets(&qts, ava, &pool, &assets)
+      }
+
+      #[test] fn fail_compute_available_assets_both_assets() {
+         let err = setup_available_test_scenario(2.0, 50.0);
+         assert!(err.is_err(), "Should err when overcommitted BTC and ETH");
+      }
+
+      #[test] fn fail_compute_available_assets_btc_assets() {
+         let err = setup_available_test_scenario(2.0, 10.0);
+         assert!(err.is_err(), "Should err when overcommitted BTC and ETH");
+      }
+
+      #[test] fn fail_compute_available_assets_eth_assets() {
+         let err = setup_available_test_scenario(0.1, 50.0);
+         assert!(err.is_err(), "Should err when overcommitted BTC and ETH");
+      }
+
+      #[test] fn test_compute_available_assets_ok() {
+         let ans = setup_available_test_scenario(0.1, 3.4);
+         assert!(ans.is_ok(), "Should be okay with more assets than commits");
       }
    }
 }
