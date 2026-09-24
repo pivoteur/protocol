@@ -96,19 +96,21 @@ pub async fn fetch_assets_and_open_pivots
 }
 
 pub async fn available_assets_fetcher
-      (subtractor: impl Fn(&mut Assets, &Coin), root_url: &str,
+      (subtractor: impl Fn(&mut Assets, &Coin) -> ErrStr<()>, root_url: &str,
        quotes: &Quotes, pool: &Pool, debug: bool) -> ErrStr<Composition> {
    let (pool_assets, opens) =
       fetch_assets_and_open_pivots(root_url, &quotes, pool, debug).await?;
    let mut available = pool_assets.as_assets();
    let all_opens = pivot_assets(&opens)?;
    for a in all_opens.assets() {
-      subtractor(&mut available, &a);
+      subtractor(&mut available, &a)?;
    }
    available.as_composition(&pool_assets.blockchain(), pool, quotes)
 }
 
-pub fn subtractor(assets: &mut Assets, coin: &Coin) { assets.subtract(coin); }
+pub fn subtractor(assets: &mut Assets, coin: &Coin) -> ErrStr<()> {
+   assets.subtract(coin)
+}
 
 pub async fn fetch_available_assets(root_url: &str, q: &Quotes, p: &Pool,
                                     debug: bool) -> ErrStr<Composition> {

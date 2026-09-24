@@ -49,24 +49,26 @@ impl Assets {
               .and_modify(|a| { *a += asset.sz(); })
               .or_insert(asset);
    }
-   pub fn subtract(&mut self, asset: &Coin) {
+   pub fn subtract(&mut self, asset: &Coin) -> ErrStr<()> {
       let k = self.alias_key(&asset.key());
       let (_, tok) = &k;
       if let Some(a) = self.map.get_mut(&k) {
          let sub = asset.sz();
          let amt = a.sz() - sub;
          if amt < 0.0 {
-            panic!("
+            Err(format!("
 Cannot have a negative amount of {tok}
 
 Trying to subtract this amount: {sub} {tok}
 from assets {}
-", self.brief())
+", self.brief()))
+         } else {
+            if amt == 0.0 { self.map.remove(&k); } else { *a += -sub; }
+            Ok(())
          }
-         if amt == 0.0 { self.map.remove(&k); } else { *a += -sub; }
       } else {
-         panic!("No asset {:?} to remove! Assets are:\n{}",
-                asset, self.as_csv())
+         Err(format!("No asset {:?} to remove! Assets are:\n{}",
+                asset, self.as_csv()))
       }
    }
    pub fn update_prices(&mut self, qs: &Quotes) -> ErrStr<()> {
@@ -145,16 +147,20 @@ pub fn assets_by_tvl(a: &Assets) -> Vec<Coin> {
 
 #[cfg(test)]
 #[cfg(not(tarpaulin_include))]
-mod test_data {
+pub mod test_data {
    use super::*;
    use crate::types::tokens::coins::{ Coin, test_data::coin };
 
-   pub fn test_btc_coin() -> ErrStr<Coin> { coin("BTC", 1.0) }
-   pub fn test_eth_coin() -> ErrStr<Coin> { coin("ETH", 34.0) }
-   pub fn test_btc_eth_assets() -> ErrStr<Assets> {
+   pub fn test_btc_coin(amt: f32) -> ErrStr<Coin> { coin("BTC", amt) }
+   pub fn test_eth_coin(amt: f32) -> ErrStr<Coin> { coin("ETH", amt) }
+   pub fn tailor_btc_eth_assets(btc: f32, eth: f32) -> ErrStr<Assets> {
       let mut assets = mk_assets();
-      for asset in [test_btc_coin(), test_eth_coin()] { assets.add(asset?); }
+      for asset in [test_btc_coin(btc), test_eth_coin(eth)] {
+         assets.add(asset?); }
       Ok(assets)
+   }
+   pub fn test_btc_eth_assets() -> ErrStr<Assets> {
+      tailor_btc_eth_assets(1.0, 34.0)
    }
 }
 
@@ -203,15 +209,15 @@ mod tests {
 
    #[test] fn test_no_assets_composition_ok() -> ErrStr<()> {
       let mut assets = test_btc_eth_assets()?;
-      assets.subtract(&test_btc_coin()?);
-      assets.subtract(&test_eth_coin()?);
+      assets.subtract(&test_btc_coin(1.0)?)?;
+      assets.subtract(&test_eth_coin(34.0)?)?;
       assert!(assets.map.is_empty());
       comp_ok(&mut assets)
    }
 
    #[test] fn test_one_asset_composition_ok() -> ErrStr<()> {
       let mut assets = test_btc_eth_assets()?;
-      assets.subtract(&test_btc_coin()?);
+      assets.subtract(&test_btc_coin(1.0)?)?;
       assert_eq!(1, assets.map.len());
       comp_ok(&mut assets)
    }
