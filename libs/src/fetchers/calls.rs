@@ -85,7 +85,7 @@ pub mod functional_tests {
       let (root_url, _) = marshall()?;
       let (call, pivs) = now(fetch_call_data(&root_url, 1, true))?;
       println!("The first call is:\n\n{}", as_csv(&[call], true)?);
-      println!("The pivots are:\n\n{}", enumerate_csv(&pivs));
+      println!("The pivots are:\n\n{}", enumerate_csv(&pivs, true));
    });
 
    run!("grab_call", {
