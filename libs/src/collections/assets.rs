@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{ HashMap, HashSet };
 
 use book::{
    csv_utils::{CsvWriter,CsvHeader},
@@ -105,7 +105,13 @@ so, you know: handle those.
       let mut assets = self.clone();
       assets.add(zed(&pri)?);
       assets.add(zed(&piv)?);
-      let abp = assets_by_price(&assets);
+      let pool_assets: HashSet<String> =
+         [&pri, &piv].into_iter().map(String::to_string).collect();
+      let abp: Vec<Coin> =
+         assets_by_price(&assets)
+             .into_iter()
+             .filter(|coin| pool_assets.contains(&coin.token()))
+             .collect();
       if let [pr, pv] = abp.as_slice() {
          Ok(mk_composition(pr, pv))
       } else {
@@ -149,7 +155,12 @@ pub fn assets_by_tvl(a: &Assets) -> Vec<Coin> {
 #[cfg(not(tarpaulin_include))]
 pub mod test_data {
    use super::*;
-   use crate::types::tokens::coins::{ Coin, test_data::coin };
+   use crate::types::{
+      blockchains::Blockchain::AVALANCHE,
+      pools::pool_from_str,
+      quotes::sample_data::sample_btc_eth_quotes,
+      tokens::coins::{ Coin, test_data::coin }
+   };
 
    pub fn test_btc_coin(amt: f32) -> ErrStr<Coin> { coin("BTC", amt) }
    pub fn test_eth_coin(amt: f32) -> ErrStr<Coin> { coin("ETH", amt) }
@@ -162,15 +173,24 @@ pub mod test_data {
    pub fn test_btc_eth_assets() -> ErrStr<Assets> {
       tailor_btc_eth_assets(1.0, 34.0)
    }
+
+   pub fn mk_sample_btc_eth_composition(assets: &Assets)
+         -> ErrStr<Composition> {
+      let quotes = sample_btc_eth_quotes();
+      let pool = pool_from_str("btc-eth")?;
+      assets.as_composition(&AVALANCHE, &pool, &quotes)
+   }
 }
 
 #[cfg(test)]
 #[cfg(not(tarpaulin_include))]
 mod functional_tests {
    use super::*;
-   use super::test_data::test_btc_eth_assets;
+   use super::test_data::{ test_btc_eth_assets, mk_sample_btc_eth_composition };
    use paste::paste;
-   use book::{ create_testing, err_utils::ErrStr };
+   use book::{ create_testing, csv_utils::list_csv, err_utils::ErrStr };
+   use crate::types::tokens::coins::test_data::coin;
+
 
    create_testing!("types::pivots");
 
@@ -178,28 +198,27 @@ mod functional_tests {
       let assets = test_btc_eth_assets()?;
       println!("\tAssets with BTC and ETH:\n\n{}", assets.as_csv());
    });
+
+   run!("three_assets_composition", {
+      let mut assets = test_btc_eth_assets()?;
+      assets.add(coin("USDC", 72043.0)?);
+      assert_eq!(3, assets.map.len());
+      let comp = mk_sample_btc_eth_composition(&assets)?;
+      println!("BTC+ETH pool (with some USDC hidden):\n\n{}",
+               list_csv(&[comp], true));
+   });
 }
 
 #[cfg(test)]
 #[cfg(not(tarpaulin_include))]
 mod tests {
    use super::*;
-   use super::test_data::{ test_btc_coin, test_eth_coin, test_btc_eth_assets };
-   use crate::types::{
-      blockchains::Blockchain::AVALANCHE,
-      pools::pool_from_str,
-      quotes::sample_data::sample_btc_eth_quotes,
-      tokens::coins::test_data::coin
+   use super::test_data::{
+      mk_sample_btc_eth_composition,
+      test_btc_coin,
+      test_eth_coin,
+      test_btc_eth_assets
    };
-
-   const AVA: Blockchain = AVALANCHE;
-
-   fn mk_sample_btc_eth_composition(assets: &mut Assets)
-         -> ErrStr<Composition> {
-      let quotes = sample_btc_eth_quotes();
-      let pool = pool_from_str("btc-eth")?;
-      assets.as_composition(&AVA, &pool, &quotes)
-   }
 
    fn comp_ok(assets: &mut Assets) -> ErrStr<()> {
       let comp = mk_sample_btc_eth_composition(assets);
@@ -226,14 +245,5 @@ mod tests {
       let mut assets = test_btc_eth_assets()?;
       assert_eq!(2, assets.map.len());
       comp_ok(&mut assets)
-   }
-
-   #[test] fn fail_three_assets_composition() -> ErrStr<()> {
-      let mut assets = test_btc_eth_assets()?;
-      assets.add(coin("USDC", 72043.0)?);
-      assert_eq!(3, assets.map.len());
-      let comp = mk_sample_btc_eth_composition(&mut assets);
-      assert!(comp.is_err());
-      Ok(())
    }
 }
