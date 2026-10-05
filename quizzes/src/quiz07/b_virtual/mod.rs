@@ -99,7 +99,7 @@ fn tabl<T:CsvWriter + CsvHeader + Measurable>
 /// Computes assets committed to virtual pivots.
 #[derive(Debug, Parser)]
 #[command(name = "virtsz")]
-#[command(version = "2.1.1")]
+#[command(version = "2.1.2")]
 struct Args {
    /// date on which to compute assets committed to virtual pivots
    date: NaiveDate,
