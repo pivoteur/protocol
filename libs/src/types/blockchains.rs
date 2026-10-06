@@ -38,12 +38,17 @@ impl Blockchain {
       })
    }
    pub fn url(&self) -> String {
-      s("https://api.avax.network/ext/bc/C/rpc") // works for everybody?
+      s(match self {
+         AVALANCHE => "https://api.avax.network/ext/bc/C/rpc",
+         BINANCE   => "https://bsc-dataseed.bnbchain.org",
+         x         => panic!("Blockchain {x} not supported")
+      })
    }
    pub fn chain_id(&self) -> u64 { 
       match self {
          AVALANCHE => 43114,
-         x => panic!("No chain_id for {x}")
+         BINANCE   => 56,
+         x         => panic!("No chain_id for {x}")
       }
    }
 }
