@@ -8,17 +8,18 @@ use book::{
    currency::usd::USD,
    csv_utils::{CsvWriter,CsvHeader},
    err_utils::ErrStr,
-   file_utils::lines_from_file
+   file_utils::lines_from_file,
+   list_utils::filter_map_or,
+   string_utils::s
 };
 
 use libs::{
-   collections::assets::mk_assets,
+   collections::assets::from_coins,
    fetchers::{ quotes::fetch_quotes, pivots::parse_pivots},
    paths::pivot_pool_from_file,
    processors::virtuals::{ partition_virtual_pivots, recompute_pivot },
    reports::{total_line,print_tsv_table_d},
    types::{
-      blockchains::Blockchain::AVALANCHE,
       comps::Composition,
       measurable::{Measurable,tvl},
       pivots::opens::Pivot,
@@ -34,14 +35,9 @@ fn aggregate_virtual_pivots(virts: &[Pivot], quotes: &Quotes, pool: &Pool)
 // dependent types here, but instead I leave this comment for the posterior
 // debugger.
 
-   let mut asts = mk_assets();
-   let mut blk = AVALANCHE;
-   for v in virts {
-      let asset = v.committed()?;
-      blk = v.blockchain();
-      asts.add(asset);
-   }
-
+   let coins = filter_map_or(|p| p.committed(), virts.to_vec())?;
+   let blk = coins.first().ok_or(s("Empty open pivots list"))?.blockchain();
+   let asts = from_coins(&coins);
    asts.as_composition(&blk, pool, quotes)
 }
 
@@ -99,7 +95,7 @@ fn tabl<T:CsvWriter + CsvHeader + Measurable>
 /// Computes assets committed to virtual pivots.
 #[derive(Debug, Parser)]
 #[command(name = "virtsz")]
-#[command(version = "2.1.2")]
+#[command(version = "2.1.3")]
 struct Args {
    /// date on which to compute assets committed to virtual pivots
    date: NaiveDate,

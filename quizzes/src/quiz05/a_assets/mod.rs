@@ -10,24 +10,24 @@ use book::{
 
 use libs::{
    processors::proposals::process_pools,
-   collections::assets::{ assets_by_tvl, mk_assets },
-   reports::{ Proposal, print_table, proposal, report_proposes }
+   collections::assets::{ assets_by_tvl, from_coins },
+   reports::{ Proposal, print_table, proposal, report_proposes },
+   types::tokens::coins::Coin
 };
 
 async fn propose(auth: &str, dt: &NaiveDate, debug: bool) -> ErrStr<()> {
    let (proposals, no_closes) = process_pools(&auth, &dt, debug).await?;
    report_proposes(proposals.clone(), &no_closes, false);
-   if !proposals.is_empty() { tokens_to_pivot(proposals); }
+   if !proposals.is_empty() { tokens_to_pivot(proposals)?; }
    Ok(())
 }
 
-fn tokens_to_pivot(proposals: Vec<Proposal>) {
-   let mut tokens = mk_assets();
-   proposals.iter().for_each(|p| {
-      let asset = proposal(p).pivot_amount();
-      tokens.add(asset);
-   });
+fn tokens_to_pivot(proposals: Vec<Proposal>) -> ErrStr<()> {
+   let coins: Vec<Coin> =
+      proposals.iter().map(|p| proposal(p).pivot_amount()).collect();
+   let tokens = from_coins(&coins);
    print_table("Assets to pivot", &assets_by_tvl(&tokens));
+   Ok(())
 }
 
 /// Make close pivot calls

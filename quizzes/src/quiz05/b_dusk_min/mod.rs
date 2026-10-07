@@ -2,6 +2,7 @@ use chrono::NaiveDate;
 use clap::Parser;
 
 use book::{
+   debug,
    parse_args_add_banner,
    cli_utils::generate_banner,
    err_utils::ErrStr,
@@ -10,32 +11,33 @@ use book::{
 
 use libs::{
    processors::proposals::process_pools,
-   collections::assets::{ assets_by_tvl, mk_assets },
-   reports::{ Proposal, print_table, proposal, report_proposes }
+   collections::assets::{ assets_by_tvl, from_coins },
+   reports::{ Proposal, print_table, proposal, report_proposes },
+   types::tokens::coins::Coin
 };
 
 pub async fn propose(auth: &str, date: &NaiveDate, debug: bool) -> ErrStr<()> {
-   if debug { println!("Processing pools for {auth} on date {date}"); }
+   debug!("propose", debug);
+   log!("Processing pools for {} on date {}", auth, date);
    let (proposals, no_closes) = process_pools(auth, date, debug).await?;
    let x = if !debug { &vec![] } else { &no_closes };
    report_proposes(proposals.clone(), x, !debug);
-   if debug && !proposals.is_empty() { tokens_to_pivot(proposals); }
+   if debug && !proposals.is_empty() { tokens_to_pivot(proposals)?; }
    Ok(())
 }
 
-fn tokens_to_pivot(proposals: Vec<Proposal>) {
-   let mut tokens = mk_assets();
-   proposals.iter().for_each(|p| {
-      let asset = proposal(p).pivot_amount();
-      tokens.add(asset);
-   });
+fn tokens_to_pivot(proposals: Vec<Proposal>) -> ErrStr<()> {
+   let coins: Vec<Coin> =
+      proposals.iter().map(|p| proposal(p).pivot_amount()).collect();
+   let tokens = from_coins(&coins);
    print_table("Assets to pivot", &assets_by_tvl(&tokens));
+   Ok(())
 }
 
 /// Make the close pivot call
 #[derive(Debug, Parser)]
 #[command(name = "dusk")]
-#[command(version = "2.08")]
+#[command(version = "2.0.9")]
 struct Args {
    /// Protocol to analyze pivots to close, e.g.: PIVOT
    protocol: UppercaseString,
@@ -60,7 +62,10 @@ pub async fn runoff_with_args() -> ErrStr<()> {
 #[cfg(not(tarpaulin_include))]
 mod unit_tests {
    use super::*;
-   #[test] fn test_tokens_to_pivot_empty() { tokens_to_pivot(vec![]); }
+   #[test] fn test_tokens_to_pivot_empty() {
+      let res = tokens_to_pivot(vec![]);
+      assert!(res.is_ok());
+   }
 }
 
 // ----- FUNCTIONAL TESTS ------------------------------------------
@@ -74,6 +79,6 @@ pub mod functional_tests {
 
    create_testing!("quiz05::b_dusk_min");
 
-   run!("full_dusk", { let _ = now(propose("pivot", &yesterday(), false)); });
-   run!("dusky_min", { let _ = now(propose("pivot", &yesterday(), true)); });
+   run!("full_dusk", now(propose("pivot", &yesterday(), false))?);
+   run!("dusky_min", now(propose("pivot", &yesterday(), true))?);
 }
