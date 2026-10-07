@@ -19,6 +19,7 @@ where:
 
 ## Revisions
 
+* 2.0.9, 2026-10-07: new revision numbering; assets-from-coins-approach
 * 2.08, 2026-08-02: computing, reporting, and sorting by USD-gains
 * 2.07, 2026-07-29: library upgrade
 * 2.06, 2026-07-07: use clap to parse arguments and for usage-documentation

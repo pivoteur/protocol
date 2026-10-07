@@ -58,7 +58,8 @@ impl Coin {
       self.quote = mk_usd(quote);
       Ok(())
    }
-   pub fn token(&self) -> Token { self.token.clone() }
+   pub fn token(&self) -> &Token { &self.token }
+   pub fn blockchain(&self) -> &Blockchain { &self.blockchain }
 }
 
 pub fn mk_coin(k: &(Blockchain, Token), amount: f32,

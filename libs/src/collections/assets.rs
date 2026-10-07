@@ -26,10 +26,15 @@ pub struct Assets {
    aliases: Aliases
 }
 
-pub fn mk_assets() -> Assets {
+pub fn prototype() -> Assets {
    Assets { map: HashMap::new(), aliases: aliases() }
 }
 
+pub fn from_coins(coins: &[Coin]) -> Assets {
+   let mut assets = prototype();
+   coins.into_iter().for_each(|c| assets.add(c.clone()));
+   assets
+}
 
 impl Assets {
    pub fn brief(&self) -> String {
@@ -110,7 +115,7 @@ so, you know: handle those.
       let abp: Vec<Coin> =
          assets_by_price(&assets)
              .into_iter()
-             .filter(|coin| pool_assets.contains(&coin.token()))
+             .filter(|coin| pool_assets.contains(coin.token()))
              .collect();
       if let [pr, pv] = abp.as_slice() {
          Ok(mk_composition(pr, pv))
@@ -165,10 +170,7 @@ pub mod test_data {
    pub fn test_btc_coin(amt: f32) -> ErrStr<Coin> { coin("BTC", amt) }
    pub fn test_eth_coin(amt: f32) -> ErrStr<Coin> { coin("ETH", amt) }
    pub fn tailor_btc_eth_assets(btc: f32, eth: f32) -> ErrStr<Assets> {
-      let mut assets = mk_assets();
-      for asset in [test_btc_coin(btc), test_eth_coin(eth)] {
-         assets.add(asset?); }
-      Ok(assets)
+      Ok(from_coins(&[test_btc_coin(btc)?, test_eth_coin(eth)?]))
    }
    pub fn test_btc_eth_assets() -> ErrStr<Assets> {
       tailor_btc_eth_assets(1.0, 34.0)

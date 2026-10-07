@@ -8,7 +8,7 @@ use book::{
    string_utils::plural,
 };
 
-use crate::collections::assets::{Assets,mk_assets};
+use crate::collections::assets::{ Assets, prototype };
 
 use super::{
    blockchains::Blockchain,
@@ -29,7 +29,7 @@ mod test_data {
    use book::err_utils::ErrStr;
    use super::{ Composition, mk_composition, from_assets };
    use crate::{
-      collections::assets::mk_assets,
+      collections::assets::prototype,
       types::tokens::coins::test_data::coin
    };
    
@@ -39,7 +39,7 @@ mod test_data {
       Ok(mk_composition(&eth, &btc))
    }
    pub fn mk_undead_usdc() -> ErrStr<Composition> {
-      let mut assets = mk_assets();
+      let mut assets = prototype();
       assets.add(coin("UNDEAD", 1000000.0)?);
       assets.add(coin("USDC", 1400.0)?);
       from_assets(&assets.assets(), true)
@@ -153,7 +153,7 @@ impl Composition {
 
    pub fn tvl(&self) -> USD { tvl(&self.primary) + tvl(&self.pivot) }
    pub fn as_assets(&self) -> Assets {
-      let mut assets = mk_assets();
+      let mut assets = prototype();
       assets.add(self.primary.clone());
       assets.add(self.pivot.coin());
       assets
@@ -245,7 +245,7 @@ pub mod functional_tests {
              &mk_btc_eth()?.as_assets(), CsvWriter::as_csv);
    run_with!("from_assets_undead_usdc", &mk_undead_usdc()?, CsvWriter::as_csv);
    run!("from_assets_btc_usdc", " (BTC and USDC assets)", {
-      let mut assets = mk_assets();
+      let mut assets = prototype();
       assets.add(coin("BTC", 0.1)?);
       assets.add(coin("USDC", 8500.0)?);
       let comp = from_assets(&assets.assets(), true)?;
@@ -265,11 +265,11 @@ pub mod functional_tests {
       };
 
       #[test] fn fail_from_0_assets() {
-         let ans = from_assets(&mk_assets().assets(), true);
+         let ans = from_assets(&prototype().assets(), true);
          assert!(ans.is_err());
       }
       #[test] fn fail_from_too_many_assets() -> ErrStr<()> {
-         let mut assets = mk_assets();
+         let mut assets = prototype();
          assets.add(coin("AVAX", 12.0)?);
          assets.add(coin("BTC", 0.1)?);
          assets.add(coin("USDC", 100.0)?);

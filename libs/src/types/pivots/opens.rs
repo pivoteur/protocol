@@ -5,11 +5,12 @@ use std::collections::HashMap;
 use book::{
    csv_utils::{CsvHeader,CsvWriter},
    err_utils::ErrStr,
+   list_utils::filter_map_or,
    tuple_utils::Partition
 };
 
 use crate::{
-   collections::assets::{Assets,mk_assets},
+   collections::assets::{ Assets, from_coins },
    types::{
       assets::{
          assets::{Asset,parse_asset,gain_10_percent,trade},
@@ -100,12 +101,8 @@ pub fn parse_pivot(hdrs: &HashMap<String, usize>, row: &Vec<String>)
 // ----- COLLECTIONS OPERATIONS ------------------------------------------
 
 pub fn pivot_assets(opens: &[Pivot]) -> ErrStr<Assets> {
-   let mut ans = mk_assets();
-   for p in opens {
-      let c = p.committed()?;
-      ans.add(c);
-   }
-   Ok(ans)
+   let coins = filter_map_or(|p: Pivot| p.committed(), opens.to_vec())?;
+   Ok(from_coins(&coins))
 }
 
 pub fn next_close_id(pivs: &Vec<Pivot>) -> Id {
