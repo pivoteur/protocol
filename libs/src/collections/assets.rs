@@ -11,18 +11,21 @@ use crate::types::{
    blockchains::Blockchain,
    comps::{ Composition, mk_composition },
    tokens::coins::{ Coin, mk_coin },
-   measurable::{Measurable,sort_by_tvl,sort_by_weight},
+   measurable::{ Measurable, sort_by_tvl, sort_by_weight},
    pools::Pool,
    quotes::Quotes,
    util::Token
 };
+
+pub type AssetKey = (Blockchain, Token);
+pub type AssetKeyRef<'a> = (Blockchain, &'a str);
 
 /// An Assets (a singular collection of a plurality of assets) is a bag
 /// where the size is the amount of the asset
 
 #[derive(Debug, Clone)]
 pub struct Assets {
-   map: HashMap<(Blockchain,Token), Coin>,
+   map: HashMap<AssetKey, Coin>,
    aliases: Aliases
 }
 
@@ -37,6 +40,9 @@ pub fn from_coins(coins: &[Coin]) -> Assets {
 }
 
 impl Assets {
+   pub fn asset(&self, (blk, tok): AssetKeyRef) -> Option<Coin> {
+      self.map.get(&(blk, self.aliases.alias(tok))).cloned()
+   }
    pub fn brief(&self) -> String {
       self.map.iter()
           .map(|((_,tok), coin)| format!("{} {tok}", coin.sz()))
@@ -191,8 +197,11 @@ mod functional_tests {
    use super::test_data::{ test_btc_eth_assets, mk_sample_btc_eth_composition };
    use paste::paste;
    use book::{ create_testing, csv_utils::list_csv, err_utils::ErrStr };
-   use crate::types::tokens::coins::test_data::coin;
-
+   use crate::types::{
+      blockchains::Blockchain::AVALANCHE,
+      measurable::tvl,
+      tokens::coins::test_data::coin
+   };
 
    create_testing!("types::pivots");
 
@@ -209,6 +218,13 @@ mod functional_tests {
       println!("BTC+ETH pool (with some USDC hidden):\n\n{}",
                list_csv(&[comp], true));
    });
+
+   run!("query_assets", {
+      let assets = test_btc_eth_assets()?;
+      let btc = assets.asset((AVALANCHE, "btc")).unwrap();
+      println!("For BTC+ETH assets, {} BTC at {} is worth {}",
+               btc.sz(), btc.aug(), tvl(&btc));
+   });
 }
 
 #[cfg(test)]
@@ -221,6 +237,7 @@ mod tests {
       test_eth_coin,
       test_btc_eth_assets
    };
+   use crate::types::blockchains::Blockchain::AVALANCHE;
 
    fn comp_ok(assets: &mut Assets) -> ErrStr<()> {
       let comp = mk_sample_btc_eth_composition(assets);
@@ -247,5 +264,19 @@ mod tests {
       let mut assets = test_btc_eth_assets()?;
       assert_eq!(2, assets.map.len());
       comp_ok(&mut assets)
+   }
+
+   #[test] fn test_no_usdc_in_btc_eth_assets() -> ErrStr<()> {
+      let assets = test_btc_eth_assets()?;
+      let mb_usdc = assets.asset((AVALANCHE, "usdc"));
+      assert!(mb_usdc.is_none());
+      Ok(())
+   }
+
+   #[test] fn test_eth_asset_in_btc_eth_assets() -> ErrStr<()> {
+      let assets = test_btc_eth_assets()?;
+      let mb_eth = assets.asset((AVALANCHE, "eth"));
+      assert!(mb_eth.is_some());
+      Ok(())
    }
 }
