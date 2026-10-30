@@ -131,15 +131,20 @@ so, you know: handle those.
    }
    pub fn pool(&self, blockchain: &Blockchain, prim: &str, piv: &str,
                debug: bool) -> ErrStr<Pool> {
-      let primary = self.aliases.alias(prim);
-      let pivot = self.aliases.alias(piv);
-      let coin1 = self.map.get(&(blockchain.clone(), primary.clone()))
-                      .ok_or(format!("{prim} not an asset in the wallet"))?;
-      let coin2 = self.map.get(&(blockchain.clone(), pivot.clone()))
-                      .ok_or(format!("{piv} not an asset in the wallet"))?;
-      let price1 = coin1.aug();
-      let price2 = coin2.aug();
-      construct_pool([(primary, price1), (pivot, price2)], debug)
+      fn pairz<'a>(b: &'a Blockchain, assets: &'a Assets)
+            -> impl Fn(&'a str) -> ErrStr<(Token, f32)> {
+         move | tok: &'a str | {
+            let token = assets.aliases.alias(tok);
+            let coin = assets.map.get(&(b.clone(), token.clone()))
+                         .ok_or(format!("{tok} not an asset in the wallet"))?;
+            let price = coin.aug();
+            Ok((token, price))
+         }
+      }
+      let lookup = pairz(blockchain, self);
+      let primary = lookup(prim)?;
+      let pivot = lookup(piv)?;
+      construct_pool([primary, pivot], debug)
    }
 }
 
