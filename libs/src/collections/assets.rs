@@ -12,7 +12,7 @@ use crate::types::{
    comps::{ Composition, mk_composition },
    tokens::coins::{ Coin, mk_coin },
    measurable::{ Measurable, sort_by_tvl, sort_by_weight},
-   pools::Pool,
+   pools::{ Pool, construct_pool },
    quotes::Quotes,
    util::Token
 };
@@ -129,6 +129,18 @@ so, you know: handle those.
          Err(format!("Cannot create a composition from {}", assets.as_csv()))
       }
    }
+   pub fn pool(&self, blockchain: &Blockchain, prim: &str, piv: &str,
+               debug: bool) -> ErrStr<Pool> {
+      let primary = self.aliases.alias(prim);
+      let pivot = self.aliases.alias(piv);
+      let coin1 = self.map.get(&(blockchain.clone(), primary.clone()))
+                      .ok_or(format!("{prim} not an asset in the wallet"))?;
+      let coin2 = self.map.get(&(blockchain.clone(), pivot.clone()))
+                      .ok_or(format!("{piv} not an asset in the wallet"))?;
+      let price1 = coin1.aug();
+      let price2 = coin2.aug();
+      construct_pool([(primary, price1), (pivot, price2)], debug)
+   }
 }
 
 impl CsvHeader for Assets { 
@@ -203,7 +215,7 @@ mod functional_tests {
       tokens::coins::test_data::coin
    };
 
-   create_testing!("types::pivots");
+   create_testing!("collections::assets");
 
    run!("mk_assets_and_add", {
       let assets = test_btc_eth_assets()?;
@@ -217,6 +229,16 @@ mod functional_tests {
       let comp = mk_sample_btc_eth_composition(&assets)?;
       println!("BTC+ETH pool (with some USDC hidden):\n\n{}",
                list_csv(&[comp], true));
+   });
+
+   run!("pool", {
+      let mut assets = test_btc_eth_assets()?;
+      assets.add(coin("USDC", 72043.0)?);
+      assets.add(coin("UNDEAD", 500_000.0)?);
+      println!("BTC+USDC pool: {}",
+               assets.pool(&AVALANCHE, "usdc", "btc", true)?);
+      println!("UNDEAD+USDC pool: {}",
+               assets.pool(&AVALANCHE, "usdc", "undead", true)?);
    });
 
    run!("query_assets", {
@@ -237,7 +259,10 @@ mod tests {
       test_eth_coin,
       test_btc_eth_assets
    };
-   use crate::types::blockchains::Blockchain::AVALANCHE;
+   use crate::types::{
+      blockchains::Blockchain::AVALANCHE,
+      tokens::coins::test_data::coin
+   };
 
    fn comp_ok(assets: &mut Assets) -> ErrStr<()> {
       let comp = mk_sample_btc_eth_composition(assets);
@@ -277,6 +302,23 @@ mod tests {
       let assets = test_btc_eth_assets()?;
       let mb_eth = assets.asset((AVALANCHE, "eth"));
       assert!(mb_eth.is_some());
+      Ok(())
+   }
+
+   #[test] fn test_btc_usdc_pool_ordering() -> ErrStr<()> {
+      let mut assets = test_btc_eth_assets()?;
+      assets.add(coin("USDC", 500.0)?);
+      let pool = assets.pool(&AVALANCHE, "usdc", "btc", true)?;
+      assert_eq!("BTC+USDC", &pool.pool_name());
+      Ok(())
+   }
+
+   #[test] fn test_undead_usdc_pool_ordering() -> ErrStr<()> {
+      let mut assets = test_btc_eth_assets()?;
+      assets.add(coin("USDC", 500.0)?);
+      assets.add(coin("UNDEAD", 500_001.0)?);
+      let pool = assets.pool(&AVALANCHE, "usdc", "undead", true)?;
+      assert_eq!("UNDEAD+USDC", &pool.pool_name());
       Ok(())
    }
 }
