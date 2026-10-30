@@ -145,11 +145,12 @@ pub fn from_assets(assets: &[Coin], debug: bool) -> ErrStr<Composition> {
 }
 
 impl Composition {
-   pub fn pool_name(&self) -> String { 
+   pub fn pool(&self) -> Pool {
       let (_, pri) = self.primary.key();
       let piv = self.pivot.key();
-      mk_pool(&pri, &piv).pool_name()
+      mk_pool(&pri, &piv)
    }
+   pub fn pool_name(&self) -> String { self.pool().pool_name() }
 
    pub fn tvl(&self) -> USD { tvl(&self.primary) + tvl(&self.pivot) }
    pub fn as_assets(&self) -> Assets {
