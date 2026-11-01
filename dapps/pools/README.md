@@ -22,8 +22,9 @@ Protocol](../../quizzes/src/quiz10/b_pools/imgs/01-pools.png)
 
 # Revision History
 
+* 2.0.6, 2026-11-01: revised revision numbering; blockchain enum uses strum
 * 2.05, 2026-08-05: reinstated dapp, removing burden of pool-discovery from 
-hwaet
+`hwaet`
 * 2.04, 2026-07-29: library-upgrades
 * 2.03, 2026-07-05: using clap to parse args and generate banner
 * 2.02, 2026-05-05: brought into the automation framework

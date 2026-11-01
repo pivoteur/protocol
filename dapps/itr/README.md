@@ -11,6 +11,7 @@ Integration test-suite that runs `cargo build` over each sub-directory in
 
 ## Revisions
 
+* 1.0.5, 2026-11-01: revised revision numbering; blockchain enum uses strum
 * 1.04, 2026-08-06: Do not print banner twice when `-h|--help` flagged
 * 1.03, 2026-07-29: prints banner during integration-build
 * 1.02, 2026-07-05: clap to process arguments and for usage-documentation

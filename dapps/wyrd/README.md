@@ -16,6 +16,7 @@ where:
 
 ## Revisions
 
+* 2.0.2, 2026-11-01: revised revision numbering; blockchain enum uses strum
 * 2.01, 2026-08-10: added opened-column to close pivot output
 * 2.00, 2026-08-10: shifted to a call-to-close-pivot-type transformation
 * 1.05, 2026-07-29: library-upgrage

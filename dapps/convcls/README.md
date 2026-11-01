@@ -14,6 +14,7 @@ the new pivot table.
 
 ## Revision History
 
+* 1.0,9, 2026-11-01: Revised revision numbering; blockchain enum uses strum
 * 1.08, 2026-09-07: Old close pivot table `gain` column is CommaFloat
 * 1.07, 2026-09-07: Old close pivot table `new_to_actual` column is CommaFloat
 * 1.06, 2026-09-01: corrected vol calculation

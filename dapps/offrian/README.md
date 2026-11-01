@@ -42,6 +42,7 @@ depending on the call will get the following output:
 
 ## Revisions
 
+* 2.0.1, 2026-11-01: revised revision numbering; blockchain enum now uses strum
 * 2.00, 2026-08-14: complete overhaul of offrian-calculation, abandoning leeway
 in favor of testing against required amount.
 * 1.05, 2026-07-29: library-upgrades

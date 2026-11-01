@@ -1,8 +1,11 @@
-use std::{ fmt, str::FromStr };
+use std::fmt;
 
-use book::{ err_utils::ErrStr, string_utils::s };
+use strum::EnumString;
 
-#[derive(Clone,Debug,PartialEq,Eq,Hash)]
+use book::string_utils::s;
+
+#[derive(Clone,Debug,PartialEq,Eq,Hash,EnumString)]
+#[strum(serialize_all = "UPPERCASE", ascii_case_insensitive)]
 pub enum Blockchain { AURORA, AVALANCHE, BINANCE, CARDANO, ETHEREUM, NEAR }
 use Blockchain::*;
 
@@ -59,36 +62,25 @@ impl fmt::Display for Blockchain {
    }
 }
 
-impl FromStr for Blockchain {
-   type Err = String;
-   fn from_str(elt: &str) -> ErrStr<Self> {
-      match elt.to_uppercase().as_str() {
-         "AURORA"    => Ok(AURORA),
-         "AVALANCHE" => Ok(AVALANCHE),
-         "BINANCE"   => Ok(BINANCE),
-         "CARDANO"   => Ok(CARDANO),
-         "ETHEREUM"  => Ok(ETHEREUM),
-         "NEAR"      => Ok(NEAR),
-         _           => Err(format!("Unable to parse blockchain from {elt}"))
-      }
-   }
-}
-
 // ----- TESTS -------------------------------------------------------
 
 #[cfg(test)]
 #[cfg(not(tarpaulin_include))]
 mod tests {
    use super::*;
+   use book::err_utils::{ ErrStr, err_or };
 
    #[test] fn test_parse_ok() -> ErrStr<()> {
-      let ans: Blockchain = "avalanche".parse()?;
+      let ans: Blockchain =
+         err_or("avalanche".parse(),
+                "Cannot parse 'avalanche' blockchain")?;
       assert_eq!(AVALANCHE, ans);
       Ok(())
    }
 
    #[test] fn fail_parse() {
-      let ans: ErrStr<Blockchain> = "blerg".parse();
+      let ans: ErrStr<Blockchain> =
+         err_or("blerg".parse(), "Cannot parse 'blerg' blockchain");
       assert!(ans.is_err());
    }
 }

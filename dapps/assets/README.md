@@ -8,6 +8,7 @@ Snapshot of the protocol's TVLs.
 
 ## History
 
+* 1.1.0, 2026-11-01: revised revision numbering; blockchain enum uses strum
 * 1.10, 2026-07-29: library-upgrade
 * 1.09, 2026-07-05: Use CLAP to parse arguments and provide usage-documentation
 * 1.08, 2026-05-11: Shifted to CSVs for my sanity's sake when pasting to
