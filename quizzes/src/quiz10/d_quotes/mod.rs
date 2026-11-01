@@ -21,7 +21,7 @@ async fn print_quotes_as_json(dt: &NaiveDate) -> ErrStr<String> {
 /// fetches the quotes for the protocol
 #[derive(Debug, Parser)]
 #[command(name = "quotes")]
-#[command(version = "1.02")]
+#[command(version = "1.0.3")]
 struct Args {
    /// Date to run protocol-quotes
    date: NaiveDate

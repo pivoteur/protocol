@@ -17,6 +17,7 @@ where:
 
 ## Revision history
 
+* 1.0.10, 2026-11-01: Blockchain enum now uses strum
 * 1.0.9, 2026-09-24: revised revision numbering; improved asset-management
 error-handling
 * 1.08, 2026-08-31: aliasing tokens when interacting with Assets-collection

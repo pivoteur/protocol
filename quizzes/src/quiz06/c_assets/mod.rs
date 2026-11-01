@@ -87,7 +87,7 @@ async fn print_assets(auth: &str, date: &NaiveDate) -> ErrStr<()> {
 /// Prints the assets of the protocol, giving the TVL
 #[derive(Debug, Parser)]
 #[command(name = "assets")]
-#[command(version = "1.10")]
+#[command(version = "1.1.0")]
 struct Args {
    /// The protocol to compute TVL, e.g.: PIVOT
    protocol: UppercaseString,
