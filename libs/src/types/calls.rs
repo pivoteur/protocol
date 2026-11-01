@@ -65,7 +65,7 @@ pub struct Call {
     #[serde_as(as = "DisplayFromStr")]
     pub roi: Percentage,
     #[serde_as(as = "DisplayFromStr")]
-    pub apr: Percentage,
+    pub apr: Percentage
 }
 
 pub fn parse_calls(csv_data: &str) -> ErrStr<Vec<Call>> {
