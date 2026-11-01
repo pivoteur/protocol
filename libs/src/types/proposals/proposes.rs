@@ -1,10 +1,12 @@
 use chrono::NaiveDate;
 
 use book::{
-   csv_utils::{CsvHeader,CsvWriter},
+   debug,
+   csv_utils::{ CsvHeader, CsvWriter },
    currency::usd::{ USD, mk_usd },
    err_utils::ErrStr,
-   num::percentage::{Percentage,mk_percentage}
+   num::percentage::{ Percentage, mk_percentage },
+   string_utils::{ plural, s }
 };
 
 use super::{
@@ -19,7 +21,7 @@ use crate::types::{
    },
    blockchains::Blockchain,
    gains::Gains,
-   measurable::{Measurable,weight,size,tvl},
+   measurable::{ Measurable, weight, size },
    pivots::{
       opens::{Pivot,headers,froms},
       utils::weighted_days
@@ -62,9 +64,7 @@ impl Gains for Propose {
       }
    }
    fn gain(&self) -> f32 { self.propose.gain_for(self.sz()) }
-   fn gain_usd(&self) -> USD {
-      mk_usd(self.roi().of(tvl(&self.propose).amount()))
-   }
+   fn gain_usd(&self) -> USD { mk_usd(self.gain() * self.propose.aug()) }
 }
 
 impl Propose {
@@ -152,13 +152,14 @@ fn mk_prop(open_pivots: Vec<Pivot>, c: Id, d: &NaiveDate,
       propose }, c+1)
 }
 
-pub fn propose(q: &Quotes) -> impl Fn((Vec<Pivot>, Id), bool)
-      -> ErrStr<Option<(Propose, Id)>> {
+pub fn propose(q: &Quotes)
+      -> impl Fn((Vec<Pivot>, Id), bool) -> ErrStr<Option<(Propose, Id)>> {
    move |(pivots, c): (Vec<Pivot>, Id), debug: bool| {
+      debug!("proposer", debug);
       let mut princes = Vec::new();
       let mut pivs = Vec::new();
       let mut res: Vec<PropAsset> = Vec::new();
-      if debug { println!("Making a proposal from {} pivots", pivots.len()); }
+      log!("Making a proposal from {}", plural(pivots.len(), "pivot"));
       for p in pivots {
          let props = p.trade(q)?;
          let _ = props.and_then(|(frm, to)| {
@@ -169,16 +170,16 @@ pub fn propose(q: &Quotes) -> impl Fn((Vec<Pivot>, Id), bool)
          });
       }
       if princes.is_empty() {
-         if debug { println!("No proposal found for pivots"); }
+         log!("No proposal found for pivots");
          Ok(None)
       } else {
          if let Some(result) = res.first() {
             let proposed = result.clone_with(result.aug(), size(&res), TO);
             let (prop, ix) = mk_prop(princes, c, &q.date, pivs, proposed);
-            if debug { println!("proposal #{ix}: {}", prop.as_csv()); }
+            log!("proposal #{}: {}", ix, prop.as_csv());
             Ok(Some((prop, ix)))
          } else {
-            Err("No proposal to accumulate on flagged principal".to_string())
+            Err(s("No proposal to accumulate on flagged principal"))
          }
       }
    }
@@ -188,67 +189,76 @@ pub fn propose(q: &Quotes) -> impl Fn((Vec<Pivot>, Id), bool)
 
 #[cfg(test)]
 #[cfg(not(tarpaulin_include))]
-pub mod functional_tests {
+mod sample_proposal {
    use super::*;
-   use paste::paste;
    use crate::types::{
       assets::amounts::mk_amt,
-      quotes::sample_data::sample_quotes_maker,
-      pivots::opens::test_data::mk_btc_usdc_piv
+      pivots::opens::test_data::mk_btc_usdc_piv,
+      quotes::sample_data::sample_quotes_maker
    };
-   use book::create_testing;
+
+   pub fn setup_btc_usdc_proposal(amt: f32, prop_qt: f32)
+         -> ErrStr<Option<(Propose, usize)>> {
+      let piv = mk_btc_usdc_piv(78408.88,mk_amt(0.0, amt),0,"virtual_pivot")?;
+      let quotes = sample_quotes_maker(&[("BTC", prop_qt)]);
+      let max_id = 1;
+      let proposer = propose(&quotes);
+      proposer((vec![piv], max_id), true)
+   }
+
+   pub fn setup_btc_usdc_proposal_base() -> ErrStr<Option<(Propose, usize)>> {
+      setup_btc_usdc_proposal(0.1, 65000.0)
+   }
+}
+
+#[cfg(test)]
+#[cfg(not(tarpaulin_include))]
+pub mod functional_tests {
+   use paste::paste;
+   use super::*;
+   use super::sample_proposal::setup_btc_usdc_proposal_base;
+   use book::{ create_testing, csv_utils::enumerate_csv };
 
    create_testing!("types::proposals::proposes");
 
    run!("propose", {
-      let piv = mk_btc_usdc_piv(78408.88,mk_amt(0.0,0.1),0,"virtual pivot")?;
-      let quotes = sample_quotes_maker(&[("BTC", 65000.0)]);
-      let proposer = propose(&quotes);
-      if let Some((call, next_id)) = proposer((vec![piv], 1), true)? {
-         println!("call:\n{}\n{}\n\nnext_id: {next_id}",
-                  call.header(), call.as_csv());
-      } else {
-         println!("No call for pivots!");
-      }
+      let (call, next_id) = setup_btc_usdc_proposal_base()?.unwrap();
+      println!("call:\n{}\n\nnext_id: {next_id}",
+               enumerate_csv(&[call], true));
    });
 }
 
 #[cfg(test)]
 mod tests {
    use super::*;
-   use crate::types::{
-      assets::amounts::mk_amt,
-      quotes::sample_data::sample_quotes_maker,
-      pivots::opens::test_data::mk_btc_usdc_piv
+   use super::sample_proposal::{
+      setup_btc_usdc_proposal,
+      setup_btc_usdc_proposal_base
    };
 
-   #[test]
-   fn test_propose_ok_no_call() -> ErrStr<()> {
-      let piv = mk_btc_usdc_piv(78408.88,mk_amt(0.0, 500.0),0,"virtual_pivot")?;
-      let quotes = sample_quotes_maker(&[("BTC",85000.0)]);
-      let proposer = propose(&quotes);
-      let max_id = 1;
-      let ans = proposer((vec![piv], max_id), true);
-      assert!(ans.is_ok());
-      let call = ans?;
+   #[test] fn test_propose_ok_no_call() -> ErrStr<()> {
+      let proposal = setup_btc_usdc_proposal(500.0, 85000.0);
+      assert!(proposal.is_ok());
+      let call = proposal?;
       assert!(call.is_none());
       Ok(())
    }
 
-   #[test]
-   fn test_propose_ok_with_call() -> ErrStr<()> {
-      let piv = mk_btc_usdc_piv(78408.88,mk_amt(0.0, 0.1),0,"virtual_pivot")?;
-      let quotes = sample_quotes_maker(&[("BTC",65000.0)]);
-      let max_id = 1;
-      let proposer = propose(&quotes);
-      let ans = proposer((vec![piv], max_id), true);
-      assert!(ans.is_ok());
-      if let Some((_call, next_id)) = ans.clone()? {
+   #[test] fn test_propose_ok_with_call() -> ErrStr<()> {
+      let proposal = setup_btc_usdc_proposal_base();
+      assert!(proposal.is_ok());
+      if let Some((_call, next_id)) = proposal.clone()? {
          assert_eq!(2, next_id);
          Ok(())
       } else {
-         Err(format!("Should have been a call: {ans:?}"))
+         Err(format!("Should have been a call: {proposal:?}"))
       }
+   }
+
+   #[test] fn test_propose_gain_usd() -> ErrStr<()> {
+      let (proposal, _) = setup_btc_usdc_proposal_base()?.unwrap();
+      assert_eq!(mk_usd(1340.0), proposal.gain_usd());
+      Ok(())
    }
 }
 

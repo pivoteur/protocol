@@ -6,6 +6,9 @@ use book::{
 
 use crate::types::{ calls::Call, pivots::closes::{mk_close_pivot, ClosePivot} };
 
+// We compute gain and gain_usd because it differs from what is proposed
+// verses actual amount returned from the trade
+
 pub fn transform_to_close(c: &Call, tx_id: &str, actual: f32) -> ClosePivot {
    let from = c.amount1 + c.virtual_amount;
    let gain = actual - from;

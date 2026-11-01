@@ -37,7 +37,7 @@ fn tokens_to_pivot(proposals: Vec<Proposal>) -> ErrStr<()> {
 /// Make the close pivot call
 #[derive(Debug, Parser)]
 #[command(name = "dusk")]
-#[command(version = "2.0.9")]
+#[command(version = "2.0.10")]
 struct Args {
    /// Protocol to analyze pivots to close, e.g.: PIVOT
    protocol: UppercaseString,
