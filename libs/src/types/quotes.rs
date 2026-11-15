@@ -1,8 +1,7 @@
 use std::collections::HashMap;
 
 use chrono::NaiveDate;
-use serde::Serialize;
-use serde_with::{ serde_as, DisplayFromStr };
+use serde::{ Serialize, Deserialize };
 
 use book::{
    currency::usd::mk_usd,
@@ -19,13 +18,11 @@ use super::{
 
 /// One populates the quotes with the fetcher.
 
-#[serde_as]
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Quotes {
-   #[serde_as(as = "DisplayFromStr")]
    pub date: NaiveDate,
    quotes: HashMap<Token, f32>,
-   #[serde(skip_serializing)]
+   #[serde(skip, default = "aliases")]
    pub aliases: Aliases
 }
 
