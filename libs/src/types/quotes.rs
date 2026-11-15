@@ -26,6 +26,12 @@ pub struct Quotes {
    pub aliases: Aliases
 }
 
+impl PartialEq for Quotes {
+    fn eq(&self, other: &Self) -> bool {
+        self.date == other.date && self.quotes == other.quotes
+    }
+}
+
 impl CsvWriter for Quotes {
    fn ncols(&self) -> usize { 1 + self.quotes.len() }
    fn as_csv(&self) -> String {
